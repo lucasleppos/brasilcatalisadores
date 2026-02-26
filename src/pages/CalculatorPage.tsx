@@ -220,40 +220,44 @@ export default function CalculatorPage() {
                 <Input type="number" step="any" value={input.clientDiscount || ""} onChange={(e) => update("clientDiscount", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
 
-              <Separator />
+              {isAdmin && (
+                <>
+                  <Separator />
 
-              {/* Custom quotes toggle */}
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Cotações customizadas</Label>
-                <Switch checked={useCustomQuotes} onCheckedChange={(v) => {
-                  setUseCustomQuotes(v);
-                  if (!v) {
-                    update("customPt", null);
-                    update("customPd", null);
-                    update("customRh", null);
-                  } else {
-                    update("customPt", settings.ptPrice);
-                    update("customPd", settings.pdPrice);
-                    update("customRh", settings.rhPrice);
-                  }
-                }} />
-              </div>
+                  {/* Custom quotes toggle - admin only */}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Cotações customizadas</Label>
+                    <Switch checked={useCustomQuotes} onCheckedChange={(v) => {
+                      setUseCustomQuotes(v);
+                      if (!v) {
+                        update("customPt", null);
+                        update("customPd", null);
+                        update("customRh", null);
+                      } else {
+                        update("customPt", settings.ptPrice);
+                        update("customPd", settings.pdPrice);
+                        update("customRh", settings.rhPrice);
+                      }
+                    }} />
+                  </div>
 
-              {useCustomQuotes && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Pt ($/ozt)</Label>
-                    <Input type="number" step="any" value={input.customPt ?? ""} onChange={(e) => update("customPt", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Pd ($/ozt)</Label>
-                    <Input type="number" step="any" value={input.customPd ?? ""} onChange={(e) => update("customPd", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Rh ($/ozt)</Label>
-                    <Input type="number" step="any" value={input.customRh ?? ""} onChange={(e) => update("customRh", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
-                  </div>
-                </div>
+                  {useCustomQuotes && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Pt ($/ozt)</Label>
+                        <Input type="number" step="any" value={input.customPt ?? ""} onChange={(e) => update("customPt", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Pd ($/ozt)</Label>
+                        <Input type="number" step="any" value={input.customPd ?? ""} onChange={(e) => update("customPd", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Rh ($/ozt)</Label>
+                        <Input type="number" step="any" value={input.customRh ?? ""} onChange={(e) => update("customRh", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

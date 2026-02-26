@@ -37,6 +37,9 @@ export default function QuoteList({ items, onRemove }: { items: QuoteItem[]; onR
               <TableHead className="text-xs">#</TableHead>
               <TableHead className="text-xs">Tipo</TableHead>
               <TableHead className="text-xs text-right">Peso (kg)</TableHead>
+              <TableHead className="text-xs text-right">Pt ppm</TableHead>
+              <TableHead className="text-xs text-right">Pd ppm</TableHead>
+              <TableHead className="text-xs text-right">Rh ppm</TableHead>
               <TableHead className="text-xs text-right">Valor (BRL)</TableHead>
               <TableHead className="text-xs w-10" />
             </TableRow>
@@ -47,6 +50,9 @@ export default function QuoteList({ items, onRemove }: { items: QuoteItem[]; onR
                 <TableCell className="py-1.5 text-xs">{i + 1}</TableCell>
                 <TableCell className="py-1.5 text-xs">{entryLabels[q.input.entryType] ?? q.input.entryType}</TableCell>
                 <TableCell className="py-1.5 text-xs text-right">{fmt(q.input.grossWeight - q.input.tare, 4)}</TableCell>
+                <TableCell className="py-1.5 text-xs text-right">{fmt(q.input.ptPpm, 0)}</TableCell>
+                <TableCell className="py-1.5 text-xs text-right">{fmt(q.input.pdPpm, 0)}</TableCell>
+                <TableCell className="py-1.5 text-xs text-right">{fmt(q.input.rhPpm, 0)}</TableCell>
                 <TableCell className="py-1.5 text-xs text-right font-semibold">{fmtBrl(q.result.finalValueBrl)}</TableCell>
                 <TableCell className="py-1.5">
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRemove(q.id)}>
@@ -56,7 +62,7 @@ export default function QuoteList({ items, onRemove }: { items: QuoteItem[]; onR
               </TableRow>
             ))}
             <TableRow className="bg-muted/30">
-              <TableCell colSpan={3} className="py-2 text-xs font-semibold text-right">Total</TableCell>
+              <TableCell colSpan={6} className="py-2 text-xs font-semibold text-right">Total</TableCell>
               <TableCell className="py-2 text-xs text-right font-bold text-primary">{fmtBrl(total)}</TableCell>
               <TableCell />
             </TableRow>
