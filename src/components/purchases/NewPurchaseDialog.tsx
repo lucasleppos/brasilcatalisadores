@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Send } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Send, Calculator } from "lucide-react";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
+import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
+import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -22,8 +25,13 @@ const itemTypeLabels: Record<PurchaseItemType, string> = {
 interface PendingItem {
   id: string;
   itemType: PurchaseItemType;
-  quantity: number;
-  totalValue: number;
+  // simple mode
+  quantity?: number;
+  totalValue?: number;
+  weight?: number;
+  // calculator mode
+  calcInput?: CalculatorInput;
+  calcResult?: CalculatorResult;
 }
 
 export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void }) {
@@ -32,9 +40,25 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<PendingItem[]>([]);
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
+  const { toast } = useToast();
+
+  // Simple fields
   const [addQty, setAddQty] = useState<number>(0);
   const [addValue, setAddValue] = useState<number>(0);
-  const { toast } = useToast();
+  const [addWeight, setAddWeight] = useState<number>(0);
+
+  // Calculator fields
+  const [grossWeight, setGrossWeight] = useState<number>(0);
+  const [tare, setTare] = useState<number>(0);
+  const [ptPpm, setPtPpm] = useState<number>(0);
+  const [pdPpm, setPdPpm] = useState<number>(0);
+  const [rhPpm, setRhPpm] = useState<number>(0);
+
+  // Peça em sacola: toggle between simple and calculator mode
+  const [sacolaUseCalc, setSacolaUseCalc] = useState(false);
+
+  // Preview of calculation
+  const [calcPreview, setCalcPreview] = useState<CalculatorResult | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -42,36 +66,120 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
       setSupplierId("");
       setNotes("");
       setItems([]);
+      resetAddFields();
     }
   }, [open]);
 
-  const addItem = () => {
-    if (addType === "ceramico") {
-      toast({ title: "Use a Calculadora", description: "Para cerâmico, use a calculadora e envie para compras de lá.", variant: "destructive" });
-      return;
-    }
-    if (addQty <= 0 || addValue <= 0) return;
-    setItems((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), itemType: addType, quantity: addQty, totalValue: addValue },
-    ]);
+  const resetAddFields = () => {
     setAddQty(0);
     setAddValue(0);
+    setAddWeight(0);
+    setGrossWeight(0);
+    setTare(0);
+    setPtPpm(0);
+    setPdPpm(0);
+    setRhPpm(0);
+    setSacolaUseCalc(false);
+    setCalcPreview(null);
   };
 
-  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
+  const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
-  const total = items.reduce((s, i) => s + i.totalValue, 0);
+  const runCalcPreview = () => {
+    if (grossWeight <= 0) return;
+    const settings = loadSettings();
+    const margin = selectedSupplier?.margin ?? 0;
+    const input: CalculatorInput = {
+      grossWeight,
+      tare,
+      materialType: "comum",
+      ptPpm,
+      pdPpm,
+      rhPpm,
+      clientDiscount: margin,
+      entryType: addType === "ceramico" ? "grupo" : "peca_sacola",
+      manualPrice: null,
+      customPt: null,
+      customPd: null,
+      customRh: null,
+    };
+    const result = calculate(input, settings);
+    setCalcPreview(result);
+  };
+
+  // Run preview when calc fields change
+  useEffect(() => {
+    if ((addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc)) && grossWeight > 0) {
+      runCalcPreview();
+    } else {
+      setCalcPreview(null);
+    }
+  }, [grossWeight, tare, ptPpm, pdPpm, rhPpm, addType, sacolaUseCalc, supplierId]);
+
+  const addItem = () => {
+    const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
+
+    if (useCalc) {
+      if (!calcPreview || grossWeight <= 0) {
+        toast({ title: "Preencha os campos da calculadora", variant: "destructive" });
+        return;
+      }
+      const settings = loadSettings();
+      const margin = selectedSupplier?.margin ?? 0;
+      const input: CalculatorInput = {
+        grossWeight,
+        tare,
+        materialType: "comum",
+        ptPpm,
+        pdPpm,
+        rhPpm,
+        clientDiscount: margin,
+        entryType: addType === "ceramico" ? "grupo" : "peca_sacola",
+        manualPrice: null,
+        customPt: null,
+        customPd: null,
+        customRh: null,
+      };
+      const result = calculate(input, settings);
+      setItems(prev => [
+        ...prev,
+        { id: crypto.randomUUID(), itemType: addType, calcInput: input, calcResult: result },
+      ]);
+    } else if (addType === "peca") {
+      if (addQty <= 0 || addValue <= 0) return;
+      setItems(prev => [
+        ...prev,
+        { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue },
+      ]);
+    } else if (addType === "peca_sacola" && !sacolaUseCalc) {
+      if (addQty <= 0 || addValue <= 0) return;
+      setItems(prev => [
+        ...prev,
+        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight, totalValue: addValue },
+      ]);
+    }
+
+    resetAddFields();
+  };
+
+  const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
+
+  const total = items.reduce((s, i) => {
+    if (i.calcResult) return s + i.calcResult.finalValueBrl;
+    return s + (i.totalValue || 0);
+  }, 0);
 
   const handleConfirm = () => {
-    const supplier = suppliers.find((s) => s.id === supplierId);
+    const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier || items.length === 0) return;
 
-    const purchaseItems: PurchaseQuoteItem[] = items.map((i) => ({
+    const purchaseItems: PurchaseQuoteItem[] = items.map(i => ({
       id: i.id,
       itemType: i.itemType,
       quantity: i.quantity,
       totalValue: i.totalValue,
+      input: i.calcInput,
+      result: i.calcResult,
     }));
 
     createPurchase({
@@ -86,7 +194,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
     onCreated();
   };
 
-  const showSimpleFields = addType === "peca" || addType === "peca_sacola";
+  const showSimpleFields = addType === "peca" || (addType === "peca_sacola" && !sacolaUseCalc);
+  const showCalcFields = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,7 +211,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
             <Select value={supplierId} onValueChange={setSupplierId}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar fornecedor" /></SelectTrigger>
               <SelectContent>
-                {suppliers.map((s) => (
+                {suppliers.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -110,42 +219,110 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
             {suppliers.length === 0 && (
               <p className="text-[10px] text-destructive">Cadastre um fornecedor primeiro.</p>
             )}
+            {selectedSupplier && (
+              <p className="text-[10px] text-muted-foreground">Margem do fornecedor: {selectedSupplier.margin}%</p>
+            )}
           </div>
 
           {/* Add item */}
-          <div className="space-y-2 p-3 rounded-md border bg-muted/30">
+          <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
-            <div className="space-y-2">
-              <Select value={addType} onValueChange={(v) => setAddType(v as PurchaseItemType)}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="peca">Peça</SelectItem>
-                  <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
-                  <SelectItem value="ceramico">Cerâmico</SelectItem>
-                </SelectContent>
-              </Select>
 
-              {showSimpleFields && (
+            <Select value={addType} onValueChange={(v) => { setAddType(v as PurchaseItemType); resetAddFields(); }}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="peca">Peça</SelectItem>
+                <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
+                <SelectItem value="ceramico">Cerâmico</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Peça em sacola: toggle */}
+            {addType === "peca_sacola" && (
+              <div className="flex items-center gap-2">
+                <Switch checked={sacolaUseCalc} onCheckedChange={setSacolaUseCalc} />
+                <Label className="text-xs flex items-center gap-1">
+                  <Calculator className="h-3 w-3" />
+                  Usar calculadora (PPMs)
+                </Label>
+              </div>
+            )}
+
+            {/* Simple fields: Peça or Peça em sacola (simple mode) */}
+            {showSimpleFields && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Quantidade de peças</Label>
+                  <Input type="number" min={0} value={addQty || ""} onChange={e => setAddQty(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
+                </div>
+                {addType === "peca_sacola" && (
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Peso (kg)</Label>
+                    <Input type="number" min={0} step="any" value={addWeight || ""} onChange={e => setAddWeight(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Valor total (R$)</Label>
+                  <Input type="number" min={0} step="any" value={addValue || ""} onChange={e => setAddValue(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                </div>
+              </div>
+            )}
+
+            {/* Calculator fields: Cerâmico or Peça em sacola (calc mode) */}
+            {showCalcFields && (
+              <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Quantidade de peças</Label>
-                    <Input type="number" min={0} value={addQty || ""} onChange={(e) => setAddQty(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Label className="text-[10px]">Peso Bruto (kg)</Label>
+                    <Input type="number" min={0} step="any" value={grossWeight || ""} onChange={e => setGrossWeight(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Valor total (R$)</Label>
-                    <Input type="number" min={0} step="any" value={addValue || ""} onChange={(e) => setAddValue(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Label className="text-[10px]">Tara (kg)</Label>
+                    <Input type="number" min={0} step="any" value={tare || ""} onChange={e => setTare(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                   </div>
                 </div>
-              )}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Pt (ppm)</Label>
+                    <Input type="number" min={0} step="any" value={ptPpm || ""} onChange={e => setPtPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Pd (ppm)</Label>
+                    <Input type="number" min={0} step="any" value={pdPpm || ""} onChange={e => setPdPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Rh (ppm)</Label>
+                    <Input type="number" min={0} step="any" value={rhPpm || ""} onChange={e => setRhPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  </div>
+                </div>
 
-              {addType === "ceramico" && (
-                <p className="text-xs text-muted-foreground">Para cerâmico, utilize a Calculadora e envie para Compras de lá.</p>
-              )}
+                {/* Calc preview */}
+                {calcPreview && (
+                  <div className="rounded-md bg-background border p-2 space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Peso líquido</span>
+                      <span>{calcPreview.netWeightKg.toFixed(2)} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor bruto USD</span>
+                      <span>$ {calcPreview.grossMetalValueUsd.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Deduções USD</span>
+                      <span className="text-destructive">- $ {calcPreview.totalDeductions.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold border-t pt-1">
+                      <span>Valor Final</span>
+                      <span className="text-primary">{fmtBrl(calcPreview.finalValueBrl)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-              <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={addItem} disabled={addType === "ceramico"}>
-                <Plus className="mr-1 h-3 w-3" />Adicionar
-              </Button>
-            </div>
+            <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={addItem}>
+              <Plus className="mr-1 h-3 w-3" />Adicionar
+            </Button>
           </div>
 
           {/* Items list */}
@@ -154,17 +331,23 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Tipo</TableHead>
-                  <TableHead className="text-xs text-right">Qtd</TableHead>
+                  <TableHead className="text-xs text-right">Detalhe</TableHead>
                   <TableHead className="text-xs text-right">Valor</TableHead>
                   <TableHead className="text-xs w-8" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((it) => (
+                {items.map(it => (
                   <TableRow key={it.id}>
                     <TableCell className="text-xs">{itemTypeLabels[it.itemType]}</TableCell>
-                    <TableCell className="text-xs text-right">{it.quantity}</TableCell>
-                    <TableCell className="text-xs text-right font-semibold">{fmtBrl(it.totalValue)}</TableCell>
+                    <TableCell className="text-xs text-right">
+                      {it.calcResult
+                        ? `${it.calcInput?.grossWeight?.toFixed(1)} kg`
+                        : `${it.quantity} pç`}
+                    </TableCell>
+                    <TableCell className="text-xs text-right font-semibold">
+                      {fmtBrl(it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0))}
+                    </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
                         <Trash2 className="h-3 w-3" />
@@ -184,7 +367,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
           {/* Notes */}
           <div className="space-y-1">
             <Label className="text-xs">Observações</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="text-sm" rows={2} />
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="text-sm" rows={2} />
           </div>
         </div>
 
