@@ -301,7 +301,7 @@ export default function CalculatorPage() {
               </div>
 
               {/* Calculation details - admin only */}
-              {isAdmin && <CalculationDetails result={result} />}
+              <CalculationDetails result={result} />
             </>
           )}
 
