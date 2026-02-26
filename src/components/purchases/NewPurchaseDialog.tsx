@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Send, Calculator } from "lucide-react";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
@@ -25,11 +26,9 @@ const itemTypeLabels: Record<PurchaseItemType, string> = {
 interface PendingItem {
   id: string;
   itemType: PurchaseItemType;
-  // simple mode
   quantity?: number;
   totalValue?: number;
   weight?: number;
-  // calculator mode
   calcInput?: CalculatorInput;
   calcResult?: CalculatorResult;
 }
@@ -39,6 +38,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
+  const [erpNumber, setErpNumber] = useState("");
   const [items, setItems] = useState<PendingItem[]>([]);
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
   const { toast } = useToast();
@@ -67,17 +67,20 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       if (editPurchase) {
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
+        setErpNumber(editPurchase.erpNumber || "");
         setItems(editPurchase.items.map(i => ({
           id: i.id,
           itemType: i.itemType,
           quantity: i.quantity,
           totalValue: i.totalValue,
+          weight: i.weight,
           calcInput: i.input,
           calcResult: i.result,
         })));
       } else {
         setSupplierId("");
         setNotes("");
+        setErpNumber("");
         setItems([]);
       }
       resetAddFields();
@@ -121,7 +124,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     setCalcPreview(result);
   };
 
-  // Run preview when calc fields change
   useEffect(() => {
     if ((addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc)) && grossWeight > 0) {
       runCalcPreview();
@@ -134,8 +136,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
 
     if (useCalc) {
-      if (!calcPreview || grossWeight <= 0) {
-        toast({ title: "Preencha os campos da calculadora", variant: "destructive" });
+      if (grossWeight <= 0) {
+        toast({ title: "Preencha ao menos o peso bruto", variant: "destructive" });
         return;
       }
       const settings = loadSettings();
@@ -154,22 +156,36 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         customPd: null,
         customRh: null,
       };
-      const result = calculate(input, settings);
+      // Only calculate if PPMs are provided, otherwise add without value
+      const hasPpms = ptPpm > 0 || pdPpm > 0 || rhPpm > 0;
+      const result = hasPpms ? calculate(input, settings) : undefined;
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: addType, calcInput: input, calcResult: result },
+        {
+          id: crypto.randomUUID(),
+          itemType: addType,
+          weight: grossWeight - tare,
+          calcInput: input,
+          calcResult: result,
+        },
       ]);
     } else if (addType === "peca") {
-      if (addQty <= 0 || addValue <= 0) return;
+      if (addQty <= 0) {
+        toast({ title: "Informe a quantidade", variant: "destructive" });
+        return;
+      }
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue },
+        { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue || undefined },
       ]);
     } else if (addType === "peca_sacola" && !sacolaUseCalc) {
-      if (addQty <= 0 || addValue <= 0) return;
+      if (addQty <= 0) {
+        toast({ title: "Informe a quantidade", variant: "destructive" });
+        return;
+      }
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight, totalValue: addValue },
+        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight || undefined, totalValue: addValue || undefined },
       ]);
     }
 
@@ -183,7 +199,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     return s + (i.totalValue || 0);
   }, 0);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier || items.length === 0) return;
 
@@ -192,19 +208,21 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       itemType: i.itemType,
       quantity: i.quantity,
       totalValue: i.totalValue,
+      weight: i.weight,
       input: i.calcInput,
       result: i.calcResult,
     }));
 
     if (isEditing) {
-      updatePurchase(editPurchase!.id, { items: purchaseItems, notes });
+      await updatePurchase(editPurchase!.id, { items: purchaseItems, notes, erpNumber });
       toast({ title: "Compra atualizada com sucesso!" });
     } else {
-      createPurchase({
+      await createPurchase({
         supplierId: supplier.id,
         supplierName: supplier.name,
         items: purchaseItems,
         notes,
+        erpNumber,
       });
       toast({ title: "Compra criada com sucesso!" });
     }
@@ -215,6 +233,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   const showSimpleFields = addType === "peca" || (addType === "peca_sacola" && !sacolaUseCalc);
   const showCalcFields = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
+
+  const getItemValueDisplay = (it: PendingItem) => {
+    const val = it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0);
+    if (val > 0) return fmtBrl(val);
+    return <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-[10px]">Pendente</Badge>;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -243,6 +267,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             )}
           </div>
 
+          {/* ERP Number */}
+          <div className="space-y-1">
+            <Label className="text-xs">Nº Controle ERP (opcional)</Label>
+            <Input value={erpNumber} onChange={e => setErpNumber(e.target.value)} placeholder="Ex: OC-12345" className="h-8 text-sm" />
+          </div>
+
           {/* Add item */}
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
@@ -256,7 +286,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               </SelectContent>
             </Select>
 
-            {/* Peça em sacola: toggle */}
             {addType === "peca_sacola" && (
               <div className="flex items-center gap-2">
                 <Switch checked={sacolaUseCalc} onCheckedChange={setSacolaUseCalc} />
@@ -267,11 +296,10 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               </div>
             )}
 
-            {/* Simple fields: Peça or Peça em sacola (simple mode) */}
             {showSimpleFields && (
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-[10px]">Quantidade de peças</Label>
+                  <Label className="text-[10px]">Quantidade de peças *</Label>
                   <Input type="number" min={0} value={addQty || ""} onChange={e => setAddQty(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
                 </div>
                 {addType === "peca_sacola" && (
@@ -282,17 +310,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 )}
                 <div className="space-y-1">
                   <Label className="text-[10px]">Valor total (R$)</Label>
-                  <Input type="number" min={0} step="any" value={addValue || ""} onChange={e => setAddValue(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="number" min={0} step="any" value={addValue || ""} onChange={e => setAddValue(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
                 </div>
               </div>
             )}
 
-            {/* Calculator fields: Cerâmico or Peça em sacola (calc mode) */}
             {showCalcFields && (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Peso Bruto (kg)</Label>
+                    <Label className="text-[10px]">Peso Bruto (kg) *</Label>
                     <Input type="number" min={0} step="any" value={grossWeight || ""} onChange={e => setGrossWeight(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                   </div>
                   <div className="space-y-1">
@@ -303,19 +330,19 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[10px]">Pt (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={ptPpm || ""} onChange={e => setPtPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="number" min={0} step="any" value={ptPpm || ""} onChange={e => setPtPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Pd (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={pdPpm || ""} onChange={e => setPdPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="number" min={0} step="any" value={pdPpm || ""} onChange={e => setPdPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Rh (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={rhPpm || ""} onChange={e => setRhPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="number" min={0} step="any" value={rhPpm || ""} onChange={e => setRhPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                 </div>
+                <p className="text-[10px] text-muted-foreground">PPMs podem ser preenchidos depois (na edição da compra, após análise).</p>
 
-                {/* Calc preview */}
                 {calcPreview && (
                   <div className="rounded-md bg-background border p-2 space-y-1 text-xs">
                     <div className="flex justify-between">
@@ -360,12 +387,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   <TableRow key={it.id}>
                     <TableCell className="text-xs">{itemTypeLabels[it.itemType]}</TableCell>
                     <TableCell className="text-xs text-right">
-                      {it.calcResult
-                        ? `${it.calcInput?.grossWeight?.toFixed(1)} kg`
+                      {it.calcResult || it.calcInput
+                        ? `${(it.weight ?? it.calcInput?.grossWeight)?.toFixed(1)} kg`
                         : `${it.quantity} pç`}
                     </TableCell>
                     <TableCell className="text-xs text-right font-semibold">
-                      {fmtBrl(it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0))}
+                      {getItemValueDisplay(it)}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
@@ -376,7 +403,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 ))}
                 <TableRow className="bg-muted/30">
                   <TableCell colSpan={2} className="text-xs font-semibold text-right">Total</TableCell>
-                  <TableCell className="text-xs text-right font-bold text-primary">{fmtBrl(total)}</TableCell>
+                  <TableCell className="text-xs text-right font-bold text-primary">
+                    {total > 0 ? fmtBrl(total) : "Pendente"}
+                  </TableCell>
                   <TableCell />
                 </TableRow>
               </TableBody>

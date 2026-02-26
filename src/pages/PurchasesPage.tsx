@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Package, Search, Trash2, Eye, Plus, Pencil } from "lucide-react";
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
-import { loadSuppliers } from "@/lib/suppliers";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 
@@ -37,23 +36,22 @@ export default function PurchasesPage() {
   const [editPurchase, setEditPurchase] = useState<Purchase | null>(null);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
-  const reload = () => setPurchases(loadPurchases());
-  useEffect(() => { reload(); }, []);
+  const reload = async () => setPurchases(await loadPurchases());
   useEffect(() => { reload(); }, []);
 
   const filtered = purchases.filter((p) => {
-    const matchSearch = [p.supplierName, p.id].some((f) => f.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber].some((f) => f.toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
-  const handleStatusChange = (id: string, status: PurchaseStatus) => {
-    updatePurchaseStatus(id, status);
+  const handleStatusChange = async (id: string, status: PurchaseStatus) => {
+    await updatePurchaseStatus(id, status);
     reload();
   };
 
-  const handleDelete = (id: string) => {
-    deletePurchase(id);
+  const handleDelete = async (id: string) => {
+    await deletePurchase(id);
     reload();
   };
 
@@ -72,7 +70,7 @@ export default function PurchasesPage() {
       <div className="flex gap-3 items-center">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Buscar por fornecedor..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+          <Input placeholder="Buscar por fornecedor, nº pedido ou ERP..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
@@ -90,28 +88,34 @@ export default function PurchasesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Data</TableHead>
+                <TableHead className="text-xs">Nº Pedido</TableHead>
                 <TableHead className="text-xs">Fornecedor</TableHead>
+                <TableHead className="text-xs">ERP</TableHead>
                 <TableHead className="text-xs">Itens</TableHead>
                 <TableHead className="text-xs text-right">Total</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs w-24" />
+                <TableHead className="text-xs w-28" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
-                    Nenhuma compra encontrada. Use a calculadora para criar cotações e enviá-las para compras.
+                  <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
+                    Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="text-sm">{new Date(p.date).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
                     <TableCell className="text-sm">{p.items.length}</TableCell>
-                    <TableCell className="text-sm text-right font-semibold">{fmtBrl(p.totalBrl)}</TableCell>
+                    <TableCell className="text-sm text-right font-semibold">
+                      {p.totalBrl > 0 ? fmtBrl(p.totalBrl) : (
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
                         <SelectTrigger className="h-7 text-xs w-44 border-0 p-0">
@@ -127,13 +131,14 @@ export default function PurchasesPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
                           <Eye className="h-3 w-3" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditPurchase(p)}>
                           <Pencil className="h-3 w-3" />
                         </Button>
+                        <div className="w-2" />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
