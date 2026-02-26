@@ -95,6 +95,23 @@ export function updatePurchaseStatus(id: string, status: PurchaseStatus) {
   return purchases[idx];
 }
 
+export function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string }) {
+  const purchases = loadPurchases();
+  const idx = purchases.findIndex((p) => p.id === id);
+  if (idx === -1) return null;
+  const totalBrl = data.items.reduce((sum, q) => {
+    if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
+      return sum + (q.totalValue || 0);
+    }
+    return sum + (q.result?.finalValueBrl || 0);
+  }, 0);
+  purchases[idx].items = data.items;
+  purchases[idx].notes = data.notes;
+  purchases[idx].totalBrl = totalBrl;
+  savePurchases(purchases);
+  return purchases[idx];
+}
+
 export function deletePurchase(id: string) {
   const purchases = loadPurchases().filter((p) => p.id !== id);
   savePurchases(purchases);
