@@ -19,7 +19,7 @@ const entryLabels: Record<string, string> = {
   grupo: "Grupo",
 };
 
-export default function QuoteList({ items, onRemove }: { items: QuoteItem[]; onRemove: (id: string) => void }) {
+export default function QuoteList({ items, onRemove, onSendToPurchases }: { items: QuoteItem[]; onRemove: (id: string) => void; onSendToPurchases?: () => void }) {
   if (items.length === 0) return null;
 
   const total = items.reduce((sum, q) => sum + q.result.finalValueBrl, 0);
@@ -28,7 +28,14 @@ export default function QuoteList({ items, onRemove }: { items: QuoteItem[]; onR
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base">Lista de Cotações</CardTitle>
-        <span className="text-xs text-muted-foreground">{items.length} item(ns)</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{items.length} item(ns)</span>
+          {onSendToPurchases && (
+            <Button size="sm" variant="default" className="h-7 text-xs" onClick={onSendToPurchases}>
+              <Send className="mr-1 h-3 w-3" />Enviar para Compras
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <Table>

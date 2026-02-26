@@ -1,6 +1,8 @@
 import {
   LayoutDashboard,
   Package,
+  Users,
+  Activity,
   ShoppingBag,
   BarChart3,
   Settings,
@@ -21,7 +23,9 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Lotes", url: "/lotes", icon: Package },
+  { title: "Compras", url: "/compras", icon: Package },
+  { title: "Fornecedores", url: "/fornecedores", icon: Users },
+  { title: "Processos", url: "/processos", icon: Activity },
   { title: "Bags", url: "/bags", icon: ShoppingBag },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Calculadora", url: "/calculadora", icon: Calculator },
