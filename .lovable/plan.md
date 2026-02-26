@@ -1,63 +1,136 @@
+# Fase 2: Modulos de Compras, Fornecedores e Processos
 
+## Resumo
 
-# Sistema Catalisador Pro — Fase 1: Calculadora Standalone
+Criar tres novos modulos para o sistema, todos com dados em localStorage (seguindo a estrategia atual do prototipo):
 
-## Visão Geral
-Construir a Calculadora Standalone como primeiro módulo do sistema, permitindo simulações rápidas de precificação de catalisadores. Será um protótipo funcional com dados em memória (sem banco de dados ou login), focado em validar as fórmulas de cálculo.
+1. **Compras** (antigo "Lotes") -- registrar compras agrupando cotacoes, vinculando a um fornecedor
+2. **Fornecedores** -- cadastro com importacao de Excel, mas também com a possibilidade de criar um novo cadastro a partir de um botão de novo cadastro.
+3. **Processos** -- visao macro do andamento de todas as compras nas etapas de producao, servirá para visualização de PCP (**Status de Ordem de Produção, Monitoramento de Estoque, Comparativo Meta x Produção Real, Eficiência da Produção (OEE))**
 
 ---
 
-## 1. Layout Base do Sistema
-- Sidebar com menu de navegação (preparada para futuros módulos)
-- Tema claro e profissional em tons de bege/creme e dourado
-- Logo **"Brasil Sust. Catalisador Pro"** no topo da sidebar
-- Menu: Dashboard (placeholder), Lotes (placeholder), Bags (placeholder), Relatórios (placeholder), Configurações, **Calculadora** (destacada)
-- Área de conteúdo principal responsiva
+## 1. Renomear "Lotes" para "Compras"
 
-## 2. Tela de Configurações (simplificada)
-Permite definir os parâmetros globais usados nos cálculos da calculadora:
-- **Cotações dos metais**: Pt, Pd, Rh (USD/ozt)
-- **Taxa de câmbio**: USD → BRL
-- **Custos**: Operacional e Logístico ($/kg)
-- **Taxas de refino**: Treatment ($/lb), Refining Pt ($/ozt), Refining Pd ($/ozt), Refining Rh ($/ozt)
-- **Lease fees**: Pt (6%), Pd (4%), Rh (6%) — com dias (120) e base (360)
-- **Recovery rates**: Pt (97.5%), Pd (97.5%), Rh (92.5%)
-- **Desconto de umidade**: 1%
-- Valores salvos em localStorage para persistência entre sessões
+- Alterar o menu da sidebar: titulo "Compras", manter icone `Package`, rota `/compras`
+- Atualizar `App.tsx` com a nova rota
 
-## 3. Calculadora Standalone
-Interface principal com entrada rápida para simulação de precificação:
+---
 
-### Entrada de dados:
-- Peso bruto (kg)
-- Tara (kg)
-- Tipo de material: Comum / Diesel / Super
-- Concentrações: Pt ppm, Pd ppm, Rh ppm
-- Desconto do cliente (%)
-- **Tipo de entrada**: Peça Fechada / Peça em Sacola / Grupo (cerâmica a granel)
-- **Campo de preço manual** (livre): para Peças Fechadas e Peças em Sacola que já possuem valor tabelado no app externo — permite inserir o preço diretamente sem necessidade de análise laboratorial. Quando preenchido, o cálculo automático fica como referência comparativa
-- Opção de usar cotações das configurações ou inserir cotações customizadas
+## 2. Modulo de Fornecedores (`/fornecedores`)
 
-### Cálculo automático em tempo real (ao digitar):
-- **Conversões de peso**: líquido → úmido (lb) → seco (lb) → seco (g)
-- **Conteúdo de metal**: gramas de Pt, Pd, Rh
-- **Metal pagável**: aplicando recovery rates
-- **Troy oz**: conversão para onças troy
-- **Valor dos metais**: em USD
-- **Deduções**: Treatment, Refining, Lease, Custos Op/Log
-- **Valor final**: em USD e BRL
+### Dados do cadastro
 
-### Apresentação dos resultados:
-- Tabela detalhada estilo planilha mostrando cada passo do cálculo
-- Card destacado com valor final em BRL
-- Quando há preço manual inserido: exibir comparação lado a lado (preço tabelado vs. preço calculado)
-- Breakdown visual das deduções
+- Nome, CNPJ/CPF, E-mail, Filial, Comprador, Margem (%)
 
-### Funcionalidades extras:
-- Botão "Limpar" para resetar os campos
-- Histórico de simulações salvo em localStorage (últimas 20)
-- Poder carregar uma simulação do histórico para editar
+### Funcionalidades
 
-## 4. Páginas Placeholder
-- Dashboard, Lotes, Bags e Relatórios com mensagem "Em breve" e visual consistente com o tema, preparando a navegação para as próximas fases
+- Listagem em tabela com busca/filtro
+- Formulario de cadastro/edicao (dialog modal)
+- Exclusao com confirmacao
+- **Importacao de Excel**: botao para upload de arquivo `.xlsx`, leitura com a biblioteca `xlsx` (SheetJS), mapeamento das colunas e preview antes de confirmar a importacao
+- Persistencia em `localStorage`
 
+### Navegacao
+
+- Novo item no menu da sidebar: "Fornecedores" com icone `Users`
+
+---
+
+## 3. Modulo de Compras (`/compras`)
+
+### Dados de uma compra
+
+- ID, Data, Fornecedor (vinculado ao cadastro), Status, Lista de cotacoes (itens da QuoteList), Observacoes
+
+### Funcionalidades
+
+- Criar nova compra a partir da lista de cotacoes da calculadora (botao "Enviar para Compras")
+- Listagem de compras com filtros por status e fornecedor
+- Visualizar detalhes de uma compra (cotacoes, valores, fornecedor)
+- Alterar status manualmente
+- Persistencia em `localStorage`
+
+### Status disponiveis
+
+Baseado no fluxo descrito:
+
+1. Recebimento
+2. Conferencia
+3. Separacao
+4. Corte da Peca
+5. Trituracao
+6. Homogeneizacao
+7. Amostragem
+8. Analise
+9. Aprovacao do Fornecedor
+10. Pagamento
+11. Enviado ao Bag
+12. Exportacao/Venda
+
+---
+
+## 4. Modulo de Processos (`/processos`)
+
+### Visao macro
+
+- Painel estilo Kanban simplificado ou tabela com colunas de status
+- Agrupamento das compras por etapa atual
+- Contadores por etapa (quantas compras em cada fase)
+- Cards resumidos com: fornecedor, valor total, data, tempo na etapa atual
+- Filtros por fornecedor e periodo
+- visualização de PCP (**Status de Ordem de Produção, Monitoramento de Estoque, Comparativo Meta x Produção Real, Eficiência da Produção (OEE))**
+
+---
+
+## 5. Sidebar atualizada
+
+Menu final:
+
+- Dashboard (placeholder)
+- **Compras** (novo, substitui "Lotes")
+- **Fornecedores** (novo)
+- **Processos** (novo)
+- Bags (placeholder)
+- Relatorios (placeholder)
+- Calculadora
+- Configuracoes
+
+---
+
+## Detalhes Tecnicos
+
+### Novos arquivos
+
+
+| Arquivo                                       | Descricao                                    |
+| --------------------------------------------- | -------------------------------------------- |
+| `src/lib/suppliers.ts`                        | Tipos, CRUD e localStorage para fornecedores |
+| `src/lib/purchases.ts`                        | Tipos, CRUD e localStorage para compras      |
+| `src/pages/SuppliersPage.tsx`                 | Pagina de fornecedores com tabela e modais   |
+| `src/pages/PurchasesPage.tsx`                 | Pagina de compras com listagem e detalhes    |
+| `src/pages/ProcessesPage.tsx`                 | Pagina de processos com visao macro          |
+| `src/components/suppliers/SupplierForm.tsx`   | Formulario de cadastro/edicao                |
+| `src/components/suppliers/SupplierImport.tsx` | Componente de importacao Excel               |
+| `src/components/purchases/PurchaseDetail.tsx` | Detalhes de uma compra                       |
+| `src/components/processes/ProcessBoard.tsx`   | Board de processos                           |
+
+
+### Arquivos alterados
+
+
+| Arquivo                         | Alteracao                                          |
+| ------------------------------- | -------------------------------------------------- |
+| `src/App.tsx`                   | Novas rotas, remover rota `/lotes`                 |
+| `src/components/AppSidebar.tsx` | Novos itens de menu, renomear Lotes                |
+| `src/pages/CalculatorPage.tsx`  | Botao "Enviar para Compras" na QuoteList           |
+| `package.json`                  | Adicionar dependencia `xlsx` para importacao Excel |
+
+
+### Dependencia nova
+
+- `xlsx` (SheetJS) -- leitura de arquivos Excel no browser
+
+### Persistencia
+
+Todas as entidades continuam em `localStorage`, seguindo o padrao existente (`catalisador-pro-suppliers`, `catalisador-pro-purchases`).
