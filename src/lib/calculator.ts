@@ -93,7 +93,7 @@ export function calculate(input: CalculatorInput, settings: Settings): Calculato
   const grossMetalValueUsd = ptValueUsd + pdValueUsd + rhValueUsd;
 
   // Deductions
-  const treatmentDeduction = dryWeightLb * settings.treatmentFee;
+  const treatmentDeduction = wetWeightLb * settings.treatmentFee;
   const refiningPtDeduction = ptTroyOz * settings.refiningPt;
   const refiningPdDeduction = pdTroyOz * settings.refiningPd;
   const refiningRhDeduction = rhTroyOz * settings.refiningRh;
