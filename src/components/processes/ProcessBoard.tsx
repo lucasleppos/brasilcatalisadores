@@ -19,7 +19,7 @@ export default function ProcessBoard() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
 
-  useEffect(() => { setPurchases(loadPurchases()); }, []);
+  useEffect(() => { loadPurchases().then(setPurchases); }, []);
 
   const suppliers = useMemo(() => [...new Set(purchases.map((p) => p.supplierName))], [purchases]);
 

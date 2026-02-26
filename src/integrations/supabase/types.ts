@@ -14,13 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      purchase_items: {
+        Row: {
+          calc_input: Json | null
+          calc_result: Json | null
+          created_at: string | null
+          id: string
+          item_type: string
+          purchase_id: string
+          quantity: number | null
+          total_value: number | null
+          weight: number | null
+        }
+        Insert: {
+          calc_input?: Json | null
+          calc_result?: Json | null
+          created_at?: string | null
+          id?: string
+          item_type: string
+          purchase_id: string
+          quantity?: number | null
+          total_value?: number | null
+          weight?: number | null
+        }
+        Update: {
+          calc_input?: Json | null
+          calc_result?: Json | null
+          created_at?: string | null
+          id?: string
+          item_type?: string
+          purchase_id?: string
+          quantity?: number | null
+          total_value?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string | null
+          date: string
+          erp_number: string | null
+          id: string
+          notes: string | null
+          purchase_number: string
+          status: string
+          status_history: Json | null
+          supplier_id: string
+          supplier_name: string
+          total_brl: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          erp_number?: string | null
+          id?: string
+          notes?: string | null
+          purchase_number: string
+          status?: string
+          status_history?: Json | null
+          supplier_id: string
+          supplier_name: string
+          total_brl?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          erp_number?: string | null
+          id?: string
+          notes?: string | null
+          purchase_number?: string
+          status?: string
+          status_history?: Json | null
+          supplier_id?: string
+          supplier_name?: string
+          total_brl?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_purchase_number: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

@@ -27,13 +27,13 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
     <Dialog open={!!purchase} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Compra — {purchase.supplierName}</DialogTitle>
+          <DialogTitle>Compra {purchase.purchaseNumber} — {purchase.supplierName}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-xs text-muted-foreground">Data</p>
-            <p>{new Date(purchase.date).toLocaleString("pt-BR")}</p>
+            <p className="text-xs text-muted-foreground">Nº Pedido</p>
+            <p className="font-mono">{purchase.purchaseNumber}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Status</p>
@@ -41,11 +41,23 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Total</p>
-            <p className="font-semibold text-primary">{fmtBrl(purchase.totalBrl)}</p>
+            {purchase.totalBrl > 0 ? (
+              <p className="font-semibold text-primary">{fmtBrl(purchase.totalBrl)}</p>
+            ) : (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
+            )}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Nº Controle ERP</p>
+            <p>{purchase.erpNumber || "—"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Itens</p>
             <p>{purchase.items.length} item(ns)</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Data</p>
+            <p>{new Date(purchase.date).toLocaleString("pt-BR")}</p>
           </div>
         </div>
 
@@ -71,18 +83,25 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchase.items.map((q, i) => (
-              <TableRow key={q.id}>
-                <TableCell className="text-xs">{i + 1}</TableCell>
-                <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
-                <TableCell className="text-xs text-right">
-                  {q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.input)
-                    ? `${q.quantity || 0} pç`
-                    : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : "-"}
-                </TableCell>
-                <TableCell className="text-xs text-right font-semibold">{fmtBrl(getItemValue(q))}</TableCell>
-              </TableRow>
-            ))}
+            {purchase.items.map((q, i) => {
+              const val = getItemValue(q);
+              return (
+                <TableRow key={q.id}>
+                  <TableCell className="text-xs">{i + 1}</TableCell>
+                  <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
+                  <TableCell className="text-xs text-right">
+                    {q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.input)
+                      ? `${q.quantity || 0} pç`
+                      : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : (q.weight ? `${fmt(q.weight, 2)} kg` : "-")}
+                  </TableCell>
+                  <TableCell className="text-xs text-right font-semibold">
+                    {val > 0 ? fmtBrl(val) : (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-[10px]">Pendente</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
 
