@@ -17,10 +17,17 @@ export const PURCHASE_STATUSES = [
 
 export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number];
 
+export type PurchaseItemType = "peca" | "peca_sacola" | "ceramico";
+
 export interface PurchaseQuoteItem {
   id: string;
-  input: CalculatorInput;
-  result: CalculatorResult;
+  itemType: PurchaseItemType;
+  // For peça: only qty + value
+  quantity?: number;
+  totalValue?: number;
+  // For cerâmico / peça em sacola with calculator
+  input?: CalculatorInput;
+  result?: CalculatorResult;
 }
 
 export interface Purchase {
@@ -56,7 +63,12 @@ export function createPurchase(data: {
   notes?: string;
 }): Purchase {
   const purchases = loadPurchases();
-  const totalBrl = data.items.reduce((sum, q) => sum + q.result.finalValueBrl, 0);
+  const totalBrl = data.items.reduce((sum, q) => {
+    if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
+      return sum + (q.totalValue || 0);
+    }
+    return sum + (q.result?.finalValueBrl || 0);
+  }, 0);
   const purchase: Purchase = {
     id: crypto.randomUUID(),
     date: new Date().toISOString(),

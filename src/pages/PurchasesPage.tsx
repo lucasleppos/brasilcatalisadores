@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Package, Search, Trash2, Eye } from "lucide-react";
+import { Package, Search, Trash2, Eye, Plus } from "lucide-react";
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
 import { loadSuppliers } from "@/lib/suppliers";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
+import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -33,8 +34,10 @@ export default function PurchasesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   const reload = () => setPurchases(loadPurchases());
+  useEffect(() => { reload(); }, []);
   useEffect(() => { reload(); }, []);
 
   const filtered = purchases.filter((p) => {
@@ -55,9 +58,14 @@ export default function PurchasesPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Package className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-display">Compras</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Package className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-display">Compras</h1>
+        </div>
+        <Button size="sm" onClick={() => setNewDialogOpen(true)}>
+          <Plus className="mr-1 h-3 w-3" />Nova Compra
+        </Button>
       </div>
 
       <div className="flex gap-3 items-center">
@@ -150,6 +158,7 @@ export default function PurchasesPage() {
       </Card>
 
       <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
+      <NewPurchaseDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={reload} />
     </div>
   );
 }

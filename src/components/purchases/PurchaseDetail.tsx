@@ -2,16 +2,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Purchase } from "@/lib/purchases";
+import { Purchase, PurchaseQuoteItem } from "@/lib/purchases";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-const entryLabels: Record<string, string> = {
-  peca_fechada: "Peça Fechada",
-  peca_sacola: "Peça Sacola",
-  grupo: "Grupo",
+const itemTypeLabels: Record<string, string> = {
+  peca: "Peça",
+  peca_sacola: "Peça em Sacola",
+  ceramico: "Cerâmico",
 };
+
+function getItemValue(q: PurchaseQuoteItem): number {
+  if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
+    return q.totalValue || 0;
+  }
+  return q.result?.finalValueBrl || 0;
+}
 
 export default function PurchaseDetail({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   if (!purchase) return null;
@@ -38,7 +45,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Itens</p>
-            <p>{purchase.items.length} cotação(ões)</p>
+            <p>{purchase.items.length} item(ns)</p>
           </div>
         </div>
 
@@ -59,10 +66,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <TableRow>
               <TableHead className="text-xs">#</TableHead>
               <TableHead className="text-xs">Tipo</TableHead>
-              <TableHead className="text-xs text-right">Peso (kg)</TableHead>
-              <TableHead className="text-xs text-right">Pt</TableHead>
-              <TableHead className="text-xs text-right">Pd</TableHead>
-              <TableHead className="text-xs text-right">Rh</TableHead>
+              <TableHead className="text-xs text-right">Qtd/Peso</TableHead>
               <TableHead className="text-xs text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -70,12 +74,13 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             {purchase.items.map((q, i) => (
               <TableRow key={q.id}>
                 <TableCell className="text-xs">{i + 1}</TableCell>
-                <TableCell className="text-xs">{entryLabels[q.input.entryType] ?? q.input.entryType}</TableCell>
-                <TableCell className="text-xs text-right">{fmt(q.input.grossWeight - q.input.tare, 4)}</TableCell>
-                <TableCell className="text-xs text-right">{fmt(q.input.ptPpm, 0)}</TableCell>
-                <TableCell className="text-xs text-right">{fmt(q.input.pdPpm, 0)}</TableCell>
-                <TableCell className="text-xs text-right">{fmt(q.input.rhPpm, 0)}</TableCell>
-                <TableCell className="text-xs text-right font-semibold">{fmtBrl(q.result.finalValueBrl)}</TableCell>
+                <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
+                <TableCell className="text-xs text-right">
+                  {q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.input)
+                    ? `${q.quantity || 0} pç`
+                    : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : "-"}
+                </TableCell>
+                <TableCell className="text-xs text-right font-semibold">{fmtBrl(getItemValue(q))}</TableCell>
               </TableRow>
             ))}
           </TableBody>
