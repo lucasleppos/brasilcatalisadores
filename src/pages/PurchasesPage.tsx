@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Package, Search, Trash2, Eye, Plus } from "lucide-react";
+import { Package, Search, Trash2, Eye, Plus, Pencil } from "lucide-react";
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
 import { loadSuppliers } from "@/lib/suppliers";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
@@ -34,6 +34,7 @@ export default function PurchasesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [editPurchase, setEditPurchase] = useState<Purchase | null>(null);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   const reload = () => setPurchases(loadPurchases());
@@ -130,6 +131,9 @@ export default function PurchasesPage() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
                           <Eye className="h-3 w-3" />
                         </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditPurchase(p)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
@@ -159,6 +163,12 @@ export default function PurchasesPage() {
 
       <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
       <NewPurchaseDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={reload} />
+      <NewPurchaseDialog
+        open={!!editPurchase}
+        onOpenChange={(o) => { if (!o) setEditPurchase(null); }}
+        onCreated={reload}
+        editPurchase={editPurchase}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Send, Calculator } from "lucide-react";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
-import { createPurchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
+import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +34,8 @@ interface PendingItem {
   calcResult?: CalculatorResult;
 }
 
-export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void }) {
+export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
+  const isEditing = !!editPurchase;
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
@@ -63,9 +64,22 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
   useEffect(() => {
     if (open) {
       setSuppliers(loadSuppliers());
-      setSupplierId("");
-      setNotes("");
-      setItems([]);
+      if (editPurchase) {
+        setSupplierId(editPurchase.supplierId);
+        setNotes(editPurchase.notes);
+        setItems(editPurchase.items.map(i => ({
+          id: i.id,
+          itemType: i.itemType,
+          quantity: i.quantity,
+          totalValue: i.totalValue,
+          calcInput: i.input,
+          calcResult: i.result,
+        })));
+      } else {
+        setSupplierId("");
+        setNotes("");
+        setItems([]);
+      }
       resetAddFields();
     }
   }, [open]);
@@ -182,14 +196,19 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
       result: i.calcResult,
     }));
 
-    createPurchase({
-      supplierId: supplier.id,
-      supplierName: supplier.name,
-      items: purchaseItems,
-      notes,
-    });
+    if (isEditing) {
+      updatePurchase(editPurchase!.id, { items: purchaseItems, notes });
+      toast({ title: "Compra atualizada com sucesso!" });
+    } else {
+      createPurchase({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        items: purchaseItems,
+        notes,
+      });
+      toast({ title: "Compra criada com sucesso!" });
+    }
 
-    toast({ title: "Compra criada com sucesso!" });
     onOpenChange(false);
     onCreated();
   };
@@ -201,14 +220,14 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Nova Compra</DialogTitle>
+          <DialogTitle>{isEditing ? "Editar Compra" : "Nova Compra"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Supplier */}
           <div className="space-y-1">
             <Label className="text-xs">Fornecedor *</Label>
-            <Select value={supplierId} onValueChange={setSupplierId}>
+            <Select value={supplierId} onValueChange={setSupplierId} disabled={isEditing}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar fornecedor" /></SelectTrigger>
               <SelectContent>
                 {suppliers.map(s => (
@@ -374,7 +393,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated }: { o
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleConfirm} disabled={!supplierId || items.length === 0}>
-            <Send className="mr-1 h-3 w-3" />Criar Compra
+            <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
           </Button>
         </DialogFooter>
       </DialogContent>
