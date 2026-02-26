@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +18,9 @@ import {
   saveToHistory,
   SimulationRecord,
 } from "@/lib/calculator";
-import { Calculator, Trash2, Clock, ArrowRight, Save } from "lucide-react";
+import { Calculator, Trash2, Clock, Save, Plus, X, Send } from "lucide-react";
+import CalculationDetails from "@/components/calculator/CalculationDetails";
+import QuoteList, { QuoteItem } from "@/components/calculator/QuoteList";
 
 const emptyInput: CalculatorInput = {
   grossWeight: 0,
@@ -28,7 +29,7 @@ const emptyInput: CalculatorInput = {
   ptPpm: 0,
   pdPpm: 0,
   rhPpm: 0,
-  clientDiscount: 0,
+  clientDiscount: 15,
   entryType: "grupo",
   manualPrice: null,
   customPt: null,
@@ -36,15 +37,17 @@ const emptyInput: CalculatorInput = {
   customRh: null,
 };
 
-const fmt = (n: number, decimals = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-const fmtUsd = (n: number) => `$ ${fmt(n)}`;
-const fmtBrl = (n: number) => `R$ ${fmt(n)}`;
+const fmt = (n: number, decimals = 4) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const fmtUsd = (n: number) => `$ ${fmt(n, 4)}`;
+const fmtBrl = (n: number) => `R$ ${fmt(n, 2)}`;
 
 export default function CalculatorPage() {
   const [input, setInput] = useState<CalculatorInput>({ ...emptyInput });
   const [useCustomQuotes, setUseCustomQuotes] = useState(false);
   const [history, setHistory] = useState<SimulationRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [quoteList, setQuoteList] = useState<QuoteItem[]>([]);
+  const [isAdmin] = useState(() => localStorage.getItem("catalisador-pro-admin") === "true");
   const settings = useMemo(() => loadSettings(), []);
 
   useEffect(() => { setHistory(loadHistory()); }, []);
@@ -74,6 +77,20 @@ export default function CalculatorPage() {
     setInput({ ...record.input });
     setShowHistory(false);
     if (record.input.customPt !== null) setUseCustomQuotes(true);
+  };
+
+  const addToQuoteList = () => {
+    if (!result) return;
+    const item: QuoteItem = {
+      id: crypto.randomUUID(),
+      input: { ...input },
+      result: { ...result },
+    };
+    setQuoteList((prev) => [...prev, item]);
+  };
+
+  const removeFromQuoteList = (id: string) => {
+    setQuoteList((prev) => prev.filter((q) => q.id !== id));
   };
 
   return (
@@ -197,9 +214,9 @@ export default function CalculatorPage() {
                 </div>
               </div>
 
-              {/* Client discount */}
+              {/* Client discount → Margem de Fornecedor */}
               <div className="space-y-1">
-                <Label className="text-xs">Desconto do Cliente (%)</Label>
+                <Label className="text-xs">Margem de Fornecedor (%)</Label>
                 <Input type="number" step="any" value={input.clientDiscount || ""} onChange={(e) => update("clientDiscount", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
 
@@ -244,7 +261,6 @@ export default function CalculatorPage() {
 
         {/* Results */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Final value card */}
           {result && (
             <>
               <div className="grid gap-4 md:grid-cols-2">
@@ -253,6 +269,9 @@ export default function CalculatorPage() {
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Valor Calculado</p>
                     <p className="text-3xl font-display font-bold text-primary">{fmtBrl(result.finalValueBrl)}</p>
                     <p className="text-sm text-muted-foreground mt-1">{fmtUsd(result.finalValueUsd)}</p>
+                    <Button size="sm" variant="outline" className="mt-3" onClick={addToQuoteList}>
+                      <Plus className="mr-1 h-3 w-3" />Adicionar à Lista
+                    </Button>
                   </CardContent>
                 </Card>
 
@@ -277,66 +296,8 @@ export default function CalculatorPage() {
                 )}
               </div>
 
-              {/* Calculation details table */}
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Detalhamento do Cálculo</CardTitle></CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Etapa</TableHead>
-                        <TableHead className="text-xs text-right">Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <SectionHeader title="Conversão de Peso" />
-                      <Row label="Peso Líquido" value={`${fmt(result.netWeightKg, 3)} kg`} />
-                      <Row label="Peso Úmido" value={`${fmt(result.wetWeightLb, 3)} lb`} />
-                      <Row label="Peso Seco" value={`${fmt(result.dryWeightLb, 3)} lb`} />
-                      <Row label="Peso Seco" value={`${fmt(result.dryWeightG, 1)} g`} />
-
-                      <SectionHeader title="Conteúdo de Metal (g)" />
-                      <Row label="Pt contido" value={`${fmt(result.ptContentG, 4)} g`} />
-                      <Row label="Pd contido" value={`${fmt(result.pdContentG, 4)} g`} />
-                      <Row label="Rh contido" value={`${fmt(result.rhContentG, 4)} g`} />
-
-                      <SectionHeader title="Metal Pagável (g)" />
-                      <Row label="Pt pagável" value={`${fmt(result.ptPayableG, 4)} g`} />
-                      <Row label="Pd pagável" value={`${fmt(result.pdPayableG, 4)} g`} />
-                      <Row label="Rh pagável" value={`${fmt(result.rhPayableG, 4)} g`} />
-
-                      <SectionHeader title="Troy Oz" />
-                      <Row label="Pt" value={`${fmt(result.ptTroyOz, 4)} ozt`} />
-                      <Row label="Pd" value={`${fmt(result.pdTroyOz, 4)} ozt`} />
-                      <Row label="Rh" value={`${fmt(result.rhTroyOz, 4)} ozt`} />
-
-                      <SectionHeader title="Valor dos Metais (USD)" />
-                      <Row label="Pt" value={fmtUsd(result.ptValueUsd)} />
-                      <Row label="Pd" value={fmtUsd(result.pdValueUsd)} />
-                      <Row label="Rh" value={fmtUsd(result.rhValueUsd)} />
-                      <Row label="Total Bruto" value={fmtUsd(result.grossMetalValueUsd)} bold />
-
-                      <SectionHeader title="Deduções" />
-                      <Row label="Treatment" value={`- ${fmtUsd(result.treatmentDeduction)}`} />
-                      <Row label="Refining Pt" value={`- ${fmtUsd(result.refiningPtDeduction)}`} />
-                      <Row label="Refining Pd" value={`- ${fmtUsd(result.refiningPdDeduction)}`} />
-                      <Row label="Refining Rh" value={`- ${fmtUsd(result.refiningRhDeduction)}`} />
-                      <Row label="Lease Pt" value={`- ${fmtUsd(result.leasePtDeduction)}`} />
-                      <Row label="Lease Pd" value={`- ${fmtUsd(result.leasePdDeduction)}`} />
-                      <Row label="Lease Rh" value={`- ${fmtUsd(result.leaseRhDeduction)}`} />
-                      <Row label="Custo Operacional" value={`- ${fmtUsd(result.operationalDeduction)}`} />
-                      <Row label="Custo Logístico" value={`- ${fmtUsd(result.logisticDeduction)}`} />
-                      <Row label="Total Deduções" value={`- ${fmtUsd(result.totalDeductions)}`} bold />
-
-                      <SectionHeader title="Resultado" />
-                      <Row label="Valor Líquido" value={fmtUsd(result.netValueUsd)} />
-                      <Row label="Desconto Cliente" value={`- ${fmtUsd(result.clientDiscountValue)}`} />
-                      <Row label="Valor Final USD" value={fmtUsd(result.finalValueUsd)} bold />
-                      <Row label="Valor Final BRL" value={fmtBrl(result.finalValueBrl)} bold />
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              {/* Calculation details - admin only */}
+              {isAdmin && <CalculationDetails result={result} />}
             </>
           )}
 
@@ -350,25 +311,9 @@ export default function CalculatorPage() {
           )}
         </div>
       </div>
+
+      {/* Quote list */}
+      <QuoteList items={quoteList} onRemove={removeFromQuoteList} />
     </div>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <TableRow className="bg-muted/30">
-      <TableCell colSpan={2} className="py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return (
-    <TableRow>
-      <TableCell className={`py-1.5 text-xs ${bold ? "font-semibold" : ""}`}>{label}</TableCell>
-      <TableCell className={`py-1.5 text-xs text-right ${bold ? "font-semibold text-primary" : ""}`}>{value}</TableCell>
-    </TableRow>
   );
 }
