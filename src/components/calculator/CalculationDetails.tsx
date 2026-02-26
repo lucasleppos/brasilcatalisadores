@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CalculatorResult } from "@/lib/calculator";
 
-const fmt = (n: number, decimals = 4) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const fmt = (n: number, decimals = 5) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 const fmtUsd = (n: number) => `$ ${fmt(n)}`;
 const fmtBrl = (n: number) => `R$ ${fmt(n, 2)}`;
 

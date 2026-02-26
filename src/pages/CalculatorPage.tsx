@@ -37,8 +37,8 @@ const emptyInput: CalculatorInput = {
   customRh: null,
 };
 
-const fmt = (n: number, decimals = 4) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-const fmtUsd = (n: number) => `$ ${fmt(n, 4)}`;
+const fmt = (n: number, decimals = 5) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const fmtUsd = (n: number) => `$ ${fmt(n, 5)}`;
 const fmtBrl = (n: number) => `R$ ${fmt(n, 2)}`;
 
 export default function CalculatorPage() {
