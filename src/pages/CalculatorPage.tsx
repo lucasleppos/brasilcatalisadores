@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { loadSettings } from "@/lib/settings";
 import {
   calculate,
@@ -21,6 +23,10 @@ import {
 import { Calculator, Trash2, Clock, Save, Plus, X, Send } from "lucide-react";
 import CalculationDetails from "@/components/calculator/CalculationDetails";
 import QuoteList, { QuoteItem } from "@/components/calculator/QuoteList";
+import { loadSuppliers, Supplier } from "@/lib/suppliers";
+import { createPurchase } from "@/lib/purchases";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const emptyInput: CalculatorInput = {
   grossWeight: 0,
@@ -48,9 +54,15 @@ export default function CalculatorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [quoteList, setQuoteList] = useState<QuoteItem[]>([]);
   const [isAdmin] = useState(() => localStorage.getItem("catalisador-pro-admin") === "true");
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [purchaseNotes, setPurchaseNotes] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const settings = useMemo(() => loadSettings(), []);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  useEffect(() => { setHistory(loadHistory()); }, []);
+  useEffect(() => { setHistory(loadHistory()); setSuppliers(loadSuppliers()); }, []);
 
   const update = <K extends keyof CalculatorInput>(key: K, value: CalculatorInput[K]) =>
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -89,8 +101,28 @@ export default function CalculatorPage() {
     setQuoteList((prev) => [...prev, item]);
   };
 
-  const removeFromQuoteList = (id: string) => {
-    setQuoteList((prev) => prev.filter((q) => q.id !== id));
+  const removeFromQuoteList = (id: string) => setQuoteList((prev) => prev.filter((q) => q.id !== id));
+
+  const handleSendToPurchases = () => {
+    if (quoteList.length === 0) return;
+    setSendDialogOpen(true);
+  };
+
+  const confirmSendToPurchases = () => {
+    const supplier = suppliers.find((s) => s.id === selectedSupplierId);
+    if (!supplier) return;
+    createPurchase({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      items: quoteList,
+      notes: purchaseNotes,
+    });
+    setQuoteList([]);
+    setSendDialogOpen(false);
+    setSelectedSupplierId("");
+    setPurchaseNotes("");
+    toast({ title: "Compra criada com sucesso!", description: "Redirecionando para a página de compras..." });
+    setTimeout(() => navigate("/compras"), 1000);
   };
 
   return (
@@ -317,7 +349,43 @@ export default function CalculatorPage() {
       </div>
 
       {/* Quote list */}
-      <QuoteList items={quoteList} onRemove={removeFromQuoteList} />
+      <QuoteList items={quoteList} onRemove={removeFromQuoteList} onSendToPurchases={handleSendToPurchases} />
+
+      {/* Send to Purchases Dialog */}
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar para Compras</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Fornecedor *</Label>
+              <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar fornecedor" /></SelectTrigger>
+                <SelectContent>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {suppliers.length === 0 && (
+                <p className="text-[10px] text-destructive">Cadastre um fornecedor primeiro em Fornecedores.</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} className="text-sm" rows={3} />
+            </div>
+            <p className="text-xs text-muted-foreground">{quoteList.length} cotação(ões) serão enviadas.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmSendToPurchases} disabled={!selectedSupplierId}>
+              <Send className="mr-1 h-3 w-3" />Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
