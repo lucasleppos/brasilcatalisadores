@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { Settings } from "./settings";
 
 export type EntryType = "peca_fechada" | "peca_sacola" | "grupo";
@@ -144,26 +145,32 @@ export interface SimulationRecord {
   result: CalculatorResult;
 }
 
-const HISTORY_KEY = "catalisador-pro-history";
+export async function loadHistory(): Promise<SimulationRecord[]> {
+  const { data, error } = await supabase
+    .from("simulation_history")
+    .select("*")
+    .order("date", { ascending: false })
+    .limit(20);
 
-export function loadHistory(): SimulationRecord[] {
-  try {
-    const stored = localStorage.getItem(HISTORY_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return [];
+  if (error || !data) return [];
+
+  return data.map((r: any) => ({
+    id: r.id,
+    date: r.date,
+    input: r.calc_input as CalculatorInput,
+    result: r.calc_result as CalculatorResult,
+  }));
 }
 
-export function saveToHistory(input: CalculatorInput, result: CalculatorResult) {
-  const history = loadHistory();
-  const record: SimulationRecord = {
-    id: crypto.randomUUID(),
-    date: new Date().toISOString(),
-    input,
-    result,
-  };
-  history.unshift(record);
-  if (history.length > 20) history.pop();
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  return record;
+export async function saveToHistory(input: CalculatorInput, result: CalculatorResult) {
+  const { data } = await supabase
+    .from("simulation_history")
+    .insert({
+      calc_input: input as any,
+      calc_result: result as any,
+    })
+    .select()
+    .single();
+
+  return data ? { id: data.id, date: data.date, input, result } : null;
 }
