@@ -63,7 +63,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   useEffect(() => {
     if (open) {
-      setSuppliers(loadSuppliers());
+      loadSuppliers().then(setSuppliers);
       if (editPurchase) {
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
@@ -102,9 +102,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
-  const runCalcPreview = () => {
+  const runCalcPreview = async () => {
     if (grossWeight <= 0) return;
-    const settings = loadSettings();
+    const settings = await loadSettings();
     const margin = selectedSupplier?.margin ?? 0;
     const input: CalculatorInput = {
       grossWeight,
@@ -132,7 +132,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     }
   }, [grossWeight, tare, ptPpm, pdPpm, rhPpm, addType, sacolaUseCalc, supplierId]);
 
-  const addItem = () => {
+  const addItem = async () => {
     const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
 
     if (useCalc) {
@@ -140,7 +140,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         toast({ title: "Preencha ao menos o peso bruto", variant: "destructive" });
         return;
       }
-      const settings = loadSettings();
+      const settings = await loadSettings();
       const margin = selectedSupplier?.margin ?? 0;
       const input: CalculatorInput = {
         grossWeight,

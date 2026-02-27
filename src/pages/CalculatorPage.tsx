@@ -58,11 +58,15 @@ export default function CalculatorPage() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const settings = useMemo(() => loadSettings(), []);
+  const [settings, setSettings] = useState<import("@/lib/settings").Settings | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => { setHistory(loadHistory()); setSuppliers(loadSuppliers()); }, []);
+  useEffect(() => {
+    setHistory(loadHistory());
+    loadSuppliers().then(setSuppliers);
+    loadSettings().then(setSettings);
+  }, []);
 
   const update = <K extends keyof CalculatorInput>(key: K, value: CalculatorInput[K]) =>
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -70,7 +74,7 @@ export default function CalculatorPage() {
   const showManualPrice = input.entryType === "peca_fechada" || input.entryType === "peca_sacola";
 
   const result: CalculatorResult | null = useMemo(() => {
-    if (input.grossWeight <= 0) return null;
+    if (input.grossWeight <= 0 || !settings) return null;
     return calculate(input, settings);
   }, [input, settings]);
 
@@ -265,15 +269,15 @@ export default function CalculatorPage() {
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">Cotações customizadas</Label>
                     <Switch checked={useCustomQuotes} onCheckedChange={(v) => {
-                      setUseCustomQuotes(v);
+                       setUseCustomQuotes(v);
                       if (!v) {
                         update("customPt", null);
                         update("customPd", null);
                         update("customRh", null);
                       } else {
-                        update("customPt", settings.ptPrice);
-                        update("customPd", settings.pdPrice);
-                        update("customRh", settings.rhPrice);
+                        update("customPt", settings?.ptPrice ?? 0);
+                        update("customPd", settings?.pdPrice ?? 0);
+                        update("customRh", settings?.rhPrice ?? 0);
                       }
                     }} />
                   </div>

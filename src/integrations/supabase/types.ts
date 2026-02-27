@@ -100,6 +100,111 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          id: string
+          lease_base: number
+          lease_days: number
+          lease_pd: number
+          lease_pt: number
+          lease_rh: number
+          logistic_cost: number
+          moisture_discount: number
+          operational_cost: number
+          pd_price: number
+          pt_price: number
+          recovery_pd: number
+          recovery_pt: number
+          recovery_rh: number
+          refining_pd: number
+          refining_pt: number
+          refining_rh: number
+          rh_price: number
+          treatment_fee: number
+          updated_at: string
+          usd_to_brl: number
+        }
+        Insert: {
+          id?: string
+          lease_base?: number
+          lease_days?: number
+          lease_pd?: number
+          lease_pt?: number
+          lease_rh?: number
+          logistic_cost?: number
+          moisture_discount?: number
+          operational_cost?: number
+          pd_price?: number
+          pt_price?: number
+          recovery_pd?: number
+          recovery_pt?: number
+          recovery_rh?: number
+          refining_pd?: number
+          refining_pt?: number
+          refining_rh?: number
+          rh_price?: number
+          treatment_fee?: number
+          updated_at?: string
+          usd_to_brl?: number
+        }
+        Update: {
+          id?: string
+          lease_base?: number
+          lease_days?: number
+          lease_pd?: number
+          lease_pt?: number
+          lease_rh?: number
+          logistic_cost?: number
+          moisture_discount?: number
+          operational_cost?: number
+          pd_price?: number
+          pt_price?: number
+          recovery_pd?: number
+          recovery_pt?: number
+          recovery_rh?: number
+          refining_pd?: number
+          refining_pt?: number
+          refining_rh?: number
+          rh_price?: number
+          treatment_fee?: number
+          updated_at?: string
+          usd_to_brl?: number
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          branch: string
+          buyer: string
+          created_at: string
+          document: string
+          email: string
+          id: string
+          margin: number
+          name: string
+        }
+        Insert: {
+          branch?: string
+          buyer?: string
+          created_at?: string
+          document?: string
+          email?: string
+          id?: string
+          margin?: number
+          name: string
+        }
+        Update: {
+          branch?: string
+          buyer?: string
+          created_at?: string
+          document?: string
+          email?: string
+          id?: string
+          margin?: number
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
