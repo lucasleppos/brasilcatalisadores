@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Send, Calculator } from "lucide-react";
+import { Plus, Trash2, Send, Calculator, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
@@ -240,7 +241,19 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const getItemValueDisplay = (it: PendingItem) => {
     const val = it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0);
     if (val > 0) return fmtBrl(val);
-    return <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-[10px]">Pendente</Badge>;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-[10px] inline-flex items-center gap-1 cursor-help">
+              <AlertTriangle className="h-3 w-3" />Pendente
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent><p>Falta análise/valor para este item</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
   };
 
   return (

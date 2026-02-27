@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Package, Search, Trash2, Eye, Plus, Pencil } from "lucide-react";
+import { Package, Search, Trash2, Eye, Plus, Pencil, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
@@ -112,13 +113,29 @@ export default function PurchasesPage() {
                     <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
                     <TableCell className="text-sm">{p.items.length}</TableCell>
                     <TableCell className="text-sm text-right font-semibold">
-                      {p.totalBrl > 0 ? (
-                        <span className={p.items.some(i => !i.result && !i.totalValue) ? "text-destructive" : ""}>
-                          {fmtBrl(p.totalBrl)}
-                        </span>
-                      ) : (
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
-                      )}
+                      {(() => {
+                        const hasPending = p.items.some(i => !i.result && !i.totalValue);
+                        if (p.totalBrl > 0) {
+                          return (
+                            <span className={`inline-flex items-center gap-1 ${hasPending ? "text-destructive" : ""}`}>
+                              {hasPending && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Há itens pendentes de análise</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {fmtBrl(p.totalBrl)}
+                            </span>
+                          );
+                        }
+                        return (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
