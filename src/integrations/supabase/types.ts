@@ -14,6 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
+      bag_items: {
+        Row: {
+          allocated_at: string
+          bag_id: string
+          estimated_pd_ppm: number
+          estimated_pt_ppm: number
+          estimated_rh_ppm: number
+          id: string
+          paid_value: number
+          purchase_id: string
+          purchase_item_id: string
+          supplier_name: string
+          weight: number
+        }
+        Insert: {
+          allocated_at?: string
+          bag_id: string
+          estimated_pd_ppm?: number
+          estimated_pt_ppm?: number
+          estimated_rh_ppm?: number
+          id?: string
+          paid_value?: number
+          purchase_id: string
+          purchase_item_id?: string
+          supplier_name?: string
+          weight?: number
+        }
+        Update: {
+          allocated_at?: string
+          bag_id?: string
+          estimated_pd_ppm?: number
+          estimated_pt_ppm?: number
+          estimated_rh_ppm?: number
+          id?: string
+          paid_value?: number
+          purchase_id?: string
+          purchase_item_id?: string
+          supplier_name?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bag_items_bag_id_fkey"
+            columns: ["bag_id"]
+            isOneToOne: false
+            referencedRelation: "bags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bag_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bags: {
+        Row: {
+          bag_label: string
+          bag_number: string
+          buyer: string
+          closed_at: string | null
+          created_at: string
+          id: string
+          material_type: string
+          max_weight: number
+          notes: string
+          provisional_pd_ppm: number | null
+          provisional_pt_ppm: number | null
+          provisional_rh_ppm: number | null
+          refiner_pd_ppm: number | null
+          refiner_pt_ppm: number | null
+          refiner_rh_ppm: number | null
+          refiner_total_value: number | null
+          status: string
+          total_paid_brl: number
+          total_weight: number
+        }
+        Insert: {
+          bag_label?: string
+          bag_number: string
+          buyer?: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          material_type?: string
+          max_weight?: number
+          notes?: string
+          provisional_pd_ppm?: number | null
+          provisional_pt_ppm?: number | null
+          provisional_rh_ppm?: number | null
+          refiner_pd_ppm?: number | null
+          refiner_pt_ppm?: number | null
+          refiner_rh_ppm?: number | null
+          refiner_total_value?: number | null
+          status?: string
+          total_paid_brl?: number
+          total_weight?: number
+        }
+        Update: {
+          bag_label?: string
+          bag_number?: string
+          buyer?: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          material_type?: string
+          max_weight?: number
+          notes?: string
+          provisional_pd_ppm?: number | null
+          provisional_pt_ppm?: number | null
+          provisional_rh_ppm?: number | null
+          refiner_pd_ppm?: number | null
+          refiner_pt_ppm?: number | null
+          refiner_rh_ppm?: number | null
+          refiner_total_value?: number | null
+          status?: string
+          total_paid_brl?: number
+          total_weight?: number
+        }
+        Relationships: []
+      }
       purchase_items: {
         Row: {
           calc_input: Json | null
@@ -64,6 +187,7 @@ export type Database = {
           date: string
           erp_number: string | null
           id: string
+          location: string
           notes: string | null
           purchase_number: string
           status: string
@@ -71,12 +195,14 @@ export type Database = {
           supplier_id: string
           supplier_name: string
           total_brl: number | null
+          transfer_status: string | null
         }
         Insert: {
           created_at?: string | null
           date?: string
           erp_number?: string | null
           id?: string
+          location?: string
           notes?: string | null
           purchase_number: string
           status?: string
@@ -84,12 +210,14 @@ export type Database = {
           supplier_id: string
           supplier_name: string
           total_brl?: number | null
+          transfer_status?: string | null
         }
         Update: {
           created_at?: string | null
           date?: string
           erp_number?: string | null
           id?: string
+          location?: string
           notes?: string | null
           purchase_number?: string
           status?: string
@@ -97,6 +225,7 @@ export type Database = {
           supplier_id?: string
           supplier_name?: string
           total_brl?: number | null
+          transfer_status?: string | null
         }
         Relationships: []
       }
@@ -234,6 +363,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_bag_number: { Args: never; Returns: string }
       generate_purchase_number: { Args: never; Returns: string }
     }
     Enums: {
