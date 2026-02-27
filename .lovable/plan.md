@@ -1,136 +1,170 @@
-# Fase 2: Modulos de Compras, Fornecedores e Processos
+# Modulo de Bags de Exportacao
 
 ## Resumo
 
-Criar tres novos modulos para o sistema, todos com dados em localStorage (seguindo a estrategia atual do prototipo):
+Criar o modulo completo de Bags com 3 areas principais + controle financeiro e comparativo de analise:
 
-1. **Compras** (antigo "Lotes") -- registrar compras agrupando cotacoes, vinculando a um fornecedor
-2. **Fornecedores** -- cadastro com importacao de Excel, mas também com a possibilidade de criar um novo cadastro a partir de um botão de novo cadastro.
-3. **Processos** -- visao macro do andamento de todas as compras nas etapas de producao, servirá para visualização de PCP (**Status de Ordem de Produção, Monitoramento de Estoque, Comparativo Meta x Produção Real, Eficiência da Produção (OEE))**
-
----
-
-## 1. Renomear "Lotes" para "Compras"
-
-- Alterar o menu da sidebar: titulo "Compras", manter icone `Package`, rota `/compras`
-- Atualizar `App.tsx` com a nova rota
+1. **Gestao de Bags** - criar, visualizar e fechar bags de exportacao
+2. **Alocacao de Materiais** - alocar materiais processados aos bags seguindo regras de tipo/comprador/peso
+3. **Estoque Filiais** - controlar material comprado em filiais aguardando transferencia para a matriz
+4. **Financeiro e Analise** - rastrear valores pagos e comparar resultados de analise
 
 ---
 
-## 2. Modulo de Fornecedores (`/fornecedores`)
+## Regras de Negocio
 
-### Dados do cadastro
+### Peso e Alocacao
 
-- Nome, CNPJ/CPF, E-mail, Filial, Comprador, Margem (%)
+- Limite de peso por bag: ~1000kg com margem de 5% (alerta ao ultrapassar, pedindo confirmacao)
+- Bags agrupados por **comprador/filial** + **tipo de material** (Super, Pecas, Medio, Diesel)
+- Quando um bag atinge o limite, inicia-se um novo bag para o restante
+- Materiais so podem ser alocados apos completar o processo produtivo
 
-### Funcionalidades
+### Hierarquia de Bags
 
-- Listagem em tabela com busca/filtro
-- Formulario de cadastro/edicao (dialog modal)
-- Exclusao com confirmacao
-- **Importacao de Excel**: botao para upload de arquivo `.xlsx`, leitura com a biblioteca `xlsx` (SheetJS), mapeamento das colunas e preview antes de confirmar a importacao
-- Persistencia em `localStorage`
+- Ordem de qualidade: Super > Pecas > Medio > Diesel
+- Bags Super: somente compradores TV e Marcos
+- Diesel: SEMPRE vai para o bag "Brasil Diesel", independente do comprador
+- Filiais com bag proprio: Bahia (medio), Minas Gerais (pecas + medio), Rio de Janeiro (medio)
+- Filiais sem bag proprio (material vai para bag Brasil): Jaboatao, Fortaleza, Teresina, Goiania, Ribeirao Preto, Curitiba, Portao, Palhoca, Manaus, Belem, Ibipora
+- Excecao: se o comprador de uma filial sem bag proprio for TV ou Marcos, o material vai para o bag do comprador
+- Bags de cliente/fornecedor: podem ser criados avulsos fora das regras padrao
 
-### Navegacao
+### Transferencia de Filiais
 
-- Novo item no menu da sidebar: "Fornecedores" com icone `Users`
-
----
-
-## 3. Modulo de Compras (`/compras`)
-
-### Dados de uma compra
-
-- ID, Data, Fornecedor (vinculado ao cadastro), Status, Lista de cotacoes (itens da QuoteList), Observacoes
-
-### Funcionalidades
-
-- Criar nova compra a partir da lista de cotacoes da calculadora (botao "Enviar para Compras")
-- Listagem de compras com filtros por status e fornecedor
-- Visualizar detalhes de uma compra (cotacoes, valores, fornecedor)
-- Alterar status manualmente
-- Persistencia em `localStorage`
-
-### Status disponiveis
-
-Baseado no fluxo descrito:
-
-1. Recebimento
-2. Conferencia
-3. Separacao
-4. Corte da Peca
-5. Trituracao
-6. Homogeneizacao
-7. Amostragem
-8. Analise
-9. Aprovacao do Fornecedor
-10. Pagamento
-11. Enviado ao Bag
-12. Exportacao/Venda
+- Compras de filiais entram com status "Pendente de Transferencia"
+- Podem ser marcadas como "Em Transito" e depois "Recebido na Matriz"
+- Ao receber na matriz, entram no fluxo produtivo normal
 
 ---
 
-## 4. Modulo de Processos (`/processos`)
+## Controle Financeiro por Bag
 
-### Visao macro
+Cada bag tera um painel financeiro detalhado:
 
-- Painel estilo Kanban simplificado ou tabela com colunas de status
-- Agrupamento das compras por etapa atual
-- Contadores por etapa (quantas compras em cada fase)
-- Cards resumidos com: fornecedor, valor total, data, tempo na etapa atual
-- Filtros por fornecedor e periodo
-- visualização de PCP (**Status de Ordem de Produção, Monitoramento de Estoque, Comparativo Meta x Produção Real, Eficiência da Produção (OEE))**
+- **Valor total pago**: soma dos valores pagos por todos os materiais alocados ao bag
+- **Valor por fornecedor**: quanto foi pago a cada fornecedor dentro do bag
+- **Custo medio por kg**: valor total pago dividido pelo peso total do bag
+- **Detalhamento por item**: lista de cada material com fornecedor, peso, valor pago e PPMs
 
----
+## Comparativo de Analise
 
-## 5. Sidebar atualizada
+Ao fechar um bag, os resultados de analise do refinador serao registrados para comparacao:
 
-Menu final:
-
-- Dashboard (placeholder)
-- **Compras** (novo, substitui "Lotes")
-- **Fornecedores** (novo)
-- **Processos** (novo)
-- Bags (placeholder)
-- Relatorios (placeholder)
-- Calculadora
-- Configuracoes
+- **PPMs do nosso laboratório** (Pt, Pd, Rh): analise do nosso laboratório, feita para dar base de preço e quantidade de metal a ser usada para exportação desse bag, chamamos essa analise de "PROVISIONAL ASSAY".
+- **PPMs do refinador** (Pt, Pd, Rh): valores recebidos do laboratorio de analise do nosso cliente, comparando com o nosso provisional assay, chamamos esse dado de "FINAL ASSAY" esse resultado é enviado pelo cliente após a analise dele, que demora em média 120 dias.
+- **PPMs estimados**: media ponderada dos PPMs dos itens alocados (calculados na compra)
+- **Variacao percentual**: diferenca entre estimado e real para cada metal
+- **Valor estimado vs valor real**: comparacao do valor calculado internamente vs valor do refinador
+- **Indicadores visuais**: badges verde/vermelho para indicar se o resultado ficou acima ou abaixo do esperado
 
 ---
 
-## Detalhes Tecnicos
+## Estrutura do Banco de Dados
 
-### Novos arquivos
-
-
-| Arquivo                                       | Descricao                                    |
-| --------------------------------------------- | -------------------------------------------- |
-| `src/lib/suppliers.ts`                        | Tipos, CRUD e localStorage para fornecedores |
-| `src/lib/purchases.ts`                        | Tipos, CRUD e localStorage para compras      |
-| `src/pages/SuppliersPage.tsx`                 | Pagina de fornecedores com tabela e modais   |
-| `src/pages/PurchasesPage.tsx`                 | Pagina de compras com listagem e detalhes    |
-| `src/pages/ProcessesPage.tsx`                 | Pagina de processos com visao macro          |
-| `src/components/suppliers/SupplierForm.tsx`   | Formulario de cadastro/edicao                |
-| `src/components/suppliers/SupplierImport.tsx` | Componente de importacao Excel               |
-| `src/components/purchases/PurchaseDetail.tsx` | Detalhes de uma compra                       |
-| `src/components/processes/ProcessBoard.tsx`   | Board de processos                           |
+### Tabela `bags`
 
 
-### Arquivos alterados
+| Coluna              | Tipo        | Descricao                                         |
+| ------------------- | ----------- | ------------------------------------------------- |
+| id                  | uuid        | PK                                                |
+| bag_number          | text        | Ex: "BAG-001"                                     |
+| bag_label           | text        | Nome descritivo (ex: "TV Super", "Brasil Diesel") |
+| status              | text        | Aberto, Fechado, Exportado                        |
+| material_type       | text        | super, pecas, medio, diesel, cliente              |
+| buyer               | text        | Comprador ou filial responsavel                   |
+| total_weight        | numeric     | Peso acumulado atual                              |
+| max_weight          | numeric     | Limite (default 1000)                             |
+| total_paid_brl      | numeric     | Valor total pago pelos materiais                  |
+| refiner_pt_ppm      | numeric     | PPM Pt do refinador (preenchido pos-analise)      |
+| refiner_pd_ppm      | numeric     | PPM Pd do refinador                               |
+| refiner_rh_ppm      | numeric     | PPM Rh do refinador                               |
+| refiner_total_value | numeric     | Valor total informado pelo refinador              |
+| notes               | text        | Observacoes                                       |
+| created_at          | timestamptz | &nbsp;                                            |
+| closed_at           | timestamptz | &nbsp;                                            |
 
 
-| Arquivo                         | Alteracao                                          |
-| ------------------------------- | -------------------------------------------------- |
-| `src/App.tsx`                   | Novas rotas, remover rota `/lotes`                 |
-| `src/components/AppSidebar.tsx` | Novos itens de menu, renomear Lotes                |
-| `src/pages/CalculatorPage.tsx`  | Botao "Enviar para Compras" na QuoteList           |
-| `package.json`                  | Adicionar dependencia `xlsx` para importacao Excel |
+### Tabela `bag_items`
 
 
-### Dependencia nova
+| Coluna           | Tipo        | Descricao                           |
+| ---------------- | ----------- | ----------------------------------- |
+| id               | uuid        | PK                                  |
+| bag_id           | uuid        | FK para bags                        |
+| purchase_id      | uuid        | FK para purchases                   |
+| purchase_item_id | text        | Referencia ao item da compra        |
+| weight           | numeric     | Peso alocado                        |
+| paid_value       | numeric     | Valor pago por este material        |
+| estimated_pt_ppm | numeric     | PPM Pt estimado                     |
+| estimated_pd_ppm | numeric     | PPM Pd estimado                     |
+| estimated_rh_ppm | numeric     | PPM Rh estimado                     |
+| supplier_name    | text        | Nome do fornecedor (desnormalizado) |
+| allocated_at     | timestamptz | &nbsp;                              |
 
-- `xlsx` (SheetJS) -- leitura de arquivos Excel no browser
 
-### Persistencia
+### Alteracao na tabela `purchases`
 
-Todas as entidades continuam em `localStorage`, seguindo o padrao existente (`catalisador-pro-suppliers`, `catalisador-pro-purchases`).
+- Adicionar coluna `location` (text, default 'matriz')
+- Adicionar coluna `transfer_status` (text, nullable) - pendente, em_transito, recebido
+
+### Funcao SQL
+
+- `generate_bag_number()` - gera numero sequencial para bags
+
+---
+
+## Implementacao Frontend
+
+### Pagina principal (`src/pages/BagsPage.tsx`) - 4 abas
+
+**Aba "Bags"**
+
+- Lista de bags com cards: numero, label, status (badge), tipo, comprador, peso atual/maximo (barra de progresso), valor total pago
+- Filtros por status, comprador, tipo
+- Botao "Novo Bag" (dialog com nome, tipo, comprador, peso maximo)
+
+**Aba "Alocar Material"**
+
+- Lista de materiais disponiveis (compras finalizadas, na matriz, nao alocados)
+- Selecionar material e bag destino
+- Validacao em tempo real: tipo compativel, comprador correto, peso com alerta se ultrapassar 1050kg
+- Sugestao automatica de bag baseada nas regras
+
+**Aba "Estoque Filiais"**
+
+- Lista de compras de filiais com status de transferencia
+- Botoes "Marcar em Transito" e "Recebido na Matriz"
+- Contadores por filial
+
+**Aba "Financeiro e Analise"**
+
+- Selecionar um bag fechado/exportado
+- Painel com: valor total pago, custo medio/kg, valor por fornecedor
+- Secao de resultados do refinador (inputs para PPMs e valor)
+- Tabela comparativa: PPM estimado vs real com variacao %
+- Valor estimado vs valor real com indicadores visuais
+
+### Componentes
+
+
+| Arquivo                                          | Descricao                                   |
+| ------------------------------------------------ | ------------------------------------------- |
+| `src/pages/BagsPage.tsx`                         | Pagina principal com 4 abas                 |
+| `src/lib/bags.ts`                                | Tipos, CRUD, logica de alocacao e validacao |
+| `src/components/bags/BagCard.tsx`                | Card resumo com progresso                   |
+| `src/components/bags/BagDetail.tsx`              | Detalhe com itens e financeiro              |
+| `src/components/bags/NewBagDialog.tsx`           | Criacao de novo bag                         |
+| `src/components/bags/AllocateMaterialDialog.tsx` | Alocacao com validacao                      |
+| `src/components/bags/BranchStockList.tsx`        | Controle de transferencias                  |
+| `src/components/bags/BagAnalysisPanel.tsx`       | Comparativo de analise e financeiro         |
+
+
+### Alteracoes em arquivos existentes
+
+
+| Arquivo                         | Alteracao                                        |
+| ------------------------------- | ------------------------------------------------ |
+| `src/App.tsx`                   | Rota `/bags` apontando para BagsPage             |
+| `src/components/AppSidebar.tsx` | Atualizar item Bags (ja existe como placeholder) |
+| `src/lib/purchases.ts`          | Adicionar suporte a location e transfer_status   |
