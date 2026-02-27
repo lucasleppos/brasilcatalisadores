@@ -63,7 +63,7 @@ export default function CalculatorPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setHistory(loadHistory());
+    loadHistory().then(setHistory);
     loadSuppliers().then(setSuppliers);
     loadSettings().then(setSettings);
   }, []);
@@ -83,10 +83,10 @@ export default function CalculatorPage() {
     setUseCustomQuotes(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!result) return;
-    saveToHistory(input, result);
-    setHistory(loadHistory());
+    await saveToHistory(input, result);
+    loadHistory().then(setHistory);
   };
 
   const loadFromHistory = (record: SimulationRecord) => {

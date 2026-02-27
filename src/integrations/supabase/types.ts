@@ -172,6 +172,30 @@ export type Database = {
         }
         Relationships: []
       }
+      simulation_history: {
+        Row: {
+          calc_input: Json
+          calc_result: Json
+          created_at: string
+          date: string
+          id: string
+        }
+        Insert: {
+          calc_input: Json
+          calc_result: Json
+          created_at?: string
+          date?: string
+          id?: string
+        }
+        Update: {
+          calc_input?: Json
+          calc_result?: Json
+          created_at?: string
+          date?: string
+          id?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           branch: string
