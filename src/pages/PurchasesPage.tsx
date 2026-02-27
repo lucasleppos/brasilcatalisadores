@@ -90,7 +90,7 @@ export default function PurchasesPage() {
               <TableRow>
                 <TableHead className="text-xs">Nº Pedido</TableHead>
                 <TableHead className="text-xs">Fornecedor</TableHead>
-                <TableHead className="text-xs">ERP</TableHead>
+                <TableHead className="text-xs">Boleto Syge</TableHead>
                 <TableHead className="text-xs">Itens</TableHead>
                 <TableHead className="text-xs text-right">Total</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
@@ -112,7 +112,11 @@ export default function PurchasesPage() {
                     <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
                     <TableCell className="text-sm">{p.items.length}</TableCell>
                     <TableCell className="text-sm text-right font-semibold">
-                      {p.totalBrl > 0 ? fmtBrl(p.totalBrl) : (
+                      {p.totalBrl > 0 ? (
+                        <span className={p.items.some(i => !i.result && !i.totalValue) ? "text-destructive" : ""}>
+                          {fmtBrl(p.totalBrl)}
+                        </span>
+                      ) : (
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
                       )}
                     </TableCell>

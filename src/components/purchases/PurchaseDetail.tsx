@@ -48,7 +48,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             )}
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Nº Controle ERP</p>
+            <p className="text-xs text-muted-foreground">Boleto Syge</p>
             <p>{purchase.erpNumber || "—"}</p>
           </div>
           <div>
@@ -90,9 +90,11 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                   <TableCell className="text-xs">{i + 1}</TableCell>
                   <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
                   <TableCell className="text-xs text-right">
-                    {q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.input)
+                    {q.itemType === "peca"
                       ? `${q.quantity || 0} pç`
-                      : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : (q.weight ? `${fmt(q.weight, 2)} kg` : "-")}
+                      : q.itemType === "peca_sacola" && !q.input
+                        ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 2)} kg` : ""}`
+                        : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : (q.weight ? `${fmt(q.weight, 2)} kg` : "-")}
                   </TableCell>
                   <TableCell className="text-xs text-right font-semibold">
                     {val > 0 ? fmtBrl(val) : (
