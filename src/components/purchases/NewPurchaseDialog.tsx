@@ -254,7 +254,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       </TooltipProvider>
     );
   };
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -447,3 +446,4 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     </Dialog>
   );
 }
+
