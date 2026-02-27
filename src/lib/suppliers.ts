@@ -1,62 +1,113 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface Supplier {
   id: string;
   name: string;
-  document: string; // CNPJ/CPF
+  document: string;
   email: string;
-  branch: string; // Filial
-  buyer: string; // Comprador
-  margin: number; // %
+  branch: string;
+  buyer: string;
+  margin: number;
   createdAt: string;
 }
 
-const STORAGE_KEY = "catalisador-pro-suppliers";
+export async function loadSuppliers(): Promise<Supplier[]> {
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-export function loadSuppliers(): Supplier[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return [];
-}
+  if (error || !data) return [];
 
-function saveSuppliers(suppliers: Supplier[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(suppliers));
-}
-
-export function addSupplier(data: Omit<Supplier, "id" | "createdAt">): Supplier {
-  const suppliers = loadSuppliers();
-  const supplier: Supplier = {
-    ...data,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-  };
-  suppliers.unshift(supplier);
-  saveSuppliers(suppliers);
-  return supplier;
-}
-
-export function updateSupplier(id: string, data: Partial<Omit<Supplier, "id" | "createdAt">>): Supplier | null {
-  const suppliers = loadSuppliers();
-  const idx = suppliers.findIndex((s) => s.id === id);
-  if (idx === -1) return null;
-  suppliers[idx] = { ...suppliers[idx], ...data };
-  saveSuppliers(suppliers);
-  return suppliers[idx];
-}
-
-export function deleteSupplier(id: string) {
-  const suppliers = loadSuppliers().filter((s) => s.id !== id);
-  saveSuppliers(suppliers);
-}
-
-export function importSuppliers(rows: Omit<Supplier, "id" | "createdAt">[]): number {
-  const suppliers = loadSuppliers();
-  const newSuppliers = rows.map((r) => ({
-    ...r,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
+  return data.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    document: r.document,
+    email: r.email,
+    branch: r.branch,
+    buyer: r.buyer,
+    margin: Number(r.margin),
+    createdAt: r.created_at,
   }));
-  suppliers.unshift(...newSuppliers);
-  saveSuppliers(suppliers);
-  return newSuppliers.length;
+}
+
+export async function addSupplier(data: Omit<Supplier, "id" | "createdAt">): Promise<Supplier | null> {
+  const { data: row, error } = await supabase
+    .from("suppliers")
+    .insert({
+      name: data.name,
+      document: data.document,
+      email: data.email,
+      branch: data.branch,
+      buyer: data.buyer,
+      margin: data.margin,
+    })
+    .select()
+    .single();
+
+  if (error || !row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    document: row.document,
+    email: row.email,
+    branch: row.branch,
+    buyer: row.buyer,
+    margin: Number(row.margin),
+    createdAt: row.created_at,
+  };
+}
+
+export async function updateSupplier(id: string, data: Partial<Omit<Supplier, "id" | "createdAt">>): Promise<Supplier | null> {
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.document !== undefined) updateData.document = data.document;
+  if (data.email !== undefined) updateData.email = data.email;
+  if (data.branch !== undefined) updateData.branch = data.branch;
+  if (data.buyer !== undefined) updateData.buyer = data.buyer;
+  if (data.margin !== undefined) updateData.margin = data.margin;
+
+  const { data: row, error } = await supabase
+    .from("suppliers")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error || !row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    document: row.document,
+    email: row.email,
+    branch: row.branch,
+    buyer: row.buyer,
+    margin: Number(row.margin),
+    createdAt: row.created_at,
+  };
+}
+
+export async function deleteSupplier(id: string) {
+  await supabase.from("suppliers").delete().eq("id", id);
+}
+
+export async function importSuppliers(rows: Omit<Supplier, "id" | "createdAt">[]): Promise<number> {
+  const { data, error } = await supabase
+    .from("suppliers")
+    .insert(
+      rows.map((r) => ({
+        name: r.name,
+        document: r.document,
+        email: r.email,
+        branch: r.branch,
+        buyer: r.buyer,
+        margin: r.margin,
+      }))
+    )
+    .select();
+
+  if (error || !data) return 0;
+  return data.length;
 }

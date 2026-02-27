@@ -29,18 +29,18 @@ export default function SettingsPage() {
   const [s, setS] = useState<Settings>(defaultSettings);
   const { toast } = useToast();
 
-  useEffect(() => { setS(loadSettings()); }, []);
+  useEffect(() => { loadSettings().then(setS); }, []);
 
   const update = (key: keyof Settings, value: number) => setS((prev) => ({ ...prev, [key]: value }));
 
-  const handleSave = () => {
-    saveSettings(s);
+  const handleSave = async () => {
+    await saveSettings(s);
     toast({ title: "Configurações salvas", description: "Os parâmetros foram atualizados." });
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setS({ ...defaultSettings });
-    saveSettings(defaultSettings);
+    await saveSettings(defaultSettings);
     toast({ title: "Configurações restauradas", description: "Valores padrão aplicados." });
   };
 

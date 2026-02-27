@@ -16,30 +16,30 @@ export default function SuppliersPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
 
-  const reload = () => setSuppliers(loadSuppliers());
+  const reload = async () => setSuppliers(await loadSuppliers());
   useEffect(() => { reload(); }, []);
 
   const filtered = suppliers.filter((s) =>
     [s.name, s.document, s.email, s.branch, s.buyer].some((f) => f.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const handleSave = (data: Omit<Supplier, "id" | "createdAt">) => {
+  const handleSave = async (data: Omit<Supplier, "id" | "createdAt">) => {
     if (editing) {
-      updateSupplier(editing.id, data);
+      await updateSupplier(editing.id, data);
     } else {
-      addSupplier(data);
+      await addSupplier(data);
     }
     setEditing(null);
     reload();
   };
 
-  const handleImport = (rows: Omit<Supplier, "id" | "createdAt">[]) => {
-    importSuppliers(rows);
+  const handleImport = async (rows: Omit<Supplier, "id" | "createdAt">[]) => {
+    await importSuppliers(rows);
     reload();
   };
 
-  const handleDelete = (id: string) => {
-    deleteSupplier(id);
+  const handleDelete = async (id: string) => {
+    await deleteSupplier(id);
     reload();
   };
 
