@@ -50,7 +50,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   // Calculator fields
   const [grossWeight, setGrossWeight] = useState<number>(0);
-  const [tare, setTare] = useState<number>(0);
+  const [tareStr, setTareStr] = useState<string>("");
   const [ptPpm, setPtPpm] = useState<number>(0);
   const [pdPpm, setPdPpm] = useState<number>(0);
   const [rhPpm, setRhPpm] = useState<number>(0);
@@ -92,7 +92,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     setAddValue(0);
     setAddWeight(0);
     setGrossWeight(0);
-    setTare(0);
+    setTareStr("");
     setPtPpm(0);
     setPdPpm(0);
     setRhPpm(0);
@@ -106,6 +106,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     if (grossWeight <= 0) return;
     const settings = await loadSettings();
     const margin = selectedSupplier?.margin ?? 0;
+    const tare = parseFloat(tareStr.replace(",", ".")) || 0;
     const input: CalculatorInput = {
       grossWeight,
       tare,
@@ -130,7 +131,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     } else {
       setCalcPreview(null);
     }
-  }, [grossWeight, tare, ptPpm, pdPpm, rhPpm, addType, sacolaUseCalc, supplierId]);
+  }, [grossWeight, tareStr, ptPpm, pdPpm, rhPpm, addType, sacolaUseCalc, supplierId]);
 
   const addItem = async () => {
     const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
@@ -142,6 +143,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
       const settings = await loadSettings();
       const margin = selectedSupplier?.margin ?? 0;
+      const tare = parseFloat(tareStr.replace(",", ".")) || 0;
       const input: CalculatorInput = {
         grossWeight,
         tare,
@@ -159,12 +161,13 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       // Only calculate if PPMs are provided, otherwise add without value
       const hasPpms = ptPpm > 0 || pdPpm > 0 || rhPpm > 0;
       const result = hasPpms ? calculate(input, settings) : undefined;
+      const tareVal = parseFloat(tareStr.replace(",", ".")) || 0;
       setItems(prev => [
         ...prev,
         {
           id: crypto.randomUUID(),
           itemType: addType,
-          weight: grossWeight - tare,
+          weight: grossWeight - tareVal,
           calcInput: input,
           calcResult: result,
         },
@@ -269,7 +272,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
           {/* ERP Number */}
           <div className="space-y-1">
-            <Label className="text-xs">Nº Controle ERP (opcional)</Label>
+            <Label className="text-xs">Boleto Syge (opcional)</Label>
             <Input value={erpNumber} onChange={e => setErpNumber(e.target.value)} placeholder="Ex: OC-12345" className="h-8 text-sm" />
           </div>
 
@@ -324,7 +327,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Tara (kg)</Label>
-                    <Input type="number" min={0} step="any" value={tare || ""} onChange={e => setTare(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="text" inputMode="decimal" value={tareStr} onChange={e => setTareStr(e.target.value.replace(/[^0-9.,]/g, ""))} className="h-8 text-sm" placeholder="0,000" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -389,7 +392,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     <TableCell className="text-xs text-right">
                       {it.calcResult || it.calcInput
                         ? `${(it.weight ?? it.calcInput?.grossWeight)?.toFixed(1)} kg`
-                        : `${it.quantity} pç`}
+                        : it.itemType === "peca_sacola"
+                          ? `${it.quantity} pç${it.weight ? ` / ${it.weight.toFixed(2)} kg` : ""}`
+                          : `${it.quantity} pç`}
                     </TableCell>
                     <TableCell className="text-xs text-right font-semibold">
                       {getItemValueDisplay(it)}
@@ -403,7 +408,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 ))}
                 <TableRow className="bg-muted/30">
                   <TableCell colSpan={2} className="text-xs font-semibold text-right">Total</TableCell>
-                  <TableCell className="text-xs text-right font-bold text-primary">
+                  <TableCell className={`text-xs text-right font-bold ${items.some(i => !i.calcResult && !i.totalValue) ? "text-destructive" : "text-primary"}`}>
                     {total > 0 ? fmtBrl(total) : "Pendente"}
                   </TableCell>
                   <TableCell />
