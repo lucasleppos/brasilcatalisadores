@@ -9,6 +9,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import PurchasesPage from "@/pages/PurchasesPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import ProcessesPage from "@/pages/ProcessesPage";
+import BagsPage from "@/pages/BagsPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -26,7 +27,7 @@ const App = () => (
             <Route path="/compras" element={<PurchasesPage />} />
             <Route path="/fornecedores" element={<SuppliersPage />} />
             <Route path="/processos" element={<ProcessesPage />} />
-            <Route path="/bags" element={<PlaceholderPage title="Bags" />} />
+            <Route path="/bags" element={<BagsPage />} />
             <Route path="/relatorios" element={<PlaceholderPage title="Relatórios" />} />
             <Route path="/calculadora" element={<CalculatorPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
