@@ -6,7 +6,7 @@ import { Bag, loadBags } from "@/lib/bags";
 import { BagCard } from "@/components/bags/BagCard";
 import { BagDetail } from "@/components/bags/BagDetail";
 import { NewBagDialog } from "@/components/bags/NewBagDialog";
-import { AllocateMaterialDialog } from "@/components/bags/AllocateMaterialDialog";
+import { AllocationPanel } from "@/components/bags/AllocationPanel";
 import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +15,6 @@ export default function BagsPage() {
   const [bags, setBags] = useState<Bag[]>([]);
   const [selectedBag, setSelectedBag] = useState<Bag | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [showAllocateDialog, setShowAllocateDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
 
@@ -101,15 +100,7 @@ export default function BagsPage() {
         </TabsContent>
 
         <TabsContent value="alocar" className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Button onClick={() => setShowAllocateDialog(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Alocar Material
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Use o botão acima para alocar materiais processados aos bags abertos.
-            Somente materiais com status "Enviado ao Bag" e na matriz ficam disponíveis.
-          </p>
+          <AllocationPanel bags={bags} onAllocated={load} />
         </TabsContent>
 
         <TabsContent value="filiais">
@@ -122,12 +113,6 @@ export default function BagsPage() {
       </Tabs>
 
       <NewBagDialog open={showNewDialog} onOpenChange={setShowNewDialog} onCreated={load} />
-      <AllocateMaterialDialog
-        open={showAllocateDialog}
-        onOpenChange={setShowAllocateDialog}
-        bags={bags}
-        onAllocated={load}
-      />
     </div>
   );
 }
