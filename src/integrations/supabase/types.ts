@@ -137,6 +137,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          branch: string | null
+          created_at: string
+          full_name: string
+          id: string
+          job_title: string | null
+          phone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          branch?: string | null
+          created_at?: string
+          full_name?: string
+          id: string
+          job_title?: string | null
+          phone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          branch?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       purchase_items: {
         Row: {
           calc_input: Json | null
@@ -358,6 +388,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -365,9 +413,26 @@ export type Database = {
     Functions: {
       generate_bag_number: { Args: never; Returns: string }
       generate_purchase_number: { Args: never; Returns: string }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "comprador"
+        | "operacional"
+        | "laboratorio"
+        | "visualizador"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -494,6 +559,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "super_admin",
+        "admin",
+        "comprador",
+        "operacional",
+        "laboratorio",
+        "visualizador",
+      ],
+    },
   },
 } as const
