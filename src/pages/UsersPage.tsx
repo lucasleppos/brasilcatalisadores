@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -17,28 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Users } from "lucide-react";
-
-interface UserRow {
-  id: string;
-  full_name: string;
-  branch: string;
-  job_title: string;
-  role: AppRole | null;
-  email: string;
-}
-
-const roleLabels: Record<AppRole, string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-  comprador: "Comprador",
-  operacional: "Operacional",
-  laboratorio: "Laboratório",
-  visualizador: "Visualizador",
-};
-
-const allRoles: AppRole[] = [
-  "super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador",
-];
+import { UserActions, UserRow, roleLabels, allRoles } from "@/components/users/UserActions";
 
 export default function UsersPage() {
   const { user } = useAuth();
@@ -57,7 +36,6 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    // Fetch profiles + roles
     const { data: profiles } = await supabase.from("profiles").select("*");
     const { data: roles } = await supabase.from("user_roles").select("*");
 
@@ -85,9 +63,6 @@ export default function UsersPage() {
   const handleInvite = async () => {
     if (!form.email || !form.role) return;
     setInviteLoading(true);
-
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
 
     const res = await supabase.functions.invoke("invite-user", {
       body: {
@@ -135,18 +110,19 @@ export default function UsersPage() {
                 <TableHead>Filial</TableHead>
                 <TableHead>Cargo</TableHead>
                 <TableHead>Perfil</TableHead>
+                <TableHead className="w-[120px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Nenhum usuário cadastrado
                   </TableCell>
                 </TableRow>
@@ -162,6 +138,9 @@ export default function UsersPage() {
                       ) : (
                         <span className="text-muted-foreground text-xs">Sem perfil</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <UserActions user={u} currentUserId={user?.id} onSuccess={fetchUsers} />
                     </TableCell>
                   </TableRow>
                 ))
@@ -180,35 +159,19 @@ export default function UsersPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Email *</Label>
-              <Input
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="usuario@email.com"
-              />
+              <Input type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="usuario@email.com" />
             </div>
             <div className="space-y-2">
               <Label>Nome completo</Label>
-              <Input
-                value={form.full_name}
-                onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-              />
+              <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label>Perfil de acesso *</Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm((f) => ({ ...f, role: v as AppRole }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as AppRole }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {allRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {roleLabels[r]}
-                    </SelectItem>
+                    <SelectItem key={r} value={r}>{roleLabels[r]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -216,24 +179,16 @@ export default function UsersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Filial</Label>
-                <Input
-                  value={form.branch}
-                  onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))}
-                />
+                <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>
-                <Input
-                  value={form.job_title}
-                  onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))}
-                />
+                <Input value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
             <Button onClick={handleInvite} disabled={inviteLoading || !form.email}>
               {inviteLoading ? "Enviando..." : "Enviar Convite"}
             </Button>
