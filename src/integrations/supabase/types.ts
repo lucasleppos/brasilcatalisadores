@@ -146,6 +146,7 @@ export type Database = {
           id: string
           job_title: string | null
           phone: string | null
+          remember_me: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -155,6 +156,7 @@ export type Database = {
           id: string
           job_title?: string | null
           phone?: string | null
+          remember_me?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -164,6 +166,7 @@ export type Database = {
           id?: string
           job_title?: string | null
           phone?: string | null
+          remember_me?: boolean
         }
         Relationships: []
       }
