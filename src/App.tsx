@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import CalculatorPage from "@/pages/CalculatorPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -11,6 +13,10 @@ import SuppliersPage from "@/pages/SuppliersPage";
 import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import LoginPage from "@/pages/LoginPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import UsersPage from "@/pages/UsersPage";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,19 +27,26 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<PlaceholderPage title="Dashboard" />} />
-            <Route path="/compras" element={<PurchasesPage />} />
-            <Route path="/fornecedores" element={<SuppliersPage />} />
-            <Route path="/processos" element={<ProcessesPage />} />
-            <Route path="/bags" element={<BagsPage />} />
-            <Route path="/relatorios" element={<PlaceholderPage title="Relatórios" />} />
-            <Route path="/calculadora" element={<CalculatorPage />} />
-            <Route path="/configuracoes" element={<SettingsPage />} />
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Protected routes */}
+            <Route path="/" element={<ProtectedRoute><AppLayout><PlaceholderPage title="Dashboard" /></AppLayout></ProtectedRoute>} />
+            <Route path="/compras" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><PurchasesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/fornecedores" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/processos" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "laboratorio"]}><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/bags" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "comprador"]}><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute allowedRoles={["super_admin", "admin"]}><AppLayout><PlaceholderPage title="Relatórios" /></AppLayout></ProtectedRoute>} />
+            <Route path="/calculadora" element={<ProtectedRoute><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AppLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

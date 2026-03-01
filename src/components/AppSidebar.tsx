@@ -7,9 +7,11 @@ import {
   BarChart3,
   Settings,
   Calculator,
+  UserCog,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth, AppRole } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -21,21 +23,36 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  allowedRoles?: AppRole[];
+}
+
+const menuItems: MenuItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Compras", url: "/compras", icon: Package },
-  { title: "Fornecedores", url: "/fornecedores", icon: Users },
-  { title: "Processos", url: "/processos", icon: Activity },
-  { title: "Bags", url: "/bags", icon: ShoppingBag },
-  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Compras", url: "/compras", icon: Package, allowedRoles: ["super_admin", "admin", "comprador"] },
+  { title: "Fornecedores", url: "/fornecedores", icon: Users, allowedRoles: ["super_admin", "admin", "comprador"] },
+  { title: "Processos", url: "/processos", icon: Activity, allowedRoles: ["super_admin", "admin", "operacional", "laboratorio"] },
+  { title: "Bags", url: "/bags", icon: ShoppingBag, allowedRoles: ["super_admin", "admin", "operacional", "comprador"] },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3, allowedRoles: ["super_admin", "admin"] },
   { title: "Calculadora", url: "/calculadora", icon: Calculator },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Configurações", url: "/configuracoes", icon: Settings, allowedRoles: ["super_admin"] },
+  { title: "Usuários", url: "/usuarios", icon: UserCog, allowedRoles: ["super_admin"] },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { role } = useAuth();
+
+  const visibleItems = menuItems.filter((item) => {
+    if (!item.allowedRoles) return true;
+    if (!role) return false;
+    return item.allowedRoles.includes(role);
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -59,7 +76,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {visibleItems.map((item) => {
                 const isCalc = item.url === "/calculadora";
                 return (
                   <SidebarMenuItem key={item.title}>
