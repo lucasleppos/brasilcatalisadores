@@ -196,8 +196,32 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Carregando materiais...</p>;
   }
 
+  const totalAvailableKg = availableMaterials.reduce((sum, m) => sum + m.weight, 0);
+  const totalAvailableValue = availableMaterials.reduce((sum, m) => sum + m.paidValue, 0);
+  const totalInProcessKg = inProcessMaterials.reduce((sum, m) => sum + m.weight, 0);
+
   return (
     <div className="space-y-8">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-lg border bg-card p-4 space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Lotes Disponíveis</p>
+          <p className="text-2xl font-bold">{availableMaterials.length}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4 space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Peso Disponível</p>
+          <p className="text-2xl font-bold">{totalAvailableKg.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
+        </div>
+        <div className="rounded-lg border bg-card p-4 space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Valor Disponível</p>
+          <p className="text-2xl font-bold">R$ {totalAvailableValue.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4 space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Em Processo (Próximos)</p>
+          <p className="text-2xl font-bold">{inProcessMaterials.length} <span className="text-sm font-normal text-muted-foreground">lotes · {totalInProcessKg.toFixed(1)} kg</span></p>
+        </div>
+      </div>
+
       {/* Section 1: Available for allocation */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
