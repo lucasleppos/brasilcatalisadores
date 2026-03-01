@@ -24,19 +24,23 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Try a dry-run to the setup function to check if setup is still available
-    // We send an empty body — the function will return 403 if setup is done, 400 if still available
-    supabase.functions.invoke("setup-first-admin", {
-      body: { email: "", password: "" },
-    }).then(({ data, error }) => {
-      // If error is not 403 (setup already done), setup is still needed
-      const setupDone = data?.error === "Setup already completed. Users already exist.";
-      if (!setupDone) {
+    const checkSetupStatus = async () => {
+      const { data, error } = await supabase.functions.invoke("setup-first-admin", {
+        body: { dry_run: true },
+      });
+
+      if (!error && data?.setup_completed === false) {
         setNeedsSetup(true);
         setMode("setup");
+      } else {
+        setNeedsSetup(false);
+        setMode("login");
       }
+
       setCheckingSetup(false);
-    });
+    };
+
+    checkSetupStatus();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
