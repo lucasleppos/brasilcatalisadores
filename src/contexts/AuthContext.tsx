@@ -61,15 +61,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
+    const checkRememberMe = async (userId: string) => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("remember_me")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const rememberMe = (data as any)?.remember_me ?? true;
+
+      if (!rememberMe && !sessionStorage.getItem("session_active")) {
+        // Browser was reopened and user chose not to be remembered
+        await supabase.auth.signOut();
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setRole(null);
+          setLoading(false);
+        }
+        return true; // signaled sign-out
+      }
+
+      // Mark session as active for this browser session
+      if (!rememberMe) {
+        sessionStorage.setItem("session_active", "true");
+      }
+      return false;
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks with Supabase auth
-          setTimeout(() => fetchProfileAndRole(session.user.id), 0);
+          setTimeout(() => {
+            if (isMounted) fetchProfileAndRole(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
           setRole(null);
@@ -79,7 +112,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        const signedOut = await checkRememberMe(session.user.id);
+        if (signedOut) return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -88,7 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

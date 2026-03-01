@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, ShieldCheck } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type PageMode = "login" | "reset" | "setup";
 
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [mode, setMode] = useState<PageMode>("login");
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
@@ -35,12 +37,21 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
 
     if (error) {
       toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
     } else {
+      // Save remember_me preference in the database
+      if (data.user) {
+        await supabase.from("profiles").update({ remember_me: rememberMe } as any).eq("id", data.user.id);
+        if (!rememberMe) {
+          sessionStorage.setItem("session_active", "true");
+        } else {
+          sessionStorage.removeItem("session_active");
+        }
+      }
       navigate("/");
     }
   };
@@ -168,6 +179,16 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                  Lembrar-me
+                </Label>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 <LogIn className="mr-2 h-4 w-4" />

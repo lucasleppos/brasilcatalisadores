@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN remember_me boolean NOT NULL DEFAULT true;
