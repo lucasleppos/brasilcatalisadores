@@ -24,9 +24,14 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if any users exist
-    supabase.from("user_roles").select("id", { count: "exact", head: true }).then(({ count }) => {
-      if (count === 0) {
+    // Try a dry-run to the setup function to check if setup is still available
+    // We send an empty body — the function will return 403 if setup is done, 400 if still available
+    supabase.functions.invoke("setup-first-admin", {
+      body: { email: "", password: "" },
+    }).then(({ data, error }) => {
+      // If error is not 403 (setup already done), setup is still needed
+      const setupDone = data?.error === "Setup already completed. Users already exist.";
+      if (!setupDone) {
         setNeedsSetup(true);
         setMode("setup");
       }
