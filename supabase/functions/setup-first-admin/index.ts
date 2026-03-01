@@ -21,14 +21,22 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("id", { count: "exact", head: true });
 
+    const { email, password, full_name, dry_run } = await req.json().catch(() => ({}));
+
+    // Dry-run check used by login page to know whether initial setup is required
+    if (dry_run === true) {
+      return new Response(
+        JSON.stringify({ setup_completed: (count ?? 0) > 0 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (count && count > 0) {
       return new Response(
         JSON.stringify({ error: "Setup already completed. Users already exist." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const { email, password, full_name } = await req.json();
 
     if (!email || !password) {
       return new Response(
