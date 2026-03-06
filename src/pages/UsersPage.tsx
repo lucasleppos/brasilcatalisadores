@@ -16,16 +16,17 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Users } from "lucide-react";
+import { UserPlus, Users, FlaskConical } from "lucide-react";
 import { UserActions, UserRow, roleLabels, allRoles } from "@/components/users/UserActions";
 
 export default function UsersPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
   const [form, setForm] = useState({
     email: "",
     full_name: "",
@@ -90,15 +91,45 @@ export default function UsersPage() {
     }
   };
 
+  const handleSeedTestUsers = async () => {
+    setSeedLoading(true);
+    const res = await supabase.functions.invoke("seed-test-users");
+    setSeedLoading(false);
+
+    if (res.error || res.data?.error) {
+      toast({
+        title: "Erro ao criar usuários de teste",
+        description: res.data?.error || res.error?.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    } else {
+      const created = res.data?.results?.filter((r: any) => r.status === "created").length || 0;
+      const existing = res.data?.results?.filter((r: any) => r.status === "already_exists").length || 0;
+      toast({
+        title: "Usuários de teste criados",
+        description: `${created} criado(s), ${existing} já existia(m). Senha: Teste123!`,
+      });
+      fetchUsers();
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-display flex items-center gap-2">
           <Users className="h-6 w-6" /> Usuários
         </h1>
-        <Button onClick={() => setInviteOpen(true)} size="sm">
-          <UserPlus className="mr-1 h-4 w-4" /> Convidar Usuário
-        </Button>
+        <div className="flex gap-2">
+          {role === "super_admin" && (
+            <Button onClick={handleSeedTestUsers} variant="outline" size="sm" disabled={seedLoading}>
+              <FlaskConical className="mr-1 h-4 w-4" />
+              {seedLoading ? "Criando..." : "Criar Usuários de Teste"}
+            </Button>
+          )}
+          <Button onClick={() => setInviteOpen(true)} size="sm">
+            <UserPlus className="mr-1 h-4 w-4" /> Convidar Usuário
+          </Button>
+        </div>
       </div>
 
       <Card>
