@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,17 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [branch, setBranch] = useState(initial?.branch ?? "");
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
   const [margin, setMargin] = useState(initial?.margin ?? 15);
+
+  useEffect(() => {
+    if (open) {
+      setName(initial?.name ?? "");
+      setDocument(initial?.document ?? "");
+      setEmail(initial?.email ?? "");
+      setBranch(initial?.branch ?? "");
+      setBuyer(initial?.buyer ?? "");
+      setMargin(initial?.margin ?? 15);
+    }
+  }, [open, initial]);
 
   const handleSave = () => {
     if (!name.trim()) return;
