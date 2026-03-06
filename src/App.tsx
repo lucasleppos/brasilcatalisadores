@@ -38,7 +38,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><AppLayout><PlaceholderPage title="Dashboard" /></AppLayout></ProtectedRoute>} />
             <Route path="/compras" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><PurchasesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/fornecedores" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/processos" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "laboratorio"]}><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/processos" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "laboratorio", "comprador"]}><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/bags" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "comprador"]}><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute allowedRoles={["super_admin", "admin"]}><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/calculadora" element={<ProtectedRoute><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />

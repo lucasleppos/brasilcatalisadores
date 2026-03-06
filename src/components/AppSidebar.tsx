@@ -34,7 +34,7 @@ const menuItems: MenuItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Compras", url: "/compras", icon: Package, allowedRoles: ["super_admin", "admin", "comprador"] },
   { title: "Fornecedores", url: "/fornecedores", icon: Users, allowedRoles: ["super_admin", "admin", "comprador"] },
-  { title: "Processos", url: "/processos", icon: Activity, allowedRoles: ["super_admin", "admin", "operacional", "laboratorio"] },
+  { title: "Processos", url: "/processos", icon: Activity, allowedRoles: ["super_admin", "admin", "operacional", "laboratorio", "comprador"] },
   { title: "Bags", url: "/bags", icon: ShoppingBag, allowedRoles: ["super_admin", "admin", "operacional", "comprador"] },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, allowedRoles: ["super_admin", "admin"] },
   { title: "Calculadora", url: "/calculadora", icon: Calculator },

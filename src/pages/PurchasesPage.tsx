@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -30,6 +31,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PurchasesPage() {
+  const { role } = useAuth();
+  const isAdmin = role === "super_admin" || role === "admin";
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -138,18 +141,24 @@ export default function PurchasesPage() {
                       })()}
                     </TableCell>
                     <TableCell>
-                      <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
-                        <SelectTrigger className="h-7 text-xs w-44 border-0 p-0">
-                          <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
-                            {p.status}
-                          </Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PURCHASE_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {isAdmin ? (
+                        <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
+                          <SelectTrigger className="h-7 text-xs w-44 border-0 p-0">
+                            <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
+                              {p.status}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PURCHASE_STATUSES.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
+                          {p.status}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 items-center">
