@@ -13,6 +13,7 @@ import SuppliersPage from "@/pages/SuppliersPage";
 import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import ReportsPage from "@/pages/ReportsPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import UsersPage from "@/pages/UsersPage";
@@ -39,7 +40,7 @@ const App = () => (
             <Route path="/fornecedores" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/processos" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "laboratorio"]}><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/bags" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "comprador"]}><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/relatorios" element={<ProtectedRoute allowedRoles={["super_admin", "admin"]}><AppLayout><PlaceholderPage title="Relatórios" /></AppLayout></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute allowedRoles={["super_admin", "admin"]}><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/calculadora" element={<ProtectedRoute><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
