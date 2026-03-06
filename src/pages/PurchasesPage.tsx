@@ -12,6 +12,8 @@ import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurch
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSortable } from "@/hooks/use-sortable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -44,10 +46,13 @@ export default function PurchasesPage() {
   useEffect(() => { reload(); }, []);
 
   const filtered = purchases.filter((p) => {
-    const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber].some((f) => f.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber]
+      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const { sorted, sort, toggleSort } = useSortable(filtered);
 
   const handleStatusChange = async (id: string, status: PurchaseStatus) => {
     await updatePurchaseStatus(id, status);
@@ -92,24 +97,24 @@ export default function PurchasesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Nº Pedido</TableHead>
-                <TableHead className="text-xs">Fornecedor</TableHead>
-                <TableHead className="text-xs">Boleto Syge</TableHead>
-                <TableHead className="text-xs">Itens</TableHead>
-                <TableHead className="text-xs text-right">Total</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
+                <SortableTableHead column="purchaseNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nº Pedido</SortableTableHead>
+                <SortableTableHead column="supplierName" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Fornecedor</SortableTableHead>
+                <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>
+                <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Itens</SortableTableHead>
+                <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>
+                <SortableTableHead column="status" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Status</SortableTableHead>
                 <TableHead className="text-xs w-28" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((p) => (
+                sorted.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
