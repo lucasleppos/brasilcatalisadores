@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { CalculatorInput, CalculatorResult } from "./calculator";
+import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
+import { loadSettings } from "./settings";
+import { AppRole } from "@/contexts/AuthContext";
 
 export const PURCHASE_STATUSES = [
   "Recebimento",
@@ -19,6 +21,34 @@ export const PURCHASE_STATUSES = [
 export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number];
 
 export type PurchaseItemType = "peca" | "peca_sacola" | "ceramico";
+
+// ===== Workflow: Stage → Role mapping =====
+export const STAGE_ROLES: Record<PurchaseStatus, AppRole[]> = {
+  "Recebimento": ["operacional"],
+  "Conferência": ["operacional"],
+  "Separação": ["operacional"],
+  "Corte da Peça": ["operacional"],
+  "Trituração": ["operacional"],
+  "Homogeneização": ["operacional"],
+  "Amostragem": ["operacional"],
+  "Análise": ["laboratorio"],
+  "Aprovação do Fornecedor": ["admin", "super_admin"],
+  "Pagamento": ["admin", "super_admin"],
+  "Enviado ao Bag": ["admin", "super_admin"],
+  "Exportação/Venda": ["admin", "super_admin"],
+};
+
+export function getNextStatus(current: PurchaseStatus): PurchaseStatus | null {
+  const idx = PURCHASE_STATUSES.indexOf(current);
+  if (idx < 0 || idx >= PURCHASE_STATUSES.length - 1) return null;
+  return PURCHASE_STATUSES[idx + 1];
+}
+
+export function canUserActOnStage(role: AppRole | null, status: PurchaseStatus): boolean {
+  if (!role) return false;
+  if (role === "super_admin" || role === "admin") return true;
+  return STAGE_ROLES[status]?.includes(role) ?? false;
+}
 
 export interface PurchaseQuoteItem {
   id: string;
@@ -103,12 +133,10 @@ export async function createPurchase(data: {
   notes?: string;
   erpNumber?: string;
 }): Promise<Purchase | null> {
-  // Generate purchase number via DB function
   const { data: numData } = await supabase.rpc("generate_purchase_number");
   const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR");
 
   const totalBrl = calcTotal(data.items);
-
   const statusHistory = [{ status: "Recebimento" as PurchaseStatus, date: new Date().toISOString() }];
 
   const { data: row, error } = await supabase
@@ -128,7 +156,6 @@ export async function createPurchase(data: {
 
   if (error || !row) return null;
 
-  // Insert items
   if (data.items.length > 0) {
     await supabase.from("purchase_items").insert(
       data.items.map((i) => ({
@@ -164,9 +191,6 @@ export async function updatePurchaseStatus(id: string, status: PurchaseStatus) {
 
   const history = [...((current.status_history as any[]) || []), { status, date: new Date().toISOString() }];
 
-  // Run status action hook
-  onStatusChange(id, status);
-
   const { data: updated } = await supabase
     .from("purchases")
     .update({ status, status_history: history })
@@ -177,10 +201,79 @@ export async function updatePurchaseStatus(id: string, status: PurchaseStatus) {
   return updated;
 }
 
+/** Advance to next status automatically (used by workflow) */
+export async function advanceStage(id: string, currentStatus: PurchaseStatus): Promise<boolean> {
+  const next = getNextStatus(currentStatus);
+  if (!next) return false;
+  const result = await updatePurchaseStatus(id, next);
+  return !!result;
+}
+
+/** Register lab analysis: update PPMs on items, recalculate values, advance status */
+export async function registerAnalysis(
+  purchaseId: string,
+  ppmData: { ptPpm: number; pdPpm: number; rhPpm: number }
+): Promise<boolean> {
+  // Load settings and purchase items
+  const [settings, { data: items }] = await Promise.all([
+    loadSettings(),
+    supabase.from("purchase_items").select("*").eq("purchase_id", purchaseId),
+  ]);
+
+  if (!items) return false;
+
+  // Update items that use calculator (ceramico and peca_sacola with calc_input)
+  for (const item of items) {
+    if (item.item_type === "peca") continue;
+
+    const existingInput = item.calc_input as unknown as CalculatorInput | null;
+    if (!existingInput) continue;
+
+    const updatedInput: CalculatorInput = {
+      ...existingInput,
+      ptPpm: ppmData.ptPpm,
+      pdPpm: ppmData.pdPpm,
+      rhPpm: ppmData.rhPpm,
+    };
+
+    const result = calculate(updatedInput, settings);
+
+    await supabase
+      .from("purchase_items")
+      .update({
+        calc_input: updatedInput as any,
+        calc_result: result as any,
+      })
+      .eq("id", item.id);
+  }
+
+  // Recalculate total
+  const { data: updatedItems } = await supabase
+    .from("purchase_items")
+    .select("*")
+    .eq("purchase_id", purchaseId);
+
+  const mappedItems: PurchaseQuoteItem[] = (updatedItems || []).map((i: any) => ({
+    id: i.id,
+    itemType: i.item_type as PurchaseItemType,
+    quantity: i.quantity,
+    totalValue: i.total_value ? Number(i.total_value) : undefined,
+    weight: i.weight ? Number(i.weight) : undefined,
+    input: i.calc_input as CalculatorInput | undefined,
+    result: i.calc_result as CalculatorResult | undefined,
+  }));
+
+  const newTotal = calcTotal(mappedItems);
+
+  await supabase.from("purchases").update({ total_brl: newTotal }).eq("id", purchaseId);
+
+  // Advance from Análise to Aprovação do Fornecedor
+  return advanceStage(purchaseId, "Análise");
+}
+
 export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string }) {
   const totalBrl = calcTotal(data.items);
 
-  // Delete existing items and re-insert
   await supabase.from("purchase_items").delete().eq("purchase_id", id);
 
   if (data.items.length > 0) {
@@ -205,24 +298,4 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
 
 export async function deletePurchase(id: string) {
   await supabase.from("purchases").delete().eq("id", id);
-}
-
-// ===== Status Action Hook (structure for future automatic actions) =====
-type StatusActionHandler = (purchaseId: string, newStatus: PurchaseStatus) => void;
-
-const statusActions: Partial<Record<PurchaseStatus, StatusActionHandler[]>> = {
-  // Add handlers here per status, e.g.:
-  // "Conferência": [(id) => console.log("Moved to Conferência", id)],
-};
-
-function onStatusChange(purchaseId: string, newStatus: PurchaseStatus) {
-  const handlers = statusActions[newStatus];
-  if (handlers) {
-    handlers.forEach((fn) => fn(purchaseId, newStatus));
-  }
-}
-
-export function registerStatusAction(status: PurchaseStatus, handler: StatusActionHandler) {
-  if (!statusActions[status]) statusActions[status] = [];
-  statusActions[status]!.push(handler);
 }
