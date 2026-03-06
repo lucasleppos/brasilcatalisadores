@@ -6,6 +6,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ROLES = ["super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador"];
+
+function sanitizeText(value: unknown, maxLength = 200): string {
+  if (!value || typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,20 +67,31 @@ Deno.serve(async (req) => {
 
     const { email, full_name, role, branch, job_title } = await req.json();
 
-    if (!email || !role) {
+    // Validate email
+    if (!email || typeof email !== "string" || email.length > 255 || !EMAIL_REGEX.test(email.trim())) {
       return new Response(
-        JSON.stringify({ error: "email and role are required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "A valid email is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Validate role against enum
+    if (!role || !VALID_ROLES.includes(role)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedName = sanitizeText(full_name, 100);
+    const sanitizedBranch = sanitizeText(branch, 100);
+    const sanitizedJobTitle = sanitizeText(job_title, 100);
+
     // Invite user via admin API
     const { data: inviteData, error: inviteError } =
-      await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: full_name || "", branch: branch || "", job_title: job_title || "" },
+      await adminClient.auth.admin.inviteUserByEmail(sanitizedEmail, {
+        data: { full_name: sanitizedName, branch: sanitizedBranch, job_title: sanitizedJobTitle },
       });
 
     if (inviteError) {
@@ -88,9 +107,9 @@ Deno.serve(async (req) => {
     await adminClient
       .from("profiles")
       .update({
-        full_name: full_name || "",
-        branch: branch || "",
-        job_title: job_title || "",
+        full_name: sanitizedName,
+        branch: sanitizedBranch,
+        job_title: sanitizedJobTitle,
       })
       .eq("id", userId);
 
@@ -108,7 +127,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

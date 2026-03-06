@@ -6,6 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const VALID_ROLES = ["super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador"];
+const VALID_ACTIONS = ["update", "delete"];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sanitizeText(value: unknown, maxLength = 200): string {
+  if (!value || typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,22 +64,42 @@ Deno.serve(async (req) => {
 
     const { action, user_id, full_name, branch, job_title, role } = await req.json();
 
-    if (!action || !user_id) {
+    // Validate action
+    if (!action || !VALID_ACTIONS.includes(action)) {
       return new Response(
-        JSON.stringify({ error: "action and user_id are required" }),
+        JSON.stringify({ error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate user_id as UUID
+    if (!user_id || typeof user_id !== "string" || !UUID_REGEX.test(user_id)) {
+      return new Response(
+        JSON.stringify({ error: "A valid user_id (UUID) is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "update") {
+      const sanitizedName = sanitizeText(full_name, 100);
+      const sanitizedBranch = sanitizeText(branch, 100);
+      const sanitizedJobTitle = sanitizeText(job_title, 100);
+
       // Update profile
       await adminClient
         .from("profiles")
-        .update({ full_name: full_name || "", branch: branch || "", job_title: job_title || "" })
+        .update({ full_name: sanitizedName, branch: sanitizedBranch, job_title: sanitizedJobTitle })
         .eq("id", user_id);
 
-      // Upsert role
+      // Upsert role (validate against enum first)
       if (role) {
+        if (!VALID_ROLES.includes(role)) {
+          return new Response(
+            JSON.stringify({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         const { data: existingRole } = await adminClient
           .from("user_roles")
           .select("id")
@@ -114,11 +143,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'update' or 'delete'" }),
+      JSON.stringify({ error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
