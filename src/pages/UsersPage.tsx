@@ -3,27 +3,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Users, FlaskConical } from "lucide-react";
+import { UserPlus, Users, FlaskConical, Search } from "lucide-react";
 import { UserActions, UserRow, roleLabels, allRoles } from "@/components/users/UserActions";
+import { useSortable } from "@/hooks/use-sortable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 export default function UsersPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [seedLoading, setSeedLoading] = useState(false);
@@ -60,6 +63,13 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const filtered = users.filter((u) =>
+    [u.full_name, u.branch, u.job_title, u.role ? roleLabels[u.role] : ""]
+      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const { sorted, sort, toggleSort } = useSortable(filtered);
 
   const handleInvite = async () => {
     if (!form.email || !form.role) return;
@@ -132,15 +142,20 @@ export default function UsersPage() {
         </div>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Input placeholder="Buscar usuário..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Filial</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Perfil</TableHead>
+                <SortableTableHead column="full_name" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nome</SortableTableHead>
+                <SortableTableHead column="branch" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Filial</SortableTableHead>
+                <SortableTableHead column="job_title" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Cargo</SortableTableHead>
+                <SortableTableHead column="role" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Perfil</SortableTableHead>
                 <TableHead className="w-[120px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -151,14 +166,14 @@ export default function UsersPage() {
                     Carregando...
                   </TableCell>
                 </TableRow>
-              ) : users.length === 0 ? (
+              ) : sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário cadastrado
+                    Nenhum usuário encontrado
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((u) => (
+                sorted.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                     <TableCell>{u.branch || "—"}</TableCell>

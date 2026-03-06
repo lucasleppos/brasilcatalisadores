@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,6 +8,8 @@ import { Users, Plus, Upload, Pencil, Trash2, Search } from "lucide-react";
 import { Supplier, loadSuppliers, addSupplier, updateSupplier, deleteSupplier, importSuppliers } from "@/lib/suppliers";
 import SupplierForm from "@/components/suppliers/SupplierForm";
 import SupplierImport from "@/components/suppliers/SupplierImport";
+import { useSortable } from "@/hooks/use-sortable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -20,8 +22,11 @@ export default function SuppliersPage() {
   useEffect(() => { reload(); }, []);
 
   const filtered = suppliers.filter((s) =>
-    [s.name, s.document, s.email, s.branch, s.buyer].some((f) => f.toLowerCase().includes(search.toLowerCase()))
+    [s.name, s.document, s.email, s.branch, s.buyer]
+      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
   );
+
+  const { sorted, sort, toggleSort } = useSortable(filtered);
 
   const handleSave = async (data: Omit<Supplier, "id" | "createdAt">) => {
     if (editing) {
@@ -70,24 +75,24 @@ export default function SuppliersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Nome</TableHead>
-                <TableHead className="text-xs">CNPJ/CPF</TableHead>
-                <TableHead className="text-xs">E-mail</TableHead>
-                <TableHead className="text-xs">Filial</TableHead>
-                <TableHead className="text-xs">Comprador</TableHead>
-                <TableHead className="text-xs text-right">Margem %</TableHead>
+                <SortableTableHead column="name" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nome</SortableTableHead>
+                <SortableTableHead column="document" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>CNPJ/CPF</SortableTableHead>
+                <SortableTableHead column="email" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>E-mail</SortableTableHead>
+                <SortableTableHead column="branch" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Filial</SortableTableHead>
+                <SortableTableHead column="buyer" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Comprador</SortableTableHead>
+                <SortableTableHead column="margin" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Margem %</SortableTableHead>
                 <TableHead className="text-xs w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhum fornecedor encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((s) => (
+                sorted.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="text-sm font-medium">{s.name}</TableCell>
                     <TableCell className="text-sm">{s.document}</TableCell>
