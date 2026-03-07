@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,14 +17,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Users, FlaskConical, Search } from "lucide-react";
-import { UserActions, UserRow, roleLabels, allRoles } from "@/components/users/UserActions";
+import { UserActions, UserRow } from "@/components/users/UserActions";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { usePermissions, loadPermissionProfiles, PermissionProfile } from "@/lib/permissions";
 
 export default function UsersPage() {
   const { user, role } = useAuth();
+  const { canDo } = usePermissions();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [roleProfiles, setRoleProfiles] = useState<PermissionProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -33,15 +36,17 @@ export default function UsersPage() {
   const [form, setForm] = useState({
     email: "",
     full_name: "",
-    role: "visualizador" as AppRole,
+    role: "visualizador",
     branch: "",
     job_title: "",
   });
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase.from("profiles").select("*");
-    const { data: roles } = await supabase.from("user_roles").select("*");
+    const [{ data: profiles }, { data: roles }] = await Promise.all([
+      supabase.from("profiles").select("*"),
+      supabase.from("user_roles").select("*"),
+    ]);
 
     if (profiles) {
       const mapped: UserRow[] = profiles.map((p: any) => {
@@ -51,7 +56,7 @@ export default function UsersPage() {
           full_name: p.full_name || "",
           branch: p.branch || "",
           job_title: p.job_title || "",
-          role: userRole?.role as AppRole || null,
+          role: userRole?.role || null,
           email: "",
         };
       });
@@ -60,12 +65,24 @@ export default function UsersPage() {
     setLoading(false);
   };
 
+  const fetchRoleProfiles = async () => {
+    const data = await loadPermissionProfiles();
+    setRoleProfiles(data);
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchRoleProfiles();
   }, []);
 
+  const getRoleLabel = (roleName: string | null): string => {
+    if (!roleName) return "";
+    const profile = roleProfiles.find(p => p.role_name === roleName);
+    return profile?.label || roleName;
+  };
+
   const filtered = users.filter((u) =>
-    [u.full_name, u.branch, u.job_title, u.role ? roleLabels[u.role] : ""]
+    [u.full_name, u.branch, u.job_title, u.role ? getRoleLabel(u.role) : ""]
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -123,6 +140,8 @@ export default function UsersPage() {
     }
   };
 
+  const canCreate = canDo("usuarios", "create");
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -136,9 +155,11 @@ export default function UsersPage() {
               {seedLoading ? "Criando..." : "Criar Usuários de Teste"}
             </Button>
           )}
-          <Button onClick={() => setInviteOpen(true)} size="sm">
-            <UserPlus className="mr-1 h-4 w-4" /> Convidar Usuário
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setInviteOpen(true)} size="sm">
+              <UserPlus className="mr-1 h-4 w-4" /> Convidar Usuário
+            </Button>
+          )}
         </div>
       </div>
 
@@ -180,13 +201,13 @@ export default function UsersPage() {
                     <TableCell>{u.job_title || "—"}</TableCell>
                     <TableCell>
                       {u.role ? (
-                        <Badge variant="secondary">{roleLabels[u.role]}</Badge>
+                        <Badge variant="secondary">{getRoleLabel(u.role)}</Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs">Sem perfil</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <UserActions user={u} currentUserId={user?.id} onSuccess={fetchUsers} />
+                      <UserActions user={u} currentUserId={user?.id} onSuccess={fetchUsers} roleProfiles={roleProfiles} />
                     </TableCell>
                   </TableRow>
                 ))
@@ -213,11 +234,11 @@ export default function UsersPage() {
             </div>
             <div className="space-y-2">
               <Label>Perfil de acesso *</Label>
-              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as AppRole }))}>
+              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {allRoles.map((r) => (
-                    <SelectItem key={r} value={r}>{roleLabels[r]}</SelectItem>
+                  {roleProfiles.map((r) => (
+                    <SelectItem key={r.role_name} value={r.role_name}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

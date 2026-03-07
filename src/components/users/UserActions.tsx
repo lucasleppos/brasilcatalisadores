@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AppRole } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -17,37 +16,30 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { usePermissions, PermissionProfile } from "@/lib/permissions";
 
 export interface UserRow {
   id: string;
   full_name: string;
   branch: string;
   job_title: string;
-  role: AppRole | null;
+  role: string | null;
   email: string;
 }
-
-export const roleLabels: Record<AppRole, string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-  comprador: "Comprador",
-  operacional: "Operacional",
-  laboratorio: "Laboratório",
-  visualizador: "Visualizador",
-};
-
-export const allRoles: AppRole[] = [
-  "super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador",
-];
 
 interface UserActionsProps {
   user: UserRow;
   currentUserId: string | undefined;
   onSuccess: () => void;
+  roleProfiles?: PermissionProfile[];
 }
 
-export function UserActions({ user, currentUserId, onSuccess }: UserActionsProps) {
+export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] }: UserActionsProps) {
   const { toast } = useToast();
+  const { canDo } = usePermissions();
+  const canEdit = canDo("usuarios", "edit");
+  const canDelete = canDo("usuarios", "delete");
+
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -57,10 +49,16 @@ export function UserActions({ user, currentUserId, onSuccess }: UserActionsProps
     full_name: user.full_name,
     branch: user.branch,
     job_title: user.job_title,
-    role: user.role || ("visualizador" as AppRole),
+    role: user.role || "visualizador",
   });
 
   const isSelf = currentUserId === user.id;
+
+  const getRoleLabel = (roleName: string | null): string => {
+    if (!roleName) return "Sem perfil";
+    const profile = roleProfiles.find(p => p.role_name === roleName);
+    return profile?.label || roleName;
+  };
 
   const handleEdit = async () => {
     setEditLoading(true);
@@ -107,15 +105,19 @@ export function UserActions({ user, currentUserId, onSuccess }: UserActionsProps
         <Button variant="ghost" size="icon" onClick={() => setViewOpen(true)} title="Visualizar">
           <Eye className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => {
-          setEditForm({ full_name: user.full_name, branch: user.branch, job_title: user.job_title, role: user.role || "visualizador" });
-          setEditOpen(true);
-        }} title="Editar">
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => setDeleteOpen(true)} disabled={isSelf} title={isSelf ? "Você não pode excluir a si mesmo" : "Excluir"}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {canEdit && (
+          <Button variant="ghost" size="icon" onClick={() => {
+            setEditForm({ full_name: user.full_name, branch: user.branch, job_title: user.job_title, role: user.role || "visualizador" });
+            setEditOpen(true);
+          }} title="Editar">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+        {canDelete && (
+          <Button variant="ghost" size="icon" onClick={() => setDeleteOpen(true)} disabled={isSelf} title={isSelf ? "Você não pode excluir a si mesmo" : "Excluir"}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* View Dialog */}
@@ -128,7 +130,7 @@ export function UserActions({ user, currentUserId, onSuccess }: UserActionsProps
             <div><Label className="text-muted-foreground">Nome</Label><p className="font-medium">{user.full_name || "—"}</p></div>
             <div><Label className="text-muted-foreground">Filial</Label><p className="font-medium">{user.branch || "—"}</p></div>
             <div><Label className="text-muted-foreground">Cargo</Label><p className="font-medium">{user.job_title || "—"}</p></div>
-            <div><Label className="text-muted-foreground">Perfil</Label><p>{user.role ? <Badge variant="secondary">{roleLabels[user.role]}</Badge> : <span className="text-muted-foreground text-xs">Sem perfil</span>}</p></div>
+            <div><Label className="text-muted-foreground">Perfil</Label><p>{user.role ? <Badge variant="secondary">{getRoleLabel(user.role)}</Badge> : <span className="text-muted-foreground text-xs">Sem perfil</span>}</p></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewOpen(false)}>Fechar</Button>
@@ -149,11 +151,11 @@ export function UserActions({ user, currentUserId, onSuccess }: UserActionsProps
             </div>
             <div className="space-y-2">
               <Label>Perfil de acesso</Label>
-              <Select value={editForm.role} onValueChange={(v) => setEditForm((f) => ({ ...f, role: v as AppRole }))}>
+              <Select value={editForm.role} onValueChange={(v) => setEditForm((f) => ({ ...f, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {allRoles.map((r) => (
-                    <SelectItem key={r} value={r}>{roleLabels[r]}</SelectItem>
+                  {roleProfiles.map((r) => (
+                    <SelectItem key={r.role_name} value={r.role_name}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

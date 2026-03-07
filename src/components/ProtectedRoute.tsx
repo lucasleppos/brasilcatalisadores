@@ -1,15 +1,17 @@
 import { Navigate } from "react-router-dom";
-import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/lib/permissions";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: AppRole[];
+  module?: string;
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+export function ProtectedRoute({ children, module }: ProtectedRouteProps) {
+  const { user, loading } = useAuth();
+  const { canAccess, loading: permLoading } = usePermissions();
 
-  if (loading) {
+  if (loading || permLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -21,7 +23,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (module && !canAccess(module)) {
     return <Navigate to="/" replace />;
   }
 

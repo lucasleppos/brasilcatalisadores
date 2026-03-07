@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { loadSettings } from "./settings";
-import { AppRole } from "@/contexts/AuthContext";
 
 export const PURCHASE_STATUSES = [
   "Recebimento",
@@ -23,7 +22,7 @@ export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number];
 export type PurchaseItemType = "peca" | "peca_sacola" | "ceramico";
 
 // ===== Workflow: Stage → Role mapping =====
-export const STAGE_ROLES: Record<PurchaseStatus, AppRole[]> = {
+export const STAGE_ROLES: Record<PurchaseStatus, string[]> = {
   "Recebimento": ["operacional"],
   "Conferência": ["operacional"],
   "Separação": ["operacional"],
@@ -44,7 +43,7 @@ export function getNextStatus(current: PurchaseStatus): PurchaseStatus | null {
   return PURCHASE_STATUSES[idx + 1];
 }
 
-export function canUserActOnStage(role: AppRole | null, status: PurchaseStatus): boolean {
+export function canUserActOnStage(role: string | null, status: PurchaseStatus): boolean {
   if (!role) return false;
   if (role === "super_admin" || role === "admin") return true;
   return STAGE_ROLES[status]?.includes(role) ?? false;
@@ -214,7 +213,6 @@ export async function registerAnalysis(
   purchaseId: string,
   ppmData: { ptPpm: number; pdPpm: number; rhPpm: number }
 ): Promise<boolean> {
-  // Load settings and purchase items
   const [settings, { data: items }] = await Promise.all([
     loadSettings(),
     supabase.from("purchase_items").select("*").eq("purchase_id", purchaseId),
@@ -222,7 +220,6 @@ export async function registerAnalysis(
 
   if (!items) return false;
 
-  // Update items that use calculator (ceramico and peca_sacola with calc_input)
   for (const item of items) {
     if (item.item_type === "peca") continue;
 
@@ -247,7 +244,6 @@ export async function registerAnalysis(
       .eq("id", item.id);
   }
 
-  // Recalculate total
   const { data: updatedItems } = await supabase
     .from("purchase_items")
     .select("*")
@@ -267,7 +263,6 @@ export async function registerAnalysis(
 
   await supabase.from("purchases").update({ total_brl: newTotal }).eq("id", purchaseId);
 
-  // Advance from Análise to Aprovação do Fornecedor
   return advanceStage(purchaseId, "Análise");
 }
 

@@ -5,13 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
 import { Purchase, PURCHASE_STATUSES, PurchaseStatus, STAGE_ROLES, canUserActOnStage, loadPurchases } from "@/lib/purchases";
-import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/lib/permissions";
 import StageActionCard from "./StageActionCard";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function ProcessBoard() {
   const { role } = useAuth();
+  const { canDo } = usePermissions();
+  const canAdvance = canDo("processos", "advance_stage");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
 
@@ -21,13 +24,16 @@ export default function ProcessBoard() {
   const suppliers = useMemo(() => [...new Set(purchases.map((p) => p.supplierName))], [purchases]);
   const filtered = supplierFilter === "all" ? purchases : purchases.filter((p) => p.supplierName === supplierFilter);
 
-  const isAdmin = role === "super_admin" || role === "admin";
-
   // Stages the current user can act on
   const userStages = useMemo(() => {
-    if (isAdmin) return [...PURCHASE_STATUSES];
-    return PURCHASE_STATUSES.filter((s) => canUserActOnStage(role, s));
-  }, [role, isAdmin]);
+    if (canAdvance) {
+      // If user can advance stages, check which stages their role maps to
+      // Admin/super_admin can act on all stages
+      if (role === "super_admin" || role === "admin") return [...PURCHASE_STATUSES];
+      return PURCHASE_STATUSES.filter((s) => canUserActOnStage(role, s));
+    }
+    return [];
+  }, [role, canAdvance]);
 
   // Pending tasks: purchases in stages the user can act on
   const pendingTasks = useMemo(() => {
@@ -60,6 +66,7 @@ export default function ProcessBoard() {
     return map;
   }, [filtered]);
 
+  const isAdmin = role === "super_admin" || role === "admin";
   const defaultTab = activeStages[0] || userStages[0] || "Recebimento";
 
   return (

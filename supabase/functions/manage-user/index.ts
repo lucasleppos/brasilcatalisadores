@@ -6,7 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const VALID_ROLES = ["super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador"];
 const VALID_ACTIONS = ["update", "delete"];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -47,20 +46,30 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check super_admin
-    const { data: roleCheck } = await adminClient
+    // Check caller has usuarios.edit or usuarios.delete permission
+    const { data: callerRole } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", claimsData.user.id)
-      .eq("role", "super_admin")
       .maybeSingle();
 
-    if (!roleCheck) {
+    if (!callerRole) {
       return new Response(
-        JSON.stringify({ error: "Only super_admin can manage users" }),
+        JSON.stringify({ error: "No role assigned" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Check permissions via the permissions table
+    const { data: permData } = await adminClient
+      .from("permissions")
+      .select("permissions")
+      .eq("role_name", callerRole.role)
+      .maybeSingle();
+
+    const perms = permData?.permissions as any;
+    const canEdit = perms?.modules?.usuarios?.access && perms?.modules?.usuarios?.actions?.edit;
+    const canDelete = perms?.modules?.usuarios?.access && perms?.modules?.usuarios?.actions?.delete;
 
     const { action, user_id, full_name, branch, job_title, role } = await req.json();
 
@@ -81,6 +90,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === "update") {
+      if (!canEdit) {
+        return new Response(
+          JSON.stringify({ error: "You don't have permission to edit users" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const sanitizedName = sanitizeText(full_name, 100);
       const sanitizedBranch = sanitizeText(branch, 100);
       const sanitizedJobTitle = sanitizeText(job_title, 100);
@@ -91,11 +107,17 @@ Deno.serve(async (req) => {
         .update({ full_name: sanitizedName, branch: sanitizedBranch, job_title: sanitizedJobTitle })
         .eq("id", user_id);
 
-      // Upsert role (validate against enum first)
+      // Upsert role (validate against permissions table)
       if (role) {
-        if (!VALID_ROLES.includes(role)) {
+        const { data: roleExists } = await adminClient
+          .from("permissions")
+          .select("role_name")
+          .eq("role_name", role)
+          .maybeSingle();
+
+        if (!roleExists) {
           return new Response(
-            JSON.stringify({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` }),
+            JSON.stringify({ error: `Invalid role: ${role}. Role does not exist in permissions table.` }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -120,6 +142,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete") {
+      if (!canDelete) {
+        return new Response(
+          JSON.stringify({ error: "You don't have permission to delete users" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Prevent self-deletion
       if (user_id === claimsData.user.id) {
         return new Response(

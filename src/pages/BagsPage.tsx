@@ -10,8 +10,12 @@ import { AllocationPanel } from "@/components/bags/AllocationPanel";
 import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePermissions } from "@/lib/permissions";
 
 export default function BagsPage() {
+  const { canDo } = usePermissions();
+  const canCreate = canDo("bags", "create");
+
   const [bags, setBags] = useState<Bag[]>([]);
   const [selectedBag, setSelectedBag] = useState<Bag | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -21,7 +25,6 @@ export default function BagsPage() {
   const load = async () => {
     const data = await loadBags();
     setBags(data);
-    // Refresh selected bag if open
     if (selectedBag) {
       const updated = data.find(b => b.id === selectedBag.id);
       if (updated) setSelectedBag(updated);
@@ -60,7 +63,9 @@ export default function BagsPage() {
           ) : (
             <>
               <div className="flex items-center gap-3 flex-wrap">
-                <Button onClick={() => setShowNewDialog(true)}><Plus className="h-4 w-4 mr-1" /> Novo Bag</Button>
+                {canCreate && (
+                  <Button onClick={() => setShowNewDialog(true)}><Plus className="h-4 w-4 mr-1" /> Novo Bag</Button>
+                )}
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -112,7 +117,7 @@ export default function BagsPage() {
         </TabsContent>
       </Tabs>
 
-      <NewBagDialog open={showNewDialog} onOpenChange={setShowNewDialog} onCreated={load} />
+      {canCreate && <NewBagDialog open={showNewDialog} onOpenChange={setShowNewDialog} onCreated={load} />}
     </div>
   );
 }
