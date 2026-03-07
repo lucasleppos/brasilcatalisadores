@@ -1,13 +1,14 @@
-import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { usePermissions } from "@/lib/permissions";
 
 interface RoleGateProps {
   children: React.ReactNode;
-  allowedRoles: AppRole[];
+  module: string;
+  action?: string;
   fallback?: React.ReactNode;
 }
 
-export function RoleGate({ children, allowedRoles, fallback = null }: RoleGateProps) {
-  const { role } = useAuth();
-  if (!role || !allowedRoles.includes(role)) return <>{fallback}</>;
+export function RoleGate({ children, module, action = "access", fallback = null }: RoleGateProps) {
+  const { canDo } = usePermissions();
+  if (!canDo(module, action)) return <>{fallback}</>;
   return <>{children}</>;
 }

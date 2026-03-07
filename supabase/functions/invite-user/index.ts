@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_ROLES = ["super_admin", "admin", "comprador", "operacional", "laboratorio", "visualizador"];
 
 function sanitizeText(value: unknown, maxLength = 200): string {
   if (!value || typeof value !== "string") return "";
@@ -20,7 +19,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify the caller is a super_admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -33,7 +31,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify caller role using their JWT
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -46,22 +43,35 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if caller is super_admin using service role
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleCheck } = await adminClient
+
+    // Check caller has usuarios.create permission
+    const { data: callerRole } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", claimsData.user.id)
-      .eq("role", "super_admin")
       .maybeSingle();
 
-    if (!roleCheck) {
+    if (!callerRole) {
       return new Response(
-        JSON.stringify({ error: "Only super_admin can invite users" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "No role assigned" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: permData } = await adminClient
+      .from("permissions")
+      .select("permissions")
+      .eq("role_name", callerRole.role)
+      .maybeSingle();
+
+    const perms = permData?.permissions as any;
+    const canCreate = perms?.modules?.usuarios?.access && perms?.modules?.usuarios?.actions?.create;
+
+    if (!canCreate) {
+      return new Response(
+        JSON.stringify({ error: "You don't have permission to invite users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -75,10 +85,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate role against enum
-    if (!role || !VALID_ROLES.includes(role)) {
+    // Validate role exists in permissions table
+    if (!role || typeof role !== "string") {
       return new Response(
-        JSON.stringify({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` }),
+        JSON.stringify({ error: "A role is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: roleExists } = await adminClient
+      .from("permissions")
+      .select("role_name")
+      .eq("role_name", role)
+      .maybeSingle();
+
+    if (!roleExists) {
+      return new Response(
+        JSON.stringify({ error: `Invalid role: ${role}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -103,7 +126,7 @@ Deno.serve(async (req) => {
 
     const userId = inviteData.user.id;
 
-    // Update profile with extra data (trigger already created the row)
+    // Update profile with extra data
     await adminClient
       .from("profiles")
       .update({

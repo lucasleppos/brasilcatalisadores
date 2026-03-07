@@ -18,6 +18,7 @@ import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import UsersPage from "@/pages/UsersPage";
 import ProfilePage from "@/pages/ProfilePage";
+import PermissionsPage from "@/pages/PermissionsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,14 +37,15 @@ const App = () => (
 
             {/* Protected routes */}
             <Route path="/" element={<ProtectedRoute><AppLayout><PlaceholderPage title="Dashboard" /></AppLayout></ProtectedRoute>} />
-            <Route path="/compras" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><PurchasesPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/fornecedores" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "comprador"]}><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/processos" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "laboratorio", "comprador"]}><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/bags" element={<ProtectedRoute allowedRoles={["super_admin", "admin", "operacional", "comprador"]}><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/relatorios" element={<ProtectedRoute allowedRoles={["super_admin", "admin"]}><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/calculadora" element={<ProtectedRoute><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={["super_admin"]}><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/compras" element={<ProtectedRoute module="compras"><AppLayout><PurchasesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/fornecedores" element={<ProtectedRoute module="fornecedores"><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/processos" element={<ProtectedRoute module="processos"><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/bags" element={<ProtectedRoute module="bags"><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute module="relatorios"><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/calculadora" element={<ProtectedRoute module="calculadora"><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute module="configuracoes"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute module="usuarios"><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/permissoes" element={<ProtectedRoute module="permissoes"><AppLayout><PermissionsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

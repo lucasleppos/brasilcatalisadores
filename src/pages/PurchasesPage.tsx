@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/lib/permissions";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
@@ -33,8 +33,13 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PurchasesPage() {
-  const { role } = useAuth();
-  const isAdmin = role === "super_admin" || role === "admin";
+  const { canDo, isFieldHidden } = usePermissions();
+  const canCreate = canDo("compras", "create");
+  const canEdit = canDo("compras", "edit");
+  const canDelete = canDo("compras", "delete");
+  const hideTotal = isFieldHidden("compras", "total_brl");
+  const hideErp = isFieldHidden("compras", "erp_number");
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -71,9 +76,11 @@ export default function PurchasesPage() {
           <Package className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-display">Compras</h1>
         </div>
-        <Button size="sm" onClick={() => setNewDialogOpen(true)}>
-          <Plus className="mr-1 h-3 w-3" />Nova Compra
-        </Button>
+        {canCreate && (
+          <Button size="sm" onClick={() => setNewDialogOpen(true)}>
+            <Plus className="mr-1 h-3 w-3" />Nova Compra
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-3 items-center">
@@ -99,9 +106,9 @@ export default function PurchasesPage() {
               <TableRow>
                 <SortableTableHead column="purchaseNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nº Pedido</SortableTableHead>
                 <SortableTableHead column="supplierName" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Fornecedor</SortableTableHead>
-                <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>
+                {!hideErp && <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>}
                 <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Itens</SortableTableHead>
-                <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>
+                {!hideTotal && <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>}
                 <SortableTableHead column="status" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Status</SortableTableHead>
                 <TableHead className="text-xs w-28" />
               </TableRow>
@@ -109,7 +116,7 @@ export default function PurchasesPage() {
             <TableBody>
               {sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
+                  <TableCell colSpan={hideTotal && hideErp ? 5 : hideTotal || hideErp ? 6 : 7} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
@@ -118,35 +125,37 @@ export default function PurchasesPage() {
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
+                    {!hideErp && <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>}
                     <TableCell className="text-sm">{p.items.length}</TableCell>
-                    <TableCell className="text-sm text-right font-semibold">
-                      {(() => {
-                        const hasPending = p.items.some(i => !i.result && !i.totalValue);
-                        if (p.totalBrl > 0) {
+                    {!hideTotal && (
+                      <TableCell className="text-sm text-right font-semibold">
+                        {(() => {
+                          const hasPending = p.items.some(i => !i.result && !i.totalValue);
+                          if (p.totalBrl > 0) {
+                            return (
+                              <span className={`inline-flex items-center gap-1 ${hasPending ? "text-destructive" : ""}`}>
+                                {hasPending && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Há itens pendentes de análise</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {fmtBrl(p.totalBrl)}
+                              </span>
+                            );
+                          }
                           return (
-                            <span className={`inline-flex items-center gap-1 ${hasPending ? "text-destructive" : ""}`}>
-                              {hasPending && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Há itens pendentes de análise</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              {fmtBrl(p.totalBrl)}
-                            </span>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
                           );
-                        }
-                        return (
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 text-xs">Pendente</Badge>
-                        );
-                      })()}
-                    </TableCell>
+                        })()}
+                      </TableCell>
+                    )}
                     <TableCell>
-                      {isAdmin ? (
+                      {canEdit ? (
                         <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
                           <SelectTrigger className="h-7 text-xs w-44 border-0 p-0">
                             <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
@@ -170,27 +179,33 @@ export default function PurchasesPage() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
                           <Eye className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditPurchase(p)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <div className="w-2" />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir compra?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(p.id)}>Excluir</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditPurchase(p)}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <>
+                            <div className="w-2" />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir compra?</AlertDialogTitle>
+                                  <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(p.id)}>Excluir</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -202,13 +217,15 @@ export default function PurchasesPage() {
       </Card>
 
       <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
-      <NewPurchaseDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={reload} />
-      <NewPurchaseDialog
-        open={!!editPurchase}
-        onOpenChange={(o) => { if (!o) setEditPurchase(null); }}
-        onCreated={reload}
-        editPurchase={editPurchase}
-      />
+      {canCreate && <NewPurchaseDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={reload} />}
+      {canEdit && (
+        <NewPurchaseDialog
+          open={!!editPurchase}
+          onOpenChange={(o) => { if (!o) setEditPurchase(null); }}
+          onCreated={reload}
+          editPurchase={editPurchase}
+        />
+      )}
     </div>
   );
 }
