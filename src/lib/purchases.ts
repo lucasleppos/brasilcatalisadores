@@ -97,7 +97,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Em Conferência": ["operacional"],
   // Peças
   "Peças: Aguardando Demonstrativo": ["admin", "super_admin"],
-  "Peças: Demonstrativo Enviado": ["admin", "super_admin"],
+  "Peças: Gerar Boleto de Aprovação": ["admin", "super_admin"],
   "Peças: Demonstrativo Contestado": ["admin", "super_admin"],
   "Peças: Aprovado - Aguardando Pagamento": ["admin", "super_admin"],
   "Peças: Pagamento Realizado": ["admin", "super_admin"],
