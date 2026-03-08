@@ -96,6 +96,15 @@ export default function BagsPage() {
                     <SelectItem value="cliente">Cliente</SelectItem>
                   </SelectContent>
                 </Select>
+                {!isBuyer && (
+                  <Select value={filterBuyer} onValueChange={setFilterBuyer}>
+                    <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos Compradores</SelectItem>
+                      {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {filtered.length === 0 ? (
