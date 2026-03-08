@@ -38,7 +38,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
 
   const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
-  const isDemonstrative = purchase.status.includes("Demonstrativo Enviado");
+  const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isWeighing = purchase.status === "Peças: Pesagem Realizada";
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
