@@ -18,7 +18,7 @@ const COMMON_STATUSES = [
 // Peças flow statuses
 const PECAS_STATUSES = [
   "Peças: Aguardando Demonstrativo",
-  "Peças: Demonstrativo Enviado",
+  "Peças: Gerar Boleto de Aprovação",
   "Peças: Demonstrativo Contestado",
   "Peças: Aprovado - Aguardando Pagamento",
   "Peças: Pagamento Realizado",
