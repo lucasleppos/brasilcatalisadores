@@ -1,8 +1,12 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Purchase, PurchaseQuoteItem } from "@/lib/purchases";
+import { AlertTriangle, FlaskConical, FileText } from "lucide-react";
+import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
+import { loadLabResults, LabResult } from "@/lib/lab-results";
+import { loadDemonstrativos, Demonstrativo } from "@/lib/demonstrativos";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -21,6 +25,19 @@ function getItemValue(q: PurchaseQuoteItem): number {
 }
 
 export default function PurchaseDetail({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
+  const [labResults, setLabResults] = useState<LabResult[]>([]);
+  const [demonstrativos, setDemonstrativos] = useState<Demonstrativo[]>([]);
+
+  useEffect(() => {
+    if (purchase) {
+      loadLabResults(purchase.id).then(setLabResults);
+      loadDemonstrativos(purchase.id).then(setDemonstrativos);
+    } else {
+      setLabResults([]);
+      setDemonstrativos([]);
+    }
+  }, [purchase?.id]);
+
   if (!purchase) return null;
 
   return (
@@ -37,7 +54,17 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Status</p>
-            <Badge variant="outline">{purchase.status}</Badge>
+            <Badge variant="outline" className={getStatusColor(purchase.status)}>{purchase.status}</Badge>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Comprador</p>
+            <p>{purchase.buyer || "—"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Fluxo</p>
+            <Badge variant="outline" className={purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}>
+              {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "pecas" ? "Peças" : "Legado"}
+            </Badge>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Total</p>
@@ -60,6 +87,37 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <p>{new Date(purchase.date).toLocaleString("pt-BR")}</p>
           </div>
         </div>
+
+        {/* Weight divergence alert */}
+        {purchase.weightLoss != null && Math.abs(purchase.weightLoss) > 0.5 && (
+          <>
+            <Separator />
+            <div className="rounded-md bg-red-500/10 border border-red-300 p-3 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-700" />
+              <div className="text-sm text-red-700">
+                <p className="font-semibold">Divergência de peso detectada</p>
+                <p className="text-xs">Declarado: {purchase.weightDeclared?.toFixed(2)} kg | Real: {purchase.weightReal?.toFixed(2)} kg | Perda: {Math.abs(purchase.weightLoss).toFixed(2)} kg</p>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Parallel sub-flows (cerâmico) */}
+        {isInParallelPhase(purchase) && (
+          <>
+            <Separator />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground">💰 Sub-fluxo Financeiro</p>
+                <Badge variant="outline" className={`text-xs ${getStatusColor(purchase.finStatus || "")}`}>{purchase.finStatus}</Badge>
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground">📦 Sub-fluxo Operacional</p>
+                <Badge variant="outline" className={`text-xs ${getStatusColor(purchase.opStatus || "")}`}>{purchase.opStatus}</Badge>
+              </div>
+            </div>
+          </>
+        )}
 
         {purchase.notes && (
           <>
@@ -106,6 +164,64 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             })}
           </TableBody>
         </Table>
+
+        {/* Lab Results History */}
+        {labResults.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <FlaskConical className="h-3 w-3" />
+                Histórico de Análises Laboratoriais
+              </p>
+              <div className="space-y-2">
+                {labResults.map((lr) => (
+                  <div key={lr.id} className="rounded-md border p-2 text-xs flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-[10px]">v{lr.versao}</Badge>
+                      <span>Pt: {fmt(lr.ptPpm)} | Pd: {fmt(lr.pdPpm)} | Rh: {fmt(lr.rhPpm)}</span>
+                    </div>
+                    <span className="text-muted-foreground">{new Date(lr.createdAt).toLocaleString("pt-BR")}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Demonstrativos History */}
+        {demonstrativos.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Histórico de Demonstrativos
+              </p>
+              <div className="space-y-2">
+                {demonstrativos.map((d) => (
+                  <div key={d.id} className="rounded-md border p-2 text-xs space-y-1">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">v{d.versao}</Badge>
+                        <Badge variant="outline" className={`text-[10px] ${
+                          d.status === "aprovado" ? "bg-green-500/10 text-green-700 border-green-300" :
+                          d.status === "contestado" ? "bg-red-500/10 text-red-700 border-red-300" :
+                          "bg-yellow-500/10 text-yellow-700 border-yellow-300"
+                        }`}>{d.status}</Badge>
+                        <span className="font-semibold">{fmtBrl(d.valorTotal)}</span>
+                      </div>
+                      <span className="text-muted-foreground">{new Date(d.enviadoEm).toLocaleString("pt-BR")}</span>
+                    </div>
+                    {d.motivoContestacao && (
+                      <p className="text-muted-foreground italic">Motivo: {d.motivoContestacao}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <Separator />
         <div>
