@@ -1,30 +1,19 @@
 
 
-# Duas alterações pontuais
+# Corrigir edição de fornecedor com campos vazios
 
-## 1. Renomear status "Demonstrativo Enviado" → "Gerar Boleto de Aprovação"
+## Problema
+O `SupplierForm` usa `useState(initial?.name ?? "")` que apenas define o valor na **primeira montagem** do componente. Como o `Dialog` permanece montado, quando o usuario clica para editar, o `initial` muda mas os estados internos nao atualizam.
 
-Substituir todas as ocorrências em `src/lib/purchases.ts` e `src/components/processes/StageActionCard.tsx`:
+## Solucao
+Adicionar um `useEffect` que sincroniza os campos do formulario sempre que `initial` ou `open` mudar. Quando o dialog abre, os campos sao preenchidos com os dados do fornecedor selecionado (ou limpos para novo cadastro).
 
-- `"Peças: Demonstrativo Enviado"` → `"Peças: Gerar Boleto de Aprovação"`
-- `"Cerâmico: Demonstrativo Enviado"` → `"Cerâmico: Gerar Boleto de Aprovação"`
-- Atualizar a verificação `isDemonstrative` no StageActionCard para usar `"Gerar Boleto de Aprovação"` em vez de `"Demonstrativo Enviado"`
-- Atualizar a cor no `getStatusColor` para o novo nome
+## Arquivo: `src/components/suppliers/SupplierForm.tsx`
+- Importar `useEffect`
+- Adicionar `useEffect` que observa `initial` e `open`, resetando todos os estados (`name`, `document`, `email`, `branch`, `buyer`, `margin`) com os valores de `initial` quando o dialog abre
 
-## 2. Disponibilizar botão de PDF a partir da etapa de Precificação
-
-No `StageActionCard.tsx`, expandir a condição de visibilidade dos botões PDF/WhatsApp para incluir os estados anteriores ao envio do demonstrativo:
-
-- `"Peças: Aguardando Demonstrativo"` — já pode gerar PDF para revisão interna
-- `"Cerâmico: Em Precificação"` — idem
-- Além dos estados `"Gerar Boleto de Aprovação"` (demonstrativo enviado)
-
-A lógica de PDF no detalhe da compra (`PurchaseDetail.tsx`) já mostra para todos os demonstrativos versionados — sem alteração necessária.
-
-## Arquivos afetados
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/lib/purchases.ts` | Renomear status em arrays, roles, e getStatusColor |
-| `src/components/processes/StageActionCard.tsx` | Renomear check + expandir visibilidade PDF |
+## Impacto
+- Nenhuma alteracao de banco
+- Apenas 1 arquivo modificado
+- Resolve tanto a edicao quanto o reset ao criar novo fornecedor
 

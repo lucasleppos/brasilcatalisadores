@@ -38,12 +38,13 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
 
   const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
-  const isDemonstrative = purchase.status.includes("Demonstrativo Enviado");
+  const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isWeighing = purchase.status === "Peças: Pesagem Realizada";
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
+  const canGeneratePdf = isDemonstrative || purchase.status === "Peças: Aguardando Demonstrativo" || purchase.status === "Cerâmico: Em Precificação";
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -351,28 +352,67 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
         ) : (
           /* Default: simple advance */
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="default" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-                Concluir {purchase.status}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Concluir etapa?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  A compra de <strong>{purchase.supplierName}</strong> avançará de "{purchase.status}" para a próxima etapa.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirm} disabled={loading}>
-                  {loading ? "Processando..." : "Confirmar"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            {canGeneratePdf && (
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const demos = await loadDemonstrativos(purchase.id);
+                    const latest = demos[demos.length - 1];
+                    if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
+                    const url = await generateDemonstrativoPdf(purchase.id, latest.id);
+                    window.open(url, "_blank");
+                  } catch { toast.error("Erro ao gerar PDF"); } finally { setLoading(false); }
+                }}>
+                  <FileDown className="h-3 w-3 mr-1" />PDF
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const demos = await loadDemonstrativos(purchase.id);
+                    const latest = demos[demos.length - 1];
+                    if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
+                    const url = await generateDemonstrativoPdf(purchase.id, latest.id);
+                    const blob = await fetch(url).then(r => r.blob());
+                    const file = new File([blob], "demonstrativo.pdf", { type: "application/pdf" });
+                    if (navigator.share && navigator.canShare({ files: [file] })) {
+                      await navigator.share({ files: [file], title: `Demonstrativo ${purchase.purchaseNumber}` });
+                    } else {
+                      const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
+                      window.open(`https://wa.me/?text=${msg}`, "_blank");
+                      toast.info("PDF gerado. Anexe o arquivo baixado na conversa do WhatsApp.");
+                      const a = document.createElement("a"); a.href = url; a.download = "demonstrativo.pdf"; a.click();
+                    }
+                  } catch { toast.error("Erro ao compartilhar"); } finally { setLoading(false); }
+                }}>
+                  <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
+                </Button>
+              </div>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="default" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                  Concluir {purchase.status}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Concluir etapa?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    A compra de <strong>{purchase.supplierName}</strong> avançará de "{purchase.status}" para a próxima etapa.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirm} disabled={loading}>
+                    {loading ? "Processando..." : "Confirmar"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -18,7 +18,7 @@ const COMMON_STATUSES = [
 // Peças flow statuses
 const PECAS_STATUSES = [
   "Peças: Aguardando Demonstrativo",
-  "Peças: Demonstrativo Enviado",
+  "Peças: Gerar Boleto de Aprovação",
   "Peças: Demonstrativo Contestado",
   "Peças: Aprovado - Aguardando Pagamento",
   "Peças: Pagamento Realizado",
@@ -39,7 +39,7 @@ const CERAMICO_STATUSES = [
   "Cerâmico: Lab em Análise",
   "Cerâmico: Resultado Incluído",
   "Cerâmico: Em Precificação",
-  "Cerâmico: Demonstrativo Enviado",
+  "Cerâmico: Gerar Boleto de Aprovação",
   "Cerâmico: Demonstrativo Contestado",
   "Cerâmico: Aprovado",
   "Cerâmico: Encerrado",
@@ -97,7 +97,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Em Conferência": ["operacional"],
   // Peças
   "Peças: Aguardando Demonstrativo": ["admin", "super_admin"],
-  "Peças: Demonstrativo Enviado": ["admin", "super_admin"],
+  "Peças: Gerar Boleto de Aprovação": ["admin", "super_admin"],
   "Peças: Demonstrativo Contestado": ["admin", "super_admin"],
   "Peças: Aprovado - Aguardando Pagamento": ["admin", "super_admin"],
   "Peças: Pagamento Realizado": ["admin", "super_admin"],
@@ -115,7 +115,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Cerâmico: Lab em Análise": ["laboratorio"],
   "Cerâmico: Resultado Incluído": ["laboratorio"],
   "Cerâmico: Em Precificação": ["admin", "super_admin"],
-  "Cerâmico: Demonstrativo Enviado": ["admin", "super_admin"],
+  "Cerâmico: Gerar Boleto de Aprovação": ["admin", "super_admin"],
   "Cerâmico: Demonstrativo Contestado": ["admin", "super_admin"],
   "Cerâmico: Aprovado": ["admin", "super_admin"],
   "Cerâmico: Encerrado": [],
@@ -139,7 +139,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
 const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Peças: Aguardando Demonstrativo",
-  "Peças: Demonstrativo Enviado",
+  "Peças: Gerar Boleto de Aprovação",
   // "Peças: Demonstrativo Contestado" is a loop state, not in linear sequence
   "Peças: Aprovado - Aguardando Pagamento",
   "Peças: Pagamento Realizado",
@@ -160,7 +160,7 @@ const CERAMICO_FLOW: string[] = [
   "Cerâmico: Lab em Análise",
   "Cerâmico: Resultado Incluído",
   "Cerâmico: Em Precificação",
-  "Cerâmico: Demonstrativo Enviado",
+  "Cerâmico: Gerar Boleto de Aprovação",
   // "Cerâmico: Demonstrativo Contestado" is a loop state
   "Cerâmico: Aprovado",
   // After Aprovado, parallel sub-flows start — no more linear progression
@@ -623,7 +623,7 @@ export function getStatusColor(status: string): string {
   if (status.includes("Conferência")) return "bg-cyan-500/10 text-cyan-700 border-cyan-300";
   // Peças
   if (status.includes("Demonstrativo Contestado")) return "bg-red-500/10 text-red-700 border-red-300";
-  if (status.includes("Demonstrativo Enviado")) return "bg-emerald-500/10 text-emerald-700 border-emerald-300";
+  if (status.includes("Gerar Boleto de Aprovação")) return "bg-emerald-500/10 text-emerald-700 border-emerald-300";
   if (status.includes("Demonstrativo")) return "bg-yellow-500/10 text-yellow-700 border-yellow-300";
   if (status.includes("Pagamento")) return "bg-green-500/10 text-green-700 border-green-300";
   if (status.includes("Peso Divergente")) return "bg-red-500/10 text-red-700 border-red-300";
