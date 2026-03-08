@@ -15,6 +15,7 @@ import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 export default function SuppliersPage() {
+  const { role, profile } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const canCreate = canDo("fornecedores", "create");
   const canEdit = canDo("fornecedores", "edit");
@@ -23,20 +24,32 @@ export default function SuppliersPage() {
   const hideMargin = isFieldHidden("fornecedores", "margin");
   const hideDocument = isFieldHidden("fornecedores", "document");
   const hideEmail = isFieldHidden("fornecedores", "email");
+  const isBuyer = role === "comprador";
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
+  const [buyerFilter, setBuyerFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
 
-  const reload = async () => setSuppliers(await loadSuppliers());
+  const reload = async () => {
+    let data = await loadSuppliers();
+    if (isBuyer && profile) {
+      data = data.filter(s => s.buyer === profile.full_name);
+    }
+    setSuppliers(data);
+  };
   useEffect(() => { reload(); }, []);
 
-  const filtered = suppliers.filter((s) =>
-    [s.name, s.document, s.email, s.branch, s.buyer]
-      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
-  );
+  const buyers = [...new Set(suppliers.map(s => s.buyer).filter(Boolean))];
+
+  const filtered = suppliers.filter((s) => {
+    const matchSearch = [s.name, s.document, s.email, s.branch, s.buyer]
+      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
+    const matchBuyer = buyerFilter === "all" || s.buyer === buyerFilter;
+    return matchSearch && matchBuyer;
+  });
 
   const { sorted, sort, toggleSort } = useSortable(filtered);
 
