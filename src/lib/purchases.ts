@@ -152,7 +152,7 @@ export const PECAS_FLOW: string[] = [
   "Peças: Encerrado",
 ];
 
-const CERAMICO_FLOW: string[] = [
+export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
