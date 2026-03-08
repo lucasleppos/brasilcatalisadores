@@ -160,7 +160,7 @@ const CERAMICO_FLOW: string[] = [
   "Cerâmico: Lab em Análise",
   "Cerâmico: Resultado Incluído",
   "Cerâmico: Em Precificação",
-  "Cerâmico: Demonstrativo Enviado",
+  "Cerâmico: Gerar Boleto de Aprovação",
   // "Cerâmico: Demonstrativo Contestado" is a loop state
   "Cerâmico: Aprovado",
   // After Aprovado, parallel sub-flows start — no more linear progression
