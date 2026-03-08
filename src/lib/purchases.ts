@@ -136,7 +136,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
 
 // ===== State Machine =====
 
-const PECAS_FLOW: string[] = [
+export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
