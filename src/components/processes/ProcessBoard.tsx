@@ -4,12 +4,38 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
-import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, getFlowStatuses, getStatusColor, isPurchaseClosed, isInParallelPhase } from "@/lib/purchases";
+import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, getStatusColor, isPurchaseClosed, isInParallelPhase, PECAS_FLOW, CERAMICO_FLOW, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import StageActionCard from "./StageActionCard";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Build ordered display stages: unique stages from both flows in flowchart order,
+// plus special loop/branch states and parallel bucket
+const ORDERED_DISPLAY_STAGES: string[] = (() => {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  const addUnique = (s: string) => { if (!seen.has(s)) { seen.add(s); ordered.push(s); } };
+
+  // Common stages first (shared prefix of both flows)
+  const commonEnd = 3; // first 3 are common
+  for (let i = 0; i < commonEnd; i++) addUnique(PECAS_FLOW[i]);
+
+  // Peças flow (after common)
+  for (let i = commonEnd; i < PECAS_FLOW.length; i++) addUnique(PECAS_FLOW[i]);
+  // Add loop states not in linear flow
+  addUnique("Peças: Demonstrativo Contestado");
+  addUnique("Peças: Peso Divergente");
+
+  // Cerâmico flow (after common)
+  for (let i = commonEnd; i < CERAMICO_FLOW.length; i++) addUnique(CERAMICO_FLOW[i]);
+  addUnique("Cerâmico: Demonstrativo Contestado");
+  // Parallel bucket
+  addUnique("Cerâmico: Aprovado (Paralelo)");
+
+  return ordered;
+})();
 
 export default function ProcessBoard() {
   const { role } = useAuth();
@@ -32,64 +58,45 @@ export default function ProcessBoard() {
     return result;
   }, [purchases, supplierFilter, buyerFilter]);
 
-  // Collect all statuses that appear in current purchases
-  const allActiveStatuses = useMemo(() => {
-    const statuses = new Set<string>();
-    filtered.forEach((p) => {
-      statuses.add(p.status);
-    });
-    return [...statuses];
-  }, [filtered]);
+  const isAdmin = role === "super_admin" || role === "admin";
 
-  // Stages the current user can act on
-  const userStages = useMemo(() => {
+  // Fixed stages the user can see (based on role, always in flowchart order)
+  const displayStages = useMemo(() => {
     if (!canAdvance) return [];
-    if (role === "super_admin" || role === "admin") return allActiveStatuses;
-    return allActiveStatuses.filter((s) => canUserActOnStage(role, s));
-  }, [role, canAdvance, allActiveStatuses]);
+    if (isAdmin) return ORDERED_DISPLAY_STAGES;
+    return ORDERED_DISPLAY_STAGES.filter((s) => canUserActOnStage(role, s));
+  }, [role, canAdvance, isAdmin]);
 
-  // Pending tasks: purchases in stages the user can act on (excluding closed)
-  const pendingTasks = useMemo(() => {
-    return filtered.filter((p) => {
-      if (isPurchaseClosed(p)) return false;
-      // For parallel phase cerâmico, show as pending if sub-flows aren't done
-      if (isInParallelPhase(p)) return true;
-      return userStages.includes(p.status);
-    });
-  }, [filtered, userStages]);
-
-  // Group pending by status
+  // Group purchases by stage
   const tasksByStage = useMemo(() => {
     const map: Record<string, Purchase[]> = {};
-    userStages.forEach((s) => { map[s] = []; });
-    // Add special "Paralelo" bucket for cerâmico in parallel phase
-    map["Cerâmico: Aprovado (Paralelo)"] = [];
-    pendingTasks.forEach((p) => {
+    displayStages.forEach((s) => { map[s] = []; });
+
+    filtered.forEach((p) => {
+      if (isPurchaseClosed(p)) return;
       if (isInParallelPhase(p)) {
-        map["Cerâmico: Aprovado (Paralelo)"].push(p);
+        if (map["Cerâmico: Aprovado (Paralelo)"]) map["Cerâmico: Aprovado (Paralelo)"].push(p);
       } else if (map[p.status]) {
         map[p.status].push(p);
       }
     });
     return map;
-  }, [pendingTasks, userStages]);
+  }, [filtered, displayStages]);
 
-  // Stages with pending items (for tabs)
-  const activeStages = useMemo(() => {
-    const stages = userStages.filter((s) => (tasksByStage[s]?.length || 0) > 0);
-    if ((tasksByStage["Cerâmico: Aprovado (Paralelo)"]?.length || 0) > 0) {
-      stages.push("Cerâmico: Aprovado (Paralelo)");
-    }
-    return stages;
-  }, [userStages, tasksByStage]);
+  // Pending count
+  const pendingCount = useMemo(() =>
+    displayStages.reduce((sum, s) => sum + (tasksByStage[s]?.length || 0), 0)
+  , [displayStages, tasksByStage]);
+
+  // Default tab: first stage with items
+  const defaultTab = useMemo(() =>
+    displayStages.find((s) => (tasksByStage[s]?.length || 0) > 0) || displayStages[0] || "Aguardando Inclusão"
+  , [displayStages, tasksByStage]);
 
   // KPIs
   const totalValue = filtered.reduce((sum, p) => sum + p.totalBrl, 0);
   const activeCount = filtered.filter((p) => !isPurchaseClosed(p)).length;
   const completedCount = filtered.filter((p) => isPurchaseClosed(p)).length;
-
-  const isAdmin = role === "super_admin" || role === "admin";
-  const defaultTab = activeStages[0] || "Aguardando Inclusão";
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -146,27 +153,6 @@ export default function ProcessBoard() {
         </Card>
       </div>
 
-      {/* Pipeline summary */}
-      {isAdmin && (
-        <Card>
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-sm font-medium">Pipeline Completo</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="flex flex-wrap gap-2">
-              {allActiveStatuses.map((s) => {
-                const count = filtered.filter(p => p.status === s).length;
-                return (
-                  <Badge key={s} variant={count > 0 ? "default" : "outline"} className="text-xs">
-                    {s}: {count}
-                  </Badge>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <Select value={supplierFilter} onValueChange={setSupplierFilter}>
@@ -184,12 +170,12 @@ export default function ProcessBoard() {
           </SelectContent>
         </Select>
         <Badge variant="secondary" className="text-xs h-8 flex items-center">
-          {pendingTasks.length} tarefa{pendingTasks.length !== 1 ? "s" : ""} pendente{pendingTasks.length !== 1 ? "s" : ""}
+          {pendingCount} tarefa{pendingCount !== 1 ? "s" : ""} pendente{pendingCount !== 1 ? "s" : ""}
         </Badge>
       </div>
 
-      {/* Tasks by stage */}
-      {pendingTasks.length === 0 ? (
+      {/* Tasks by stage — fixed tabs */}
+      {displayStages.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma tarefa pendente para o seu perfil.</p>
@@ -198,23 +184,39 @@ export default function ProcessBoard() {
       ) : (
         <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
-            {activeStages.map((stage) => {
+            {displayStages.map((stage) => {
               const count = tasksByStage[stage]?.length || 0;
+              // Shorten label for tabs
+              const shortLabel = stage
+                .replace("Peças: ", "P: ")
+                .replace("Cerâmico: ", "C: ")
+                .replace(" (Paralelo)", " ∥");
               return (
                 <TabsTrigger key={stage} value={stage} className="text-xs">
-                  {stage} {count > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">{count}</Badge>}
+                  {shortLabel}
+                  <Badge variant={count > 0 ? "default" : "outline"} className="ml-1 text-[10px] h-4 px-1 min-w-[1.25rem] justify-center">
+                    {count}
+                  </Badge>
                 </TabsTrigger>
               );
             })}
           </TabsList>
 
-          {activeStages.map((stage) => (
+          {displayStages.map((stage) => (
             <TabsContent key={stage} value={stage}>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {(tasksByStage[stage] || []).map((purchase) => (
-                  <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} />
-                ))}
-              </div>
+              {(tasksByStage[stage]?.length || 0) === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground text-sm">Nenhum pedido nesta etapa.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {(tasksByStage[stage] || []).map((purchase) => (
+                    <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} />
+                  ))}
+                </div>
+              )}
             </TabsContent>
           ))}
         </Tabs>
