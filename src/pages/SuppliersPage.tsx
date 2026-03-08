@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Plus, Upload, Pencil, Trash2, Search } from "lucide-react";
@@ -9,6 +10,7 @@ import { Supplier, loadSuppliers, addSupplier, updateSupplier, deleteSupplier, i
 import SupplierForm from "@/components/suppliers/SupplierForm";
 import SupplierImport from "@/components/suppliers/SupplierImport";
 import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
