@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, FlaskConical, FileText } from "lucide-react";
+import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle } from "lucide-react";
 import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
-import { loadDemonstrativos, Demonstrativo } from "@/lib/demonstrativos";
+import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
+import { toast } from "sonner";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
