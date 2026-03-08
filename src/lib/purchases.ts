@@ -39,7 +39,7 @@ const CERAMICO_STATUSES = [
   "Cerâmico: Lab em Análise",
   "Cerâmico: Resultado Incluído",
   "Cerâmico: Em Precificação",
-  "Cerâmico: Demonstrativo Enviado",
+  "Cerâmico: Gerar Boleto de Aprovação",
   "Cerâmico: Demonstrativo Contestado",
   "Cerâmico: Aprovado",
   "Cerâmico: Encerrado",
