@@ -137,6 +137,91 @@ export type Database = {
         }
         Relationships: []
       }
+      demonstrativos: {
+        Row: {
+          created_by: string | null
+          enviado_em: string
+          id: string
+          motivo_contestacao: string | null
+          purchase_id: string
+          respondido_em: string | null
+          status: string
+          valor_total: number
+          versao: number
+        }
+        Insert: {
+          created_by?: string | null
+          enviado_em?: string
+          id?: string
+          motivo_contestacao?: string | null
+          purchase_id: string
+          respondido_em?: string | null
+          status?: string
+          valor_total?: number
+          versao?: number
+        }
+        Update: {
+          created_by?: string | null
+          enviado_em?: string
+          id?: string
+          motivo_contestacao?: string | null
+          purchase_id?: string
+          respondido_em?: string | null
+          status?: string
+          valor_total?: number
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demonstrativos_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_results: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          pd_ppm: number
+          pt_ppm: number
+          purchase_id: string
+          rh_ppm: number
+          versao: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pd_ppm?: number
+          pt_ppm?: number
+          purchase_id: string
+          rh_ppm?: number
+          versao?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pd_ppm?: number
+          pt_ppm?: number
+          purchase_id?: string
+          rh_ppm?: number
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_results_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           created_at: string
@@ -243,12 +328,16 @@ export type Database = {
       }
       purchases: {
         Row: {
+          buyer: string
           created_at: string | null
           date: string
           erp_number: string | null
+          fin_status: string | null
           id: string
           location: string
+          material_flow: string | null
           notes: string | null
+          op_status: string | null
           purchase_number: string
           status: string
           status_history: Json | null
@@ -256,14 +345,21 @@ export type Database = {
           supplier_name: string
           total_brl: number | null
           transfer_status: string | null
+          weight_declared: number | null
+          weight_loss: number | null
+          weight_real: number | null
         }
         Insert: {
+          buyer?: string
           created_at?: string | null
           date?: string
           erp_number?: string | null
+          fin_status?: string | null
           id?: string
           location?: string
+          material_flow?: string | null
           notes?: string | null
+          op_status?: string | null
           purchase_number: string
           status?: string
           status_history?: Json | null
@@ -271,14 +367,21 @@ export type Database = {
           supplier_name: string
           total_brl?: number | null
           transfer_status?: string | null
+          weight_declared?: number | null
+          weight_loss?: number | null
+          weight_real?: number | null
         }
         Update: {
+          buyer?: string
           created_at?: string | null
           date?: string
           erp_number?: string | null
+          fin_status?: string | null
           id?: string
           location?: string
+          material_flow?: string | null
           notes?: string | null
+          op_status?: string | null
           purchase_number?: string
           status?: string
           status_history?: Json | null
@@ -286,6 +389,9 @@ export type Database = {
           supplier_name?: string
           total_brl?: number | null
           transfer_status?: string | null
+          weight_declared?: number | null
+          weight_loss?: number | null
+          weight_real?: number | null
         }
         Relationships: []
       }
