@@ -167,7 +167,7 @@ export const CERAMICO_FLOW: string[] = [
   "Cerâmico: Encerrado",
 ];
 
-const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
+export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
 
 export function getFlowStatuses(materialFlow: MaterialFlow | null): string[] {
   if (materialFlow === "pecas") return PECAS_FLOW;
