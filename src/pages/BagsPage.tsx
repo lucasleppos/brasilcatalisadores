@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bag, loadBags } from "@/lib/bags";
 import { BagCard } from "@/components/bags/BagCard";
 import { BagDetail } from "@/components/bags/BagDetail";
@@ -9,8 +10,8 @@ import { NewBagDialog } from "@/components/bags/NewBagDialog";
 import { AllocationPanel } from "@/components/bags/AllocationPanel";
 import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function BagsPage() {
   const { canDo } = usePermissions();
