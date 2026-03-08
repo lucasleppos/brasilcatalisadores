@@ -8,58 +8,58 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Package, Search, Trash2, Eye, Plus, Pencil, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Purchase, PurchaseStatus, PURCHASE_STATUSES, loadPurchases, updatePurchaseStatus, deletePurchase } from "@/lib/purchases";
+import { Purchase, loadPurchases, updatePurchaseStatus, deletePurchase, getFlowStatuses, getStatusColor, ALL_STATUSES } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const statusColors: Record<string, string> = {
-  "Recebimento": "bg-blue-500/10 text-blue-700 border-blue-300",
-  "Conferência": "bg-cyan-500/10 text-cyan-700 border-cyan-300",
-  "Separação": "bg-indigo-500/10 text-indigo-700 border-indigo-300",
-  "Corte da Peça": "bg-violet-500/10 text-violet-700 border-violet-300",
-  "Trituração": "bg-orange-500/10 text-orange-700 border-orange-300",
-  "Homogeneização": "bg-amber-500/10 text-amber-700 border-amber-300",
-  "Amostragem": "bg-yellow-500/10 text-yellow-700 border-yellow-300",
-  "Análise": "bg-lime-500/10 text-lime-700 border-lime-300",
-  "Aprovação do Fornecedor": "bg-emerald-500/10 text-emerald-700 border-emerald-300",
-  "Pagamento": "bg-green-500/10 text-green-700 border-green-300",
-  "Enviado ao Bag": "bg-teal-500/10 text-teal-700 border-teal-300",
-  "Exportação/Venda": "bg-primary/10 text-primary border-primary/30",
-};
-
 export default function PurchasesPage() {
+  const { role, profile } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const canCreate = canDo("compras", "create");
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
   const hideTotal = isFieldHidden("compras", "total_brl");
   const hideErp = isFieldHidden("compras", "erp_number");
+  const isBuyer = role === "comprador";
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [buyerFilter, setBuyerFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
   const [editPurchase, setEditPurchase] = useState<Purchase | null>(null);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
-  const reload = async () => setPurchases(await loadPurchases());
+  const reload = async () => {
+    let data = await loadPurchases();
+    // Buyer role: filter to only their purchases
+    if (isBuyer && profile) {
+      data = data.filter(p => p.buyer === profile.full_name);
+    }
+    setPurchases(data);
+  };
   useEffect(() => { reload(); }, []);
 
+  const buyers = [...new Set(purchases.map(p => p.buyer).filter(Boolean))];
+  const activeStatuses = [...new Set(purchases.map(p => p.status))];
+
   const filtered = purchases.filter((p) => {
-    const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber]
+    const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber, p.buyer]
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchBuyer = buyerFilter === "all" || p.buyer === buyerFilter;
+    return matchSearch && matchStatus && matchBuyer;
   });
 
   const { sorted, sort, toggleSort } = useSortable(filtered);
 
-  const handleStatusChange = async (id: string, status: PurchaseStatus) => {
+  const handleStatusChange = async (id: string, status: string) => {
     await updatePurchaseStatus(id, status);
     reload();
   };
@@ -83,20 +83,29 @@ export default function PurchasesPage() {
         )}
       </div>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-center flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Buscar por fornecedor, nº pedido ou ERP..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+          <Input placeholder="Buscar por fornecedor, nº pedido, comprador..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
-            {PURCHASE_STATUSES.map((s) => (
+            {activeStatuses.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {!isBuyer && (
+          <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+            <SelectTrigger className="h-8 text-sm w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos compradores</SelectItem>
+              {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>
@@ -106,6 +115,7 @@ export default function PurchasesPage() {
               <TableRow>
                 <SortableTableHead column="purchaseNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nº Pedido</SortableTableHead>
                 <SortableTableHead column="supplierName" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Fornecedor</SortableTableHead>
+                <SortableTableHead column="buyer" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Comprador</SortableTableHead>
                 {!hideErp && <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>}
                 <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Itens</SortableTableHead>
                 {!hideTotal && <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>}
@@ -116,7 +126,7 @@ export default function PurchasesPage() {
             <TableBody>
               {sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={hideTotal && hideErp ? 5 : hideTotal || hideErp ? 6 : 7} className="text-center py-8 text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
@@ -125,6 +135,7 @@ export default function PurchasesPage() {
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
                     {!hideErp && <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>}
                     <TableCell className="text-sm">{p.items.length}</TableCell>
                     {!hideTotal && (
@@ -155,36 +166,21 @@ export default function PurchasesPage() {
                       </TableCell>
                     )}
                     <TableCell>
-                      {canEdit ? (
-                        <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v as PurchaseStatus)}>
-                          <SelectTrigger className="h-7 text-xs w-44 border-0 p-0">
-                            <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
-                              {p.status}
-                            </Badge>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PURCHASE_STATUSES.map((s) => (
-                              <SelectItem key={s} value={s}>{s}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="outline" className={`text-xs ${statusColors[p.status] || ""}`}>
-                          {p.status}
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
+                        {p.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 items-center">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
                           <Eye className="h-3 w-3" />
                         </Button>
-                        {canEdit && (
+                        {canEdit && !isBuyer && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditPurchase(p)}>
                             <Pencil className="h-3 w-3" />
                           </Button>
                         )}
-                        {canDelete && (
+                        {canDelete && !isBuyer && (
                           <>
                             <div className="w-2" />
                             <AlertDialog>

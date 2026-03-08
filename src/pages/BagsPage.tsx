@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bag, loadBags } from "@/lib/bags";
 import { BagCard } from "@/components/bags/BagCard";
 import { BagDetail } from "@/components/bags/BagDetail";
@@ -9,21 +10,27 @@ import { NewBagDialog } from "@/components/bags/NewBagDialog";
 import { AllocationPanel } from "@/components/bags/AllocationPanel";
 import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function BagsPage() {
+  const { role, profile } = useAuth();
   const { canDo } = usePermissions();
   const canCreate = canDo("bags", "create");
+  const isBuyer = role === "comprador";
 
   const [bags, setBags] = useState<Bag[]>([]);
   const [selectedBag, setSelectedBag] = useState<Bag | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterBuyer, setFilterBuyer] = useState<string>("all");
 
   const load = async () => {
-    const data = await loadBags();
+    let data = await loadBags();
+    if (isBuyer && profile) {
+      data = data.filter(b => b.buyer === profile.full_name);
+    }
     setBags(data);
     if (selectedBag) {
       const updated = data.find(b => b.id === selectedBag.id);
@@ -34,9 +41,12 @@ export default function BagsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const buyers = [...new Set(bags.map(b => b.buyer).filter(Boolean))];
+
   const filtered = bags.filter(b => {
     if (filterStatus !== "all" && b.status !== filterStatus) return false;
     if (filterType !== "all" && b.materialType !== filterType) return false;
+    if (filterBuyer !== "all" && b.buyer !== filterBuyer) return false;
     return true;
   });
 
@@ -86,6 +96,15 @@ export default function BagsPage() {
                     <SelectItem value="cliente">Cliente</SelectItem>
                   </SelectContent>
                 </Select>
+                {!isBuyer && (
+                  <Select value={filterBuyer} onValueChange={setFilterBuyer}>
+                    <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos Compradores</SelectItem>
+                      {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {filtered.length === 0 ? (

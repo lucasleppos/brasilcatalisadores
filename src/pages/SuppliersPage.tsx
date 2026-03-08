@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Plus, Upload, Pencil, Trash2, Search } from "lucide-react";
@@ -9,10 +10,12 @@ import { Supplier, loadSuppliers, addSupplier, updateSupplier, deleteSupplier, i
 import SupplierForm from "@/components/suppliers/SupplierForm";
 import SupplierImport from "@/components/suppliers/SupplierImport";
 import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 export default function SuppliersPage() {
+  const { role, profile } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const canCreate = canDo("fornecedores", "create");
   const canEdit = canDo("fornecedores", "edit");
@@ -21,20 +24,32 @@ export default function SuppliersPage() {
   const hideMargin = isFieldHidden("fornecedores", "margin");
   const hideDocument = isFieldHidden("fornecedores", "document");
   const hideEmail = isFieldHidden("fornecedores", "email");
+  const isBuyer = role === "comprador";
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
+  const [buyerFilter, setBuyerFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
 
-  const reload = async () => setSuppliers(await loadSuppliers());
+  const reload = async () => {
+    let data = await loadSuppliers();
+    if (isBuyer && profile) {
+      data = data.filter(s => s.buyer === profile.full_name);
+    }
+    setSuppliers(data);
+  };
   useEffect(() => { reload(); }, []);
 
-  const filtered = suppliers.filter((s) =>
-    [s.name, s.document, s.email, s.branch, s.buyer]
-      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
-  );
+  const buyers = [...new Set(suppliers.map(s => s.buyer).filter(Boolean))];
+
+  const filtered = suppliers.filter((s) => {
+    const matchSearch = [s.name, s.document, s.email, s.branch, s.buyer]
+      .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
+    const matchBuyer = buyerFilter === "all" || s.buyer === buyerFilter;
+    return matchSearch && matchBuyer;
+  });
 
   const { sorted, sort, toggleSort } = useSortable(filtered);
 
@@ -79,9 +94,20 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-        <Input placeholder="Buscar fornecedor..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+      <div className="flex gap-3 items-center flex-wrap">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar fornecedor..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+        </div>
+        {!isBuyer && (
+          <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+            <SelectTrigger className="h-8 text-sm w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos compradores</SelectItem>
+              {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>

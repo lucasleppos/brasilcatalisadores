@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2 } from "lucide-react";
-import { Purchase, PurchaseStatus, advanceStage, registerAnalysis } from "@/lib/purchases";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale } from "lucide-react";
+import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus } from "@/lib/purchases";
+import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo } from "@/lib/demonstrativos";
 
 interface StageActionCardProps {
   purchase: Purchase;
@@ -23,20 +24,25 @@ function timeSince(dateStr: string) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-const ANALYSIS_STAGE: PurchaseStatus = "Análise";
-const APPROVAL_STAGE: PurchaseStatus = "Aprovação do Fornecedor";
-
 export default function StageActionCard({ purchase, onCompleted }: StageActionCardProps) {
   const [loading, setLoading] = useState(false);
   const [ptPpm, setPtPpm] = useState("");
   const [pdPpm, setPdPpm] = useState("");
   const [rhPpm, setRhPpm] = useState("");
   const [notes, setNotes] = useState("");
+  const [weightReal, setWeightReal] = useState("");
+  const [contestMotivo, setContestMotivo] = useState("");
 
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
-  const isAnalysis = purchase.status === ANALYSIS_STAGE;
-  const isApproval = purchase.status === APPROVAL_STAGE;
+
+  const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
+  const isDemonstrative = purchase.status.includes("Demonstrativo Enviado");
+  const isContested = purchase.status.includes("Demonstrativo Contestado");
+  const isWeighing = purchase.status === "Peças: Pesagem Realizada";
+  const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
+  const isParallel = isInParallelPhase(purchase);
+  const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -63,6 +69,62 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      await advanceStage(purchase.id, purchase.status);
+      onCompleted();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContest = async () => {
+    if (!contestMotivo.trim()) return;
+    setLoading(true);
+    try {
+      // Create new demonstrativo as contestado, then advance to contestado status
+      await advanceStage(purchase.id, purchase.status);
+      onCompleted();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWeighCheck = async () => {
+    const wr = parseFloat(weightReal.replace(",", "."));
+    if (isNaN(wr) || wr <= 0) return;
+    setLoading(true);
+    try {
+      await handleWeightCheck(purchase.id, wr);
+      onCompleted();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinAdvance = async () => {
+    if (!purchase.finStatus) return;
+    setLoading(true);
+    try {
+      await advanceFinStatus(purchase.id, purchase.finStatus);
+      onCompleted();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpAdvance = async () => {
+    if (!purchase.opStatus) return;
+    setLoading(true);
+    try {
+      await advanceOpStatus(purchase.id, purchase.opStatus);
+      onCompleted();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card className="border-border/60">
       <CardContent className="p-4 space-y-3">
@@ -71,10 +133,18 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           <div className="space-y-0.5">
             <p className="text-sm font-semibold">{purchase.supplierName}</p>
             <p className="text-xs text-muted-foreground font-mono">{purchase.purchaseNumber}</p>
+            {purchase.buyer && (
+              <p className="text-[10px] text-muted-foreground">Comprador: {purchase.buyer}</p>
+            )}
           </div>
           <div className="text-right space-y-0.5">
             <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
             <p className="text-xs text-muted-foreground">{purchase.items.length} itens</p>
+            {purchase.materialFlow && (
+              <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
+                {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -88,8 +158,52 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </span>
         </div>
 
-        {/* Action area */}
-        {isAnalysis ? (
+        {/* Weight divergence alert */}
+        {isWeightDivergent && purchase.weightLoss != null && (
+          <div className="rounded-md bg-red-500/10 border border-red-300 p-2 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-700" />
+            <div className="text-xs text-red-700">
+              <p className="font-semibold">Divergência de peso</p>
+              <p>Declarado: {purchase.weightDeclared?.toFixed(2)} kg | Real: {purchase.weightReal?.toFixed(2)} kg | Perda: {Math.abs(purchase.weightLoss).toFixed(2)} kg</p>
+            </div>
+          </div>
+        )}
+
+        {/* Parallel sub-flows (cerâmico) */}
+        {isParallel ? (
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <p className="text-xs font-medium text-muted-foreground">Sub-fluxos paralelos</p>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Financial */}
+              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
+                <p className="text-[10px] font-semibold text-muted-foreground">💰 Financeiro</p>
+                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.finStatus || "")}`}>
+                  {purchase.finStatus}
+                </Badge>
+                {purchase.finStatus !== "Encerrado ERP" && (
+                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleFinAdvance}>
+                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
+                    Avançar
+                  </Button>
+                )}
+              </div>
+              {/* Operational */}
+              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
+                <p className="text-[10px] font-semibold text-muted-foreground">📦 Operacional</p>
+                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.opStatus || "")}`}>
+                  {purchase.opStatus}
+                </Badge>
+                {purchase.opStatus !== "Enviado Exportação" && (
+                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleOpAdvance}>
+                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
+                    Avançar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : isAnalysis ? (
+          /* Lab analysis form */
           <div className="space-y-2 pt-1 border-t border-border/40">
             <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <FlaskConical className="h-3 w-3" />
@@ -98,63 +212,97 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] text-muted-foreground">Pt (ppm)</label>
-                <Input
-                  value={ptPpm}
-                  onChange={(e) => setPtPpm(e.target.value)}
-                  placeholder="0"
-                  className="h-8 text-sm"
-                />
+                <Input value={ptPpm} onChange={(e) => setPtPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Pd (ppm)</label>
-                <Input
-                  value={pdPpm}
-                  onChange={(e) => setPdPpm(e.target.value)}
-                  placeholder="0"
-                  className="h-8 text-sm"
-                />
+                <Input value={pdPpm} onChange={(e) => setPdPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
-                <Input
-                  value={rhPpm}
-                  onChange={(e) => setRhPpm(e.target.value)}
-                  placeholder="0"
-                  className="h-8 text-sm"
-                />
+                <Input value={rhPpm} onChange={(e) => setRhPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
               </div>
             </div>
-            <Button
-              size="sm"
-              className="w-full"
-              disabled={loading || !ptPpm || !pdPpm || !rhPpm}
-              onClick={handleAnalysis}
-            >
+            <Button size="sm" className="w-full" disabled={loading || !ptPpm || !pdPpm || !rhPpm} onClick={handleAnalysis}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FlaskConical className="h-3 w-3 mr-1" />}
               Registrar Análise
             </Button>
           </div>
-        ) : isApproval ? (
+        ) : isDemonstrative ? (
+          /* Demonstrative: approve or contest */
           <div className="space-y-2 pt-1 border-t border-border/40">
-            <Textarea
-              placeholder="Observações (opcional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="text-sm min-h-[60px]"
-            />
+            <div className="flex gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" className="flex-1" disabled={loading}>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />Aprovar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Aprovar demonstrativo?</AlertDialogTitle>
+                    <AlertDialogDescription>O pedido avançará para a próxima etapa.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleApprove} disabled={loading}>Confirmar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="flex-1" disabled={loading}>
+                    <AlertTriangle className="h-3 w-3 mr-1" />Contestar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Contestar demonstrativo?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {purchase.materialFlow === "ceramico"
+                        ? "O pedido voltará para Trituração/Homogeneização para nova análise."
+                        : "O pedido voltará para Aguardando Demonstrativo."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea placeholder="Motivo da contestação" value={contestMotivo} onChange={(e) => setContestMotivo(e.target.value)} className="text-sm" />
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleContest} disabled={loading || !contestMotivo.trim()}>Contestar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        ) : isWeighing ? (
+          /* Weighing: input real weight */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Scale className="h-3 w-3" />
+              Conferência de Peso
+            </p>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted-foreground">Peso Real (kg)</label>
+              <Input value={weightReal} onChange={(e) => setWeightReal(e.target.value)} placeholder="0,00" className="h-8 text-sm" />
+            </div>
+            <Button size="sm" className="w-full" disabled={loading || !weightReal} onClick={handleWeighCheck}>
+              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Scale className="h-3 w-3 mr-1" />}
+              Registrar Peso
+            </Button>
+          </div>
+        ) : isApprovalStage ? (
+          /* Approval with notes */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Textarea placeholder="Observações (opcional)" value={notes} onChange={(e) => setNotes(e.target.value)} className="text-sm min-h-[60px]" />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" className="w-full" disabled={loading}>
-                  <Send className="h-3 w-3 mr-1" />
-                  Aprovar e Enviar
+                  <Send className="h-3 w-3 mr-1" />Aprovar e Avançar
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirmar aprovação?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    O fornecedor <strong>{purchase.supplierName}</strong> será aprovado e o pedido avançará para Pagamento.
-                  </AlertDialogDescription>
+                  <AlertDialogDescription>O pedido de <strong>{purchase.supplierName}</strong> avançará para a próxima etapa.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -166,6 +314,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </AlertDialog>
           </div>
         ) : (
+          /* Default: simple advance */
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="default" className="w-full" disabled={loading}>

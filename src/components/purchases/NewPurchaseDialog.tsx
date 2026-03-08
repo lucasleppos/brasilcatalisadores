@@ -224,6 +224,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       await createPurchase({
         supplierId: supplier.id,
         supplierName: supplier.name,
+        buyer: supplier.buyer || "",
         items: purchaseItems,
         notes,
         erpNumber,

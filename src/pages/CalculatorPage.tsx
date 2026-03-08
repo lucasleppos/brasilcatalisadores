@@ -118,6 +118,7 @@ export default function CalculatorPage() {
     createPurchase({
       supplierId: supplier.id,
       supplierName: supplier.name,
+      buyer: supplier.buyer || "",
       items: quoteList.map((q) => ({
         id: q.id,
         itemType: "ceramico" as const,

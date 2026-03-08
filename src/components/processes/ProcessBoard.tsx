@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
-import { Purchase, PURCHASE_STATUSES, PurchaseStatus, STAGE_ROLES, canUserActOnStage, loadPurchases } from "@/lib/purchases";
+import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, getFlowStatuses, getStatusColor, isPurchaseClosed, isInParallelPhase } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import StageActionCard from "./StageActionCard";
@@ -17,57 +17,79 @@ export default function ProcessBoard() {
   const canAdvance = canDo("processos", "advance_stage");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
+  const [buyerFilter, setBuyerFilter] = useState("all");
 
   const reload = () => loadPurchases().then(setPurchases);
   useEffect(() => { reload(); }, []);
 
   const suppliers = useMemo(() => [...new Set(purchases.map((p) => p.supplierName))], [purchases]);
-  const filtered = supplierFilter === "all" ? purchases : purchases.filter((p) => p.supplierName === supplierFilter);
+  const buyers = useMemo(() => [...new Set(purchases.map((p) => p.buyer).filter(Boolean))], [purchases]);
+
+  const filtered = useMemo(() => {
+    let result = purchases;
+    if (supplierFilter !== "all") result = result.filter((p) => p.supplierName === supplierFilter);
+    if (buyerFilter !== "all") result = result.filter((p) => p.buyer === buyerFilter);
+    return result;
+  }, [purchases, supplierFilter, buyerFilter]);
+
+  // Collect all statuses that appear in current purchases
+  const allActiveStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    filtered.forEach((p) => {
+      statuses.add(p.status);
+    });
+    return [...statuses];
+  }, [filtered]);
 
   // Stages the current user can act on
   const userStages = useMemo(() => {
-    if (canAdvance) {
-      // If user can advance stages, check which stages their role maps to
-      // Admin/super_admin can act on all stages
-      if (role === "super_admin" || role === "admin") return [...PURCHASE_STATUSES];
-      return PURCHASE_STATUSES.filter((s) => canUserActOnStage(role, s));
-    }
-    return [];
-  }, [role, canAdvance]);
+    if (!canAdvance) return [];
+    if (role === "super_admin" || role === "admin") return allActiveStatuses;
+    return allActiveStatuses.filter((s) => canUserActOnStage(role, s));
+  }, [role, canAdvance, allActiveStatuses]);
 
-  // Pending tasks: purchases in stages the user can act on
+  // Pending tasks: purchases in stages the user can act on (excluding closed)
   const pendingTasks = useMemo(() => {
-    return filtered.filter((p) => userStages.includes(p.status));
+    return filtered.filter((p) => {
+      if (isPurchaseClosed(p)) return false;
+      // For parallel phase cerâmico, show as pending if sub-flows aren't done
+      if (isInParallelPhase(p)) return true;
+      return userStages.includes(p.status);
+    });
   }, [filtered, userStages]);
 
   // Group pending by status
   const tasksByStage = useMemo(() => {
-    const map: Partial<Record<PurchaseStatus, Purchase[]>> = {};
+    const map: Record<string, Purchase[]> = {};
     userStages.forEach((s) => { map[s] = []; });
-    pendingTasks.forEach((p) => { map[p.status]?.push(p); });
+    // Add special "Paralelo" bucket for cerâmico in parallel phase
+    map["Cerâmico: Aprovado (Paralelo)"] = [];
+    pendingTasks.forEach((p) => {
+      if (isInParallelPhase(p)) {
+        map["Cerâmico: Aprovado (Paralelo)"].push(p);
+      } else if (map[p.status]) {
+        map[p.status].push(p);
+      }
+    });
     return map;
   }, [pendingTasks, userStages]);
 
   // Stages with pending items (for tabs)
   const activeStages = useMemo(() => {
-    return userStages.filter((s) => (tasksByStage[s]?.length || 0) > 0);
+    const stages = userStages.filter((s) => (tasksByStage[s]?.length || 0) > 0);
+    if ((tasksByStage["Cerâmico: Aprovado (Paralelo)"]?.length || 0) > 0) {
+      stages.push("Cerâmico: Aprovado (Paralelo)");
+    }
+    return stages;
   }, [userStages, tasksByStage]);
 
   // KPIs
   const totalValue = filtered.reduce((sum, p) => sum + p.totalBrl, 0);
-  const activeCount = filtered.filter((p) => p.status !== "Exportação/Venda").length;
-  const completedCount = filtered.filter((p) => p.status === "Exportação/Venda").length;
-
-  // Pipeline summary (all statuses)
-  const byStatus = useMemo(() => {
-    const map: Record<string, number> = {};
-    PURCHASE_STATUSES.forEach((s) => { map[s] = 0; });
-    filtered.forEach((p) => { map[p.status] = (map[p.status] || 0) + 1; });
-    return map;
-  }, [filtered]);
+  const activeCount = filtered.filter((p) => !isPurchaseClosed(p)).length;
+  const completedCount = filtered.filter((p) => isPurchaseClosed(p)).length;
 
   const isAdmin = role === "super_admin" || role === "admin";
-  const defaultTab = activeStages[0] || userStages[0] || "Recebimento";
+  const defaultTab = activeStages[0] || "Aguardando Inclusão";
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -132,23 +154,33 @@ export default function ProcessBoard() {
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="flex flex-wrap gap-2">
-              {PURCHASE_STATUSES.map((s) => (
-                <Badge key={s} variant={byStatus[s] > 0 ? "default" : "outline"} className="text-xs">
-                  {s}: {byStatus[s]}
-                </Badge>
-              ))}
+              {allActiveStatuses.map((s) => {
+                const count = filtered.filter(p => p.status === s).length;
+                return (
+                  <Badge key={s} variant={count > 0 ? "default" : "outline"} className="text-xs">
+                    {s}: {count}
+                  </Badge>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <Select value={supplierFilter} onValueChange={setSupplierFilter}>
           <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os fornecedores</SelectItem>
             {suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+          <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os compradores</SelectItem>
+            {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
         <Badge variant="secondary" className="text-xs h-8 flex items-center">
@@ -166,17 +198,17 @@ export default function ProcessBoard() {
       ) : (
         <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
-            {userStages.map((stage) => {
+            {activeStages.map((stage) => {
               const count = tasksByStage[stage]?.length || 0;
               return (
-                <TabsTrigger key={stage} value={stage} className="text-xs" disabled={count === 0}>
+                <TabsTrigger key={stage} value={stage} className="text-xs">
                   {stage} {count > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">{count}</Badge>}
                 </TabsTrigger>
               );
             })}
           </TabsList>
 
-          {userStages.map((stage) => (
+          {activeStages.map((stage) => (
             <TabsContent key={stage} value={stage}>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {(tasksByStage[stage] || []).map((purchase) => (
