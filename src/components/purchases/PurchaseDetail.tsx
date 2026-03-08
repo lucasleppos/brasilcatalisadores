@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, FlaskConical, FileText } from "lucide-react";
+import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle } from "lucide-react";
 import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
-import { loadDemonstrativos, Demonstrativo } from "@/lib/demonstrativos";
+import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
+import { toast } from "sonner";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -211,7 +213,34 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                         }`}>{d.status}</Badge>
                         <span className="font-semibold">{fmtBrl(d.valorTotal)}</span>
                       </div>
-                      <span className="text-muted-foreground">{new Date(d.enviadoEm).toLocaleString("pt-BR")}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
+                          try {
+                            const url = await generateDemonstrativoPdf(purchase.id, d.id);
+                            window.open(url, "_blank");
+                          } catch { toast.error("Erro ao gerar PDF"); }
+                        }}>
+                          <FileDown className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
+                          try {
+                            const url = await generateDemonstrativoPdf(purchase.id, d.id);
+                            const blob = await fetch(url).then(r => r.blob());
+                            const file = new File([blob], "demonstrativo.pdf", { type: "application/pdf" });
+                            if (navigator.share && navigator.canShare({ files: [file] })) {
+                              await navigator.share({ files: [file], title: `Demonstrativo ${purchase.purchaseNumber}` });
+                            } else {
+                              const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
+                              window.open(`https://wa.me/?text=${msg}`, "_blank");
+                              const a = document.createElement("a"); a.href = url; a.download = "demonstrativo.pdf"; a.click();
+                              toast.info("PDF gerado. Anexe na conversa do WhatsApp.");
+                            }
+                          } catch { toast.error("Erro ao compartilhar"); }
+                        }}>
+                          <MessageCircle className="h-3 w-3" />
+                        </Button>
+                        <span className="text-muted-foreground">{new Date(d.enviadoEm).toLocaleString("pt-BR")}</span>
+                      </div>
                     </div>
                     {d.motivoContestacao && (
                       <p className="text-muted-foreground italic">Motivo: {d.motivoContestacao}</p>

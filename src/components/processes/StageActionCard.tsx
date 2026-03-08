@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale } from "lucide-react";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus } from "@/lib/purchases";
-import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo } from "@/lib/demonstrativos";
+import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo, generateDemonstrativoPdf, loadDemonstrativos } from "@/lib/demonstrativos";
+import { toast } from "sonner";
 
 interface StageActionCardProps {
   purchase: Purchase;
@@ -229,8 +230,43 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </Button>
           </div>
         ) : isDemonstrative ? (
-          /* Demonstrative: approve or contest */
+          /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                setLoading(true);
+                try {
+                  const demos = await loadDemonstrativos(purchase.id);
+                  const latest = demos[demos.length - 1];
+                  if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
+                  const url = await generateDemonstrativoPdf(purchase.id, latest.id);
+                  window.open(url, "_blank");
+                } catch { toast.error("Erro ao gerar PDF"); } finally { setLoading(false); }
+              }}>
+                <FileDown className="h-3 w-3 mr-1" />PDF
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                setLoading(true);
+                try {
+                  const demos = await loadDemonstrativos(purchase.id);
+                  const latest = demos[demos.length - 1];
+                  if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
+                  const url = await generateDemonstrativoPdf(purchase.id, latest.id);
+                  const blob = await fetch(url).then(r => r.blob());
+                  const file = new File([blob], "demonstrativo.pdf", { type: "application/pdf" });
+                  if (navigator.share && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: `Demonstrativo ${purchase.purchaseNumber}` });
+                  } else {
+                    const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
+                    window.open(`https://wa.me/?text=${msg}`, "_blank");
+                    toast.info("PDF gerado. Anexe o arquivo baixado na conversa do WhatsApp.");
+                    const a = document.createElement("a"); a.href = url; a.download = "demonstrativo.pdf"; a.click();
+                  }
+                } catch { toast.error("Erro ao compartilhar"); } finally { setLoading(false); }
+              }}>
+                <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
+              </Button>
+            </div>
             <div className="flex gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>

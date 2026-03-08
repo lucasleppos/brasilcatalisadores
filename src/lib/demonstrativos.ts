@@ -85,3 +85,15 @@ export async function approveDemonstrativo(id: string): Promise<boolean> {
     .eq("id", id);
   return !error;
 }
+
+export async function generateDemonstrativoPdf(purchaseId: string, demonstrativoId: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("generate-demonstrativo-pdf", {
+    body: { purchaseId, demonstrativoId },
+  });
+
+  if (error) throw new Error("Erro ao gerar PDF");
+
+  // data is already a Blob when responseType is not set
+  const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+  return URL.createObjectURL(blob);
+}
