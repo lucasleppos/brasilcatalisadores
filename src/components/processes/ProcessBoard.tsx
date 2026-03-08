@@ -1,41 +1,90 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
-import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, getStatusColor, isPurchaseClosed, isInParallelPhase, PECAS_FLOW, CERAMICO_FLOW, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
+import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
+import ProcessKPIs from "./ProcessKPIs";
+import ProcessFilters from "./ProcessFilters";
 import StageActionCard from "./StageActionCard";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Build ordered display stages: unique stages from both flows in flowchart order,
-// plus special loop/branch states and parallel bucket
-const ORDERED_DISPLAY_STAGES: string[] = (() => {
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-  const addUnique = (s: string) => { if (!seen.has(s)) { seen.add(s); ordered.push(s); } };
+// ===== 11 Fixed Process Groups =====
+interface ProcessGroup {
+  label: string;
+  statuses: string[];
+  /** Also match purchases in parallel phase by sub-flow type */
+  parallelMatch?: "fin" | "op";
+}
 
-  // Common stages first (shared prefix of both flows)
-  const commonEnd = 3; // first 3 are common
-  for (let i = 0; i < commonEnd; i++) addUnique(PECAS_FLOW[i]);
+const PROCESS_GROUPS: ProcessGroup[] = [
+  { label: "Inclusão", statuses: ["Aguardando Inclusão"] },
+  { label: "Conferência", statuses: ["Aguardando Conferência", "Em Conferência"] },
+  { label: "Separação", statuses: ["Cerâmico: Em Separação"] },
+  { label: "Corte", statuses: ["Peças: Em Corte"] },
+  {
+    label: "Trit. / Homog. / Amostr.",
+    statuses: [
+      "Peças: Em Trituração",
+      "Cerâmico: Em Trituração/Homogeneização",
+      "Peças: Em Amostragem",
+    ],
+  },
+  {
+    label: "Prep. Amostra / Análise",
+    statuses: [
+      "Cerâmico: Amostra Enviada ao Lab",
+      "Cerâmico: Lab em Análise",
+      "Cerâmico: Resultado Incluído",
+    ],
+  },
+  {
+    label: "Precif. / Demonstrativo",
+    statuses: [
+      "Peças: Aguardando Demonstrativo",
+      "Cerâmico: Em Precificação",
+      "Peças: Pesagem Realizada",
+      "Peças: Peso Divergente",
+    ],
+  },
+  {
+    label: "Aprovação",
+    statuses: [
+      "Peças: Gerar Boleto de Aprovação",
+      "Cerâmico: Gerar Boleto de Aprovação",
+      "Peças: Demonstrativo Contestado",
+      "Cerâmico: Demonstrativo Contestado",
+    ],
+  },
+  {
+    label: "Pagamento",
+    statuses: [
+      "Peças: Aprovado - Aguardando Pagamento",
+      "Peças: Pagamento Realizado",
+    ],
+    parallelMatch: "fin",
+  },
+  {
+    label: "Bags / Exportação",
+    statuses: ["Peças: Alocado ao Bag"],
+    parallelMatch: "op",
+  },
+  {
+    label: "Encerrados",
+    statuses: ["Peças: Encerrado", "Cerâmico: Encerrado"],
+  },
+];
 
-  // Peças flow (after common)
-  for (let i = commonEnd; i < PECAS_FLOW.length; i++) addUnique(PECAS_FLOW[i]);
-  // Add loop states not in linear flow
-  addUnique("Peças: Demonstrativo Contestado");
-  addUnique("Peças: Peso Divergente");
-
-  // Cerâmico flow (after common)
-  for (let i = commonEnd; i < CERAMICO_FLOW.length; i++) addUnique(CERAMICO_FLOW[i]);
-  addUnique("Cerâmico: Demonstrativo Contestado");
-  // Parallel bucket
-  addUnique("Cerâmico: Aprovado (Paralelo)");
-
-  return ordered;
-})();
+/** Check if a user role can see a group (has permission on at least one status in the group) */
+function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {
+  if (!role) return false;
+  if (role === "super_admin" || role === "admin") return true;
+  return group.statuses.some((s) => canUserActOnStage(role, s));
+}
 
 export default function ProcessBoard() {
   const { role } = useAuth();
@@ -60,38 +109,58 @@ export default function ProcessBoard() {
 
   const isAdmin = role === "super_admin" || role === "admin";
 
-  // Fixed stages the user can see (based on role, always in flowchart order)
-  const displayStages = useMemo(() => {
+  // Which groups this user can see
+  const visibleGroups = useMemo(() => {
     if (!canAdvance) return [];
-    if (isAdmin) return ORDERED_DISPLAY_STAGES;
-    return ORDERED_DISPLAY_STAGES.filter((s) => canUserActOnStage(role, s));
-  }, [role, canAdvance, isAdmin]);
+    return PROCESS_GROUPS.filter((g) => canRoleSeeGroup(role, g));
+  }, [role, canAdvance]);
 
-  // Group purchases by stage
-  const tasksByStage = useMemo(() => {
+  // Group purchases into process groups
+  const tasksByGroup = useMemo(() => {
     const map: Record<string, Purchase[]> = {};
-    displayStages.forEach((s) => { map[s] = []; });
+    visibleGroups.forEach((g) => { map[g.label] = []; });
 
     filtered.forEach((p) => {
-      if (isPurchaseClosed(p)) return;
+      // Parallel phase (Cerâmico: Aprovado with sub-flows) goes to Pagamento AND/OR Bags
       if (isInParallelPhase(p)) {
-        if (map["Cerâmico: Aprovado (Paralelo)"]) map["Cerâmico: Aprovado (Paralelo)"].push(p);
-      } else if (map[p.status]) {
-        map[p.status].push(p);
+        const pagGroup = visibleGroups.find((g) => g.parallelMatch === "fin");
+        const bagGroup = visibleGroups.find((g) => g.parallelMatch === "op");
+        // Show in Pagamento if fin sub-flow not done
+        if (pagGroup && p.finStatus && p.finStatus !== "Encerrado ERP") {
+          map[pagGroup.label]?.push(p);
+        }
+        // Show in Bags if op sub-flow not done
+        if (bagGroup && p.opStatus && p.opStatus !== "Enviado Exportação") {
+          map[bagGroup.label]?.push(p);
+        }
+        // If both done but main status not yet Encerrado, show in Encerrados
+        if (p.finStatus === "Encerrado ERP" && p.opStatus === "Enviado Exportação") {
+          if (map["Encerrados"]) map["Encerrados"].push(p);
+        }
+        return;
+      }
+
+      // Normal: find group by status match
+      for (const g of visibleGroups) {
+        if (g.statuses.includes(p.status)) {
+          map[g.label].push(p);
+          return;
+        }
       }
     });
+
     return map;
-  }, [filtered, displayStages]);
+  }, [filtered, visibleGroups]);
 
-  // Pending count
   const pendingCount = useMemo(() =>
-    displayStages.reduce((sum, s) => sum + (tasksByStage[s]?.length || 0), 0)
-  , [displayStages, tasksByStage]);
+    visibleGroups
+      .filter((g) => g.label !== "Encerrados")
+      .reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
+  , [visibleGroups, tasksByGroup]);
 
-  // Default tab: first stage with items
   const defaultTab = useMemo(() =>
-    displayStages.find((s) => (tasksByStage[s]?.length || 0) > 0) || displayStages[0] || "Aguardando Inclusão"
-  , [displayStages, tasksByStage]);
+    visibleGroups.find((g) => (tasksByGroup[g.label]?.length || 0) > 0)?.label || visibleGroups[0]?.label || ""
+  , [visibleGroups, tasksByGroup]);
 
   // KPIs
   const totalValue = filtered.reduce((sum, p) => sum + p.totalBrl, 0);
@@ -105,77 +174,25 @@ export default function ProcessBoard() {
         <h1 className="text-2xl font-display">Processos</h1>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <Package className="h-8 w-8 text-primary/60" />
-              <div>
-                <p className="text-xs text-muted-foreground">Total Compras</p>
-                <p className="text-2xl font-bold">{filtered.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-amber-500/60" />
-              <div>
-                <p className="text-xs text-muted-foreground">Em Produção</p>
-                <p className="text-2xl font-bold">{activeCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-green-500/60" />
-              <div>
-                <p className="text-xs text-muted-foreground">Finalizadas</p>
-                <p className="text-2xl font-bold">{completedCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-primary/60" />
-              <div>
-                <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-lg font-bold">{fmtBrl(totalValue)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ProcessKPIs
+        totalCount={filtered.length}
+        activeCount={activeCount}
+        completedCount={completedCount}
+        totalValue={totalValue}
+      />
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-          <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os fornecedores</SelectItem>
-            {suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={buyerFilter} onValueChange={setBuyerFilter}>
-          <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os compradores</SelectItem>
-            {buyers.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Badge variant="secondary" className="text-xs h-8 flex items-center">
-          {pendingCount} tarefa{pendingCount !== 1 ? "s" : ""} pendente{pendingCount !== 1 ? "s" : ""}
-        </Badge>
-      </div>
+      <ProcessFilters
+        suppliers={suppliers}
+        buyers={buyers}
+        supplierFilter={supplierFilter}
+        buyerFilter={buyerFilter}
+        onSupplierChange={setSupplierFilter}
+        onBuyerChange={setBuyerFilter}
+        pendingCount={pendingCount}
+      />
 
-      {/* Tasks by stage — fixed tabs */}
-      {displayStages.length === 0 ? (
+      {/* Tasks by group — fixed tabs */}
+      {visibleGroups.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma tarefa pendente para o seu perfil.</p>
@@ -184,16 +201,11 @@ export default function ProcessBoard() {
       ) : (
         <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
-            {displayStages.map((stage) => {
-              const count = tasksByStage[stage]?.length || 0;
-              // Shorten label for tabs
-              const shortLabel = stage
-                .replace("Peças: ", "P: ")
-                .replace("Cerâmico: ", "C: ")
-                .replace(" (Paralelo)", " ∥");
+            {visibleGroups.map((group) => {
+              const count = tasksByGroup[group.label]?.length || 0;
               return (
-                <TabsTrigger key={stage} value={stage} className="text-xs">
-                  {shortLabel}
+                <TabsTrigger key={group.label} value={group.label} className="text-xs">
+                  {group.label}
                   <Badge variant={count > 0 ? "default" : "outline"} className="ml-1 text-[10px] h-4 px-1 min-w-[1.25rem] justify-center">
                     {count}
                   </Badge>
@@ -202,17 +214,17 @@ export default function ProcessBoard() {
             })}
           </TabsList>
 
-          {displayStages.map((stage) => (
-            <TabsContent key={stage} value={stage}>
-              {(tasksByStage[stage]?.length || 0) === 0 ? (
+          {visibleGroups.map((group) => (
+            <TabsContent key={group.label} value={group.label}>
+              {(tasksByGroup[group.label]?.length || 0) === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center">
-                    <p className="text-muted-foreground text-sm">Nenhum pedido nesta etapa.</p>
+                    <p className="text-muted-foreground text-sm">Nenhum pedido neste processo.</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {(tasksByStage[stage] || []).map((purchase) => (
+                  {(tasksByGroup[group.label] || []).map((purchase) => (
                     <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} />
                   ))}
                 </div>
