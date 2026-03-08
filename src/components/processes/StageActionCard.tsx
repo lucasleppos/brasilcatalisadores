@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus } from "@/lib/purchases";
-import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo, generateDemonstrativoPdf, loadDemonstrativos } from "@/lib/demonstrativos";
+import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
+import PurchaseSummary from "./PurchaseSummary";
 
 interface StageActionCardProps {
   purchase: Purchase;
@@ -85,7 +86,6 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     if (!contestMotivo.trim()) return;
     setLoading(true);
     try {
-      // Create new demonstrativo as contestado, then advance to contestado status
       await advanceStage(purchase.id, purchase.status);
       onCompleted();
     } finally {
@@ -126,6 +126,24 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       setLoading(false);
     }
   };
+
+  // Reusable enriched dialog content
+  const enrichedDialogContent = (title: string, description: string, onAction: () => void, actionLabel: string, variant?: "destructive", extraContent?: React.ReactNode) => (
+    <AlertDialogContent className="max-w-md">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        <AlertDialogDescription className="sr-only">{description}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <PurchaseSummary purchase={purchase} showPdf={isDemonstrative} />
+      {extraContent}
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+        <AlertDialogAction onClick={onAction} disabled={loading} className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>
+          {loading ? "Processando..." : actionLabel}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  );
 
   return (
     <Card className="border-border/60">
@@ -275,16 +293,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                     <CheckCircle2 className="h-3 w-3 mr-1" />Aprovar
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Aprovar demonstrativo?</AlertDialogTitle>
-                    <AlertDialogDescription>O pedido avançará para a próxima etapa.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleApprove} disabled={loading}>Confirmar</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
+                {enrichedDialogContent("Aprovar demonstrativo?", "O pedido avançará para a próxima etapa.", handleApprove, "Confirmar Aprovação")}
               </AlertDialog>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -292,21 +301,16 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                     <AlertTriangle className="h-3 w-3 mr-1" />Contestar
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Contestar demonstrativo?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {purchase.materialFlow === "ceramico"
-                        ? "O pedido voltará para Trituração/Homogeneização para nova análise."
-                        : "O pedido voltará para Aguardando Demonstrativo."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
+                {enrichedDialogContent(
+                  "Contestar demonstrativo?",
+                  purchase.materialFlow === "ceramico"
+                    ? "O pedido voltará para Trituração/Homogeneização para nova análise."
+                    : "O pedido voltará para Aguardando Demonstrativo.",
+                  handleContest,
+                  "Contestar",
+                  "destructive",
                   <Textarea placeholder="Motivo da contestação" value={contestMotivo} onChange={(e) => setContestMotivo(e.target.value)} className="text-sm" />
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleContest} disabled={loading || !contestMotivo.trim()}>Contestar</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
+                )}
               </AlertDialog>
             </div>
           </div>
@@ -336,18 +340,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <Send className="h-3 w-3 mr-1" />Aprovar e Avançar
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar aprovação?</AlertDialogTitle>
-                  <AlertDialogDescription>O pedido de <strong>{purchase.supplierName}</strong> avançará para a próxima etapa.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirm} disabled={loading}>
-                    {loading ? "Processando..." : "Confirmar"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
+              {enrichedDialogContent("Confirmar aprovação?", "O pedido avançará para a próxima etapa.", handleConfirm, "Confirmar")}
             </AlertDialog>
           </div>
         ) : (
@@ -397,20 +390,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   Concluir {purchase.status}
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Concluir etapa?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    A compra de <strong>{purchase.supplierName}</strong> avançará de "{purchase.status}" para a próxima etapa.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirm} disabled={loading}>
-                    {loading ? "Processando..." : "Confirmar"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
+              {enrichedDialogContent("Concluir etapa?", `A compra avançará de "${purchase.status}" para a próxima etapa.`, handleConfirm, "Confirmar")}
             </AlertDialog>
           </div>
         )}

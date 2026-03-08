@@ -136,7 +136,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
 
 // ===== State Machine =====
 
-const PECAS_FLOW: string[] = [
+export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
@@ -152,7 +152,7 @@ const PECAS_FLOW: string[] = [
   "Peças: Encerrado",
 ];
 
-const CERAMICO_FLOW: string[] = [
+export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
@@ -167,7 +167,7 @@ const CERAMICO_FLOW: string[] = [
   "Cerâmico: Encerrado",
 ];
 
-const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
+export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
 
 export function getFlowStatuses(materialFlow: MaterialFlow | null): string[] {
   if (materialFlow === "pecas") return PECAS_FLOW;
