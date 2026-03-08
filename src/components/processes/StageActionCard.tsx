@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale } from "lucide-react";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus } from "@/lib/purchases";
-import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo } from "@/lib/demonstrativos";
+import { contestDemonstrativo, approveDemonstrativo, createDemonstrativo, generateDemonstrativoPdf, loadDemonstrativos } from "@/lib/demonstrativos";
+import { toast } from "sonner";
 
 interface StageActionCardProps {
   purchase: Purchase;
