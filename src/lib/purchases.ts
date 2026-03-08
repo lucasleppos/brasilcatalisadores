@@ -115,7 +115,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Cerâmico: Lab em Análise": ["laboratorio"],
   "Cerâmico: Resultado Incluído": ["laboratorio"],
   "Cerâmico: Em Precificação": ["admin", "super_admin"],
-  "Cerâmico: Demonstrativo Enviado": ["admin", "super_admin"],
+  "Cerâmico: Gerar Boleto de Aprovação": ["admin", "super_admin"],
   "Cerâmico: Demonstrativo Contestado": ["admin", "super_admin"],
   "Cerâmico: Aprovado": ["admin", "super_admin"],
   "Cerâmico: Encerrado": [],
