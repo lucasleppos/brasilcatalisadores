@@ -44,6 +44,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
+  const canGeneratePdf = isDemonstrative || purchase.status === "Peças: Aguardando Demonstrativo" || purchase.status === "Cerâmico: Em Precificação";
 
   const handleConfirm = async () => {
     setLoading(true);

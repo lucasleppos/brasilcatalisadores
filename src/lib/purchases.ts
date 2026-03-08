@@ -623,7 +623,7 @@ export function getStatusColor(status: string): string {
   if (status.includes("Conferência")) return "bg-cyan-500/10 text-cyan-700 border-cyan-300";
   // Peças
   if (status.includes("Demonstrativo Contestado")) return "bg-red-500/10 text-red-700 border-red-300";
-  if (status.includes("Demonstrativo Enviado")) return "bg-emerald-500/10 text-emerald-700 border-emerald-300";
+  if (status.includes("Gerar Boleto de Aprovação")) return "bg-emerald-500/10 text-emerald-700 border-emerald-300";
   if (status.includes("Demonstrativo")) return "bg-yellow-500/10 text-yellow-700 border-yellow-300";
   if (status.includes("Pagamento")) return "bg-green-500/10 text-green-700 border-green-300";
   if (status.includes("Peso Divergente")) return "bg-red-500/10 text-red-700 border-red-300";
