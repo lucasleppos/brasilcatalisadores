@@ -185,7 +185,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
             {bag && material && (
               <div className="text-xs text-muted-foreground">
-                Peso após alocação: {fmtNum(bag.totalWeight + material.weight, 1)} / {bag.maxWeight} kg
+                Peso após alocação: {fmtNum(bag.totalWeight + material.weight, 4)} / {bag.maxWeight} kg
                 {isNearLimit(bag, material.weight) && (
                   <Badge className="ml-2 bg-yellow-100 text-yellow-800">Acima do limite</Badge>
                 )}
