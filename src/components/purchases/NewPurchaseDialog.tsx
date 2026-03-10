@@ -454,7 +454,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Deduções USD</span>
-                      <span className="text-destructive">- $ {calcPreview.totalDeductions.toFixed(2)}</span>
+                      <span className="text-destructive">- $ {fmtNum(calcPreview.totalDeductions, 2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1">
                       <span>Valor Final</span>
