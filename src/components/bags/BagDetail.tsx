@@ -75,7 +75,7 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Peso</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fmtNum(bag.totalWeight, 1)} kg</div>
+            <div className="text-2xl font-bold">{fmtNum(bag.totalWeight, 4)} kg</div>
             <Progress value={Math.min(pct, 110)} className="h-2 mt-2" />
             <p className="text-xs text-muted-foreground mt-1">{fmtNum(pct, 0)}% de {bag.maxWeight} kg</p>
           </CardContent>
