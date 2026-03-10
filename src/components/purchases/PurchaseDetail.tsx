@@ -99,7 +99,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                 <Package className="h-3 w-3" />
                 Material a Classificar
               </p>
-              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight)} kg</p>
+              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight, 4)} kg</p>
             </div>
           </>
         )}
