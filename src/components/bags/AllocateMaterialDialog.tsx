@@ -150,7 +150,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
                 <SelectContent>
                   {materials.map((m) => (
                     <SelectItem key={m.purchaseItemId} value={m.purchaseItemId}>
-                      {m.supplierName} — {fmtNum(m.weight, 1)}kg — {fmtBrl(m.paidValue)}
+                      {m.supplierName} — {fmtNum(m.weight, 4)}kg — {fmtBrl(m.paidValue)}
                     </SelectItem>
                   ))}
                 </SelectContent>
