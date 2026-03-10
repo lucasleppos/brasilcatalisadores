@@ -183,7 +183,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <AlertTriangle className="h-4 w-4 text-red-700" />
             <div className="text-xs text-red-700">
               <p className="font-semibold">Divergência de peso</p>
-              <p>Declarado: {fmtNum(purchase.weightDeclared ?? 0, 2)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 2)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 2)} kg</p>
+              <p>Declarado: {fmtNum(purchase.weightDeclared ?? 0, 4)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 4)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 4)} kg</p>
             </div>
           </div>
         )}
@@ -231,15 +231,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] text-muted-foreground">Pt (ppm)</label>
-                <Input value={ptPpm} onChange={(e) => setPtPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
+                <Input inputMode="decimal" value={ptPpm} onChange={(e) => setPtPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Pd (ppm)</label>
-                <Input value={pdPpm} onChange={(e) => setPdPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
+                <Input inputMode="decimal" value={pdPpm} onChange={(e) => setPdPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
-                <Input value={rhPpm} onChange={(e) => setRhPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
+                <Input inputMode="decimal" value={rhPpm} onChange={(e) => setRhPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
               </div>
             </div>
             <Button size="sm" className="w-full" disabled={loading || !ptPpm || !pdPpm || !rhPpm} onClick={handleAnalysis}>
@@ -322,7 +322,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </p>
             <div className="space-y-1">
               <label className="text-[10px] text-muted-foreground">Peso Real (kg)</label>
-              <Input value={weightReal} onChange={(e) => setWeightReal(e.target.value)} placeholder="0,00" className="h-8 text-sm" />
+              <Input inputMode="decimal" value={weightReal} onChange={(e) => setWeightReal(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
             </div>
             <Button size="sm" className="w-full" disabled={loading || !weightReal} onClick={handleWeighCheck}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Scale className="h-3 w-3 mr-1" />}

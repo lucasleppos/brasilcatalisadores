@@ -75,7 +75,7 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Peso</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fmtNum(bag.totalWeight, 1)} kg</div>
+            <div className="text-2xl font-bold">{fmtNum(bag.totalWeight, 4)} kg</div>
             <Progress value={Math.min(pct, 110)} className="h-2 mt-2" />
             <p className="text-xs text-muted-foreground mt-1">{fmtNum(pct, 0)}% de {bag.maxWeight} kg</p>
           </CardContent>
@@ -91,9 +91,9 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
           <CardHeader className="pb-2"><CardTitle className="text-sm">PPMs Estimados (Média Pond.)</CardTitle></CardHeader>
           <CardContent>
             <div className="text-sm space-y-1">
-              <div>Pt: <strong>{fmtNum(avgPt, 1)}</strong></div>
-              <div>Pd: <strong>{fmtNum(avgPd, 1)}</strong></div>
-              <div>Rh: <strong>{fmtNum(avgRh, 1)}</strong></div>
+              <div>Pt: <strong>{fmtNum(avgPt, 4)}</strong></div>
+              <div>Pd: <strong>{fmtNum(avgPd, 4)}</strong></div>
+              <div>Rh: <strong>{fmtNum(avgRh, 4)}</strong></div>
             </div>
           </CardContent>
         </Card>
@@ -139,11 +139,11 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
                 {items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.supplierName}</TableCell>
-                    <TableCell>{fmtNum(item.weight, 2)}</TableCell>
+                    <TableCell>{fmtNum(item.weight, 4)}</TableCell>
                     <TableCell>{fmtBrl(item.paidValue)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedPtPpm, 1)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedPdPpm, 1)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedRhPpm, 1)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPtPpm, 4)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPdPpm, 4)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedRhPpm, 4)}</TableCell>
                     <TableCell>
                       {bag.status === "Aberto" && (
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item)}>

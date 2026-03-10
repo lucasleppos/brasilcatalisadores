@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { createBag, BagMaterialType, WEIGHT_LIMIT } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
+import { parseNum } from "@/lib/utils";
+
+const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 interface NewBagDialogProps {
   open: boolean;
@@ -19,7 +22,7 @@ export function NewBagDialog({ open, onOpenChange, onCreated }: NewBagDialogProp
   const [label, setLabel] = useState("");
   const [materialType, setMaterialType] = useState<BagMaterialType>("medio");
   const [buyer, setBuyer] = useState("");
-  const [maxWeight, setMaxWeight] = useState(WEIGHT_LIMIT.toString());
+  const [maxWeightStr, setMaxWeightStr] = useState(WEIGHT_LIMIT.toString());
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -33,13 +36,13 @@ export function NewBagDialog({ open, onOpenChange, onCreated }: NewBagDialogProp
       bagLabel: label.trim(),
       materialType,
       buyer: buyer.trim(),
-      maxWeight: Number(maxWeight) || WEIGHT_LIMIT,
+      maxWeight: parseNum(maxWeightStr) || WEIGHT_LIMIT,
       notes: notes.trim(),
     });
     setSaving(false);
     if (bag) {
       toast({ title: `${bag.bagNumber} criado com sucesso` });
-      setLabel(""); setBuyer(""); setNotes(""); setMaxWeight(WEIGHT_LIMIT.toString());
+      setLabel(""); setBuyer(""); setNotes(""); setMaxWeightStr(WEIGHT_LIMIT.toString());
       onCreated();
       onOpenChange(false);
     }
@@ -75,7 +78,7 @@ export function NewBagDialog({ open, onOpenChange, onCreated }: NewBagDialogProp
           </div>
           <div>
             <Label>Peso Máximo (kg)</Label>
-            <Input type="number" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
+            <Input type="text" inputMode="decimal" value={maxWeightStr} onChange={(e) => setMaxWeightStr(numFilter(e.target.value))} />
           </div>
           <div>
             <Label>Observações</Label>

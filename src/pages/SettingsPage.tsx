@@ -6,17 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Settings, loadSettings, saveSettings, defaultSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 import { Save, RotateCcw } from "lucide-react";
+import { parseNum } from "@/lib/utils";
+
+const numFilter = (v: string) => v.replace(/[^0-9.,\-]/g, "");
 
 function Field({ label, value, onChange, suffix }: { label: string; value: number; onChange: (v: number) => void; suffix?: string }) {
+  const [str, setStr] = useState(String(value));
+
+  useEffect(() => {
+    setStr(String(value));
+  }, [value]);
+
+  const handleChange = (raw: string) => {
+    const filtered = numFilter(raw);
+    setStr(filtered);
+    onChange(parseNum(filtered));
+  };
+
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <div className="flex items-center gap-1">
         <Input
-          type="number"
-          step="any"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          type="text"
+          inputMode="decimal"
+          value={str}
+          onChange={(e) => handleChange(e.target.value)}
           className="h-8 text-sm"
         />
         {suffix && <span className="text-xs text-muted-foreground whitespace-nowrap">{suffix}</span>}

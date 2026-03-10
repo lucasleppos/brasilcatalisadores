@@ -90,12 +90,12 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
 
         {purchase.weightDeclared != null && <>
           <div className="text-muted-foreground">Peso declarado</div>
-          <div>{fmtNum(purchase.weightDeclared, 2)} kg</div>
+          <div>{fmtNum(purchase.weightDeclared, 4)} kg</div>
         </>}
 
         {purchase.weightReal != null && <>
           <div className="text-muted-foreground">Peso real</div>
-          <div>{fmtNum(purchase.weightReal, 2)} kg</div>
+          <div>{fmtNum(purchase.weightReal, 4)} kg</div>
         </>}
       </div>
 

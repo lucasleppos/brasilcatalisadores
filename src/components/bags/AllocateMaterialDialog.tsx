@@ -150,7 +150,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
                 <SelectContent>
                   {materials.map((m) => (
                     <SelectItem key={m.purchaseItemId} value={m.purchaseItemId}>
-                      {m.supplierName} — {fmtNum(m.weight, 1)}kg — {fmtBrl(m.paidValue)}
+                      {m.supplierName} — {fmtNum(m.weight, 4)}kg — {fmtBrl(m.paidValue)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -163,9 +163,9 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
             {material && (
               <div className="text-sm p-3 rounded-md bg-muted space-y-1">
                 <div>Fornecedor: <strong>{material.supplierName}</strong></div>
-                <div>Peso: <strong>{fmtNum(material.weight, 2)} kg</strong></div>
+                <div>Peso: <strong>{fmtNum(material.weight, 4)} kg</strong></div>
                 <div>Valor: <strong>{fmtBrl(material.paidValue)}</strong></div>
-                <div>PPMs: Pt {material.ptPpm} | Pd {material.pdPpm} | Rh {material.rhPpm}</div>
+                <div>PPMs: Pt {fmtNum(material.ptPpm, 4)} | Pd {fmtNum(material.pdPpm, 4)} | Rh {fmtNum(material.rhPpm, 4)}</div>
               </div>
             )}
 
@@ -185,7 +185,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
             {bag && material && (
               <div className="text-xs text-muted-foreground">
-                Peso após alocação: {fmtNum(bag.totalWeight + material.weight, 1)} / {bag.maxWeight} kg
+                Peso após alocação: {fmtNum(bag.totalWeight + material.weight, 4)} / {bag.maxWeight} kg
                 {isNearLimit(bag, material.weight) && (
                   <Badge className="ml-2 bg-yellow-100 text-yellow-800">Acima do limite</Badge>
                 )}
@@ -209,7 +209,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção: Peso acima do limite</AlertDialogTitle>
             <AlertDialogDescription>
-              O bag ficará com {bag && material ? fmtNum(bag.totalWeight + material.weight, 1) : "?"} kg,
+              O bag ficará com {bag && material ? fmtNum(bag.totalWeight + material.weight, 4) : "?"} kg,
               ultrapassando o limite de {bag?.maxWeight || 1000} kg. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>

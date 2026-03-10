@@ -99,7 +99,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                 <Package className="h-3 w-3" />
                 Material a Classificar
               </p>
-              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight)} kg</p>
+              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight, 4)} kg</p>
             </div>
           </>
         )}
@@ -112,7 +112,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
               <AlertTriangle className="h-5 w-5 text-red-700" />
               <div className="text-sm text-red-700">
                 <p className="font-semibold">Divergência de peso detectada</p>
-                <p className="text-xs">Declarado: {fmtNum(purchase.weightDeclared ?? 0, 2)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 2)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 2)} kg</p>
+                <p className="text-xs">Declarado: {fmtNum(purchase.weightDeclared ?? 0, 4)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 4)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 4)} kg</p>
               </div>
             </div>
           </>
@@ -169,8 +169,8 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                     {q.itemType === "peca"
                       ? `${q.quantity || 0} pç`
                       : q.itemType === "peca_sacola" && !q.input
-                        ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 2)} kg` : ""}`
-                        : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : (q.weight ? `${fmt(q.weight, 2)} kg` : "-")}
+                        ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 4)} kg` : ""}`
+                        : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 4)} kg` : (q.weight ? `${fmt(q.weight, 4)} kg` : "-")}
                   </TableCell>
                   <TableCell className="text-xs text-right font-semibold">
                     {val > 0 ? fmtBrl(val) : (
@@ -197,7 +197,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                   <div key={lr.id} className="rounded-md border p-2 text-xs flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <Badge variant="outline" className="text-[10px]">v{lr.versao}</Badge>
-                      <span>Pt: {fmt(lr.ptPpm)} | Pd: {fmt(lr.pdPpm)} | Rh: {fmt(lr.rhPpm)}</span>
+                      <span>Pt: {fmt(lr.ptPpm, 4)} | Pd: {fmt(lr.pdPpm, 4)} | Rh: {fmt(lr.rhPpm, 4)}</span>
                     </div>
                     <span className="text-muted-foreground">{new Date(lr.createdAt).toLocaleString("pt-BR")}</span>
                   </div>
