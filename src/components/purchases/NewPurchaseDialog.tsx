@@ -446,7 +446,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   <div className="rounded-md bg-background border p-2 space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Peso líquido</span>
-                      <span>{calcPreview.netWeightKg.toFixed(2)} kg</span>
+                      <span>{fmtNum(calcPreview.netWeightKg, 2)} kg</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Valor bruto USD</span>
