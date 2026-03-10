@@ -322,7 +322,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </p>
             <div className="space-y-1">
               <label className="text-[10px] text-muted-foreground">Peso Real (kg)</label>
-              <Input value={weightReal} onChange={(e) => setWeightReal(e.target.value)} placeholder="0,00" className="h-8 text-sm" />
+              <Input inputMode="decimal" value={weightReal} onChange={(e) => setWeightReal(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
             </div>
             <Button size="sm" className="w-full" disabled={loading || !weightReal} onClick={handleWeighCheck}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Scale className="h-3 w-3 mr-1" />}
