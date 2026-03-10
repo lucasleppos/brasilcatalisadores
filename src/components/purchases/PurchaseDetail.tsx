@@ -169,8 +169,8 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                     {q.itemType === "peca"
                       ? `${q.quantity || 0} pç`
                       : q.itemType === "peca_sacola" && !q.input
-                        ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 2)} kg` : ""}`
-                        : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 2)} kg` : (q.weight ? `${fmt(q.weight, 2)} kg` : "-")}
+                        ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 4)} kg` : ""}`
+                        : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 4)} kg` : (q.weight ? `${fmt(q.weight, 4)} kg` : "-")}
                   </TableCell>
                   <TableCell className="text-xs text-right font-semibold">
                     {val > 0 ? fmtBrl(val) : (
