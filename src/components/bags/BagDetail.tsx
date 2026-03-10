@@ -91,9 +91,9 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
           <CardHeader className="pb-2"><CardTitle className="text-sm">PPMs Estimados (Média Pond.)</CardTitle></CardHeader>
           <CardContent>
             <div className="text-sm space-y-1">
-              <div>Pt: <strong>{fmtNum(avgPt, 1)}</strong></div>
-              <div>Pd: <strong>{fmtNum(avgPd, 1)}</strong></div>
-              <div>Rh: <strong>{fmtNum(avgRh, 1)}</strong></div>
+              <div>Pt: <strong>{fmtNum(avgPt, 4)}</strong></div>
+              <div>Pd: <strong>{fmtNum(avgPd, 4)}</strong></div>
+              <div>Rh: <strong>{fmtNum(avgRh, 4)}</strong></div>
             </div>
           </CardContent>
         </Card>
