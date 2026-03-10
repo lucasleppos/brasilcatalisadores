@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Send, Calculator, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
@@ -17,6 +18,7 @@ import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 const itemTypeLabels: Record<PurchaseItemType, string> = {
   peca: "Peça",
@@ -32,6 +34,7 @@ interface PendingItem {
   weight?: number;
   calcInput?: CalculatorInput;
   calcResult?: CalculatorResult;
+  category?: string;
 }
 
 export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
@@ -44,10 +47,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
   const { toast } = useToast();
 
+  // Bulk weight (Material a Classificar)
+  const [bulkWeight, setBulkWeight] = useState<number>(0);
+
   // Simple fields
   const [addQty, setAddQty] = useState<number>(0);
   const [addValue, setAddValue] = useState<number>(0);
   const [addWeight, setAddWeight] = useState<number>(0);
+
+  // Category field
+  const [addCategory, setAddCategory] = useState("");
 
   // Calculator fields
   const [grossWeight, setGrossWeight] = useState<number>(0);
@@ -69,6 +78,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
         setErpNumber(editPurchase.erpNumber || "");
+        setBulkWeight(editPurchase.bulkWeight || 0);
         setItems(editPurchase.items.map(i => ({
           id: i.id,
           itemType: i.itemType,
@@ -77,11 +87,13 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           weight: i.weight,
           calcInput: i.input,
           calcResult: i.result,
+          category: i.category,
         })));
       } else {
         setSupplierId("");
         setNotes("");
         setErpNumber("");
+        setBulkWeight(0);
         setItems([]);
       }
       resetAddFields();
@@ -92,6 +104,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     setAddQty(0);
     setAddValue(0);
     setAddWeight(0);
+    setAddCategory("");
     setGrossWeight(0);
     setTareStr("");
     setPtPpm(0);
@@ -102,6 +115,18 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   };
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
+
+  // Bulk weight tracking
+  const totalClassified = useMemo(() => {
+    return items.reduce((s, item) => {
+      if (item.calcInput) return s + item.calcInput.grossWeight;
+      if (item.weight) return s + item.weight;
+      return s;
+    }, 0);
+  }, [items]);
+
+  const bulkRemaining = bulkWeight - totalClassified;
+  const bulkProgress = bulkWeight > 0 ? Math.min((totalClassified / bulkWeight) * 100, 100) : 0;
 
   const runCalcPreview = async () => {
     if (grossWeight <= 0) return;
@@ -136,6 +161,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   const addItem = async () => {
     const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
+    const category = addCategory.trim() || undefined;
 
     if (useCalc) {
       if (grossWeight <= 0) {
@@ -159,7 +185,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         customPd: null,
         customRh: null,
       };
-      // Only calculate if PPMs are provided, otherwise add without value
       const hasPpms = ptPpm > 0 || pdPpm > 0 || rhPpm > 0;
       const result = hasPpms ? calculate(input, settings) : undefined;
       const tareVal = parseFloat(tareStr.replace(",", ".")) || 0;
@@ -171,6 +196,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           weight: grossWeight - tareVal,
           calcInput: input,
           calcResult: result,
+          category,
         },
       ]);
     } else if (addType === "peca") {
@@ -180,7 +206,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue || undefined },
+        { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue || undefined, category },
       ]);
     } else if (addType === "peca_sacola" && !sacolaUseCalc) {
       if (addQty <= 0) {
@@ -189,7 +215,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight || undefined, totalValue: addValue || undefined },
+        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight || undefined, totalValue: addValue || undefined, category },
       ]);
     }
 
@@ -215,10 +241,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       weight: i.weight,
       input: i.calcInput,
       result: i.calcResult,
+      category: i.category,
     }));
 
     if (isEditing) {
-      await updatePurchase(editPurchase!.id, { items: purchaseItems, notes, erpNumber });
+      await updatePurchase(editPurchase!.id, { items: purchaseItems, notes, erpNumber, bulkWeight: bulkWeight || null });
       toast({ title: "Compra atualizada com sucesso!" });
     } else {
       await createPurchase({
@@ -228,6 +255,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         items: purchaseItems,
         notes,
         erpNumber,
+        bulkWeight: bulkWeight || null,
       });
       toast({ title: "Compra criada com sucesso!" });
     }
@@ -289,6 +317,49 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             <Input value={erpNumber} onChange={e => setErpNumber(e.target.value)} placeholder="Ex: OC-12345" className="h-8 text-sm" />
           </div>
 
+          {/* Material a Classificar */}
+          <div className="space-y-2 p-3 rounded-md border bg-muted/30">
+            <Label className="text-xs font-semibold flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              Material a Classificar (opcional)
+            </Label>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Peso total recebido (kg)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                value={bulkWeight || ""}
+                onChange={e => setBulkWeight(parseFloat(e.target.value) || 0)}
+                className="h-8 text-sm"
+                placeholder="Peso bruto total do lote"
+              />
+            </div>
+            {bulkWeight > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-muted-foreground">Classificado: {fmt(totalClassified)} kg</span>
+                  <span className={`font-semibold ${bulkRemaining < 0 ? "text-destructive" : bulkRemaining === 0 ? "text-green-600" : "text-foreground"}`}>
+                    Restante: {fmt(bulkRemaining)} kg
+                  </span>
+                </div>
+                <Progress value={bulkProgress} className="h-2" />
+                {bulkRemaining === 0 && totalClassified > 0 && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-300 text-[10px] flex items-center gap-1 w-fit">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Totalmente classificado
+                  </Badge>
+                )}
+                {bulkRemaining < 0 && (
+                  <div className="flex items-center gap-1 text-[10px] text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    Peso dos itens excede o material a classificar
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Add item */}
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
@@ -301,6 +372,18 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 <SelectItem value="ceramico">Cerâmico</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Category field */}
+            <div className="space-y-1">
+              <Label className="text-[10px]">Categoria</Label>
+              <Input
+                type="text"
+                value={addCategory}
+                onChange={e => setAddCategory(e.target.value)}
+                className="h-8 text-sm"
+                placeholder="Ex: Colmeia, Fundo, Pó fino..."
+              />
+            </div>
 
             {addType === "peca_sacola" && (
               <div className="flex items-center gap-2">
@@ -393,6 +476,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Tipo</TableHead>
+                  <TableHead className="text-xs">Categoria</TableHead>
                   <TableHead className="text-xs text-right">Detalhe</TableHead>
                   <TableHead className="text-xs text-right">Valor</TableHead>
                   <TableHead className="text-xs w-8" />
@@ -402,6 +486,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 {items.map(it => (
                   <TableRow key={it.id}>
                     <TableCell className="text-xs">{itemTypeLabels[it.itemType]}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{it.category || "—"}</TableCell>
                     <TableCell className="text-xs text-right">
                       {it.calcResult || it.calcInput
                         ? `${(it.weight ?? it.calcInput?.grossWeight)?.toFixed(1)} kg`
@@ -420,7 +505,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/30">
-                  <TableCell colSpan={2} className="text-xs font-semibold text-right">Total</TableCell>
+                  <TableCell colSpan={3} className="text-xs font-semibold text-right">Total</TableCell>
                   <TableCell className={`text-xs text-right font-bold ${items.some(i => !i.calcResult && !i.totalValue) ? "text-destructive" : "text-primary"}`}>
                     {total > 0 ? fmtBrl(total) : "Pendente"}
                   </TableCell>
@@ -447,4 +532,3 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     </Dialog>
   );
 }
-

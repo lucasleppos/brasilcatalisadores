@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle } from "lucide-react";
+import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package } from "lucide-react";
 import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
@@ -90,6 +90,20 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
         </div>
 
+        {/* Bulk Weight (Material a Classificar) */}
+        {purchase.bulkWeight != null && purchase.bulkWeight > 0 && (
+          <>
+            <Separator />
+            <div className="rounded-md border p-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                <Package className="h-3 w-3" />
+                Material a Classificar
+              </p>
+              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight)} kg</p>
+            </div>
+          </>
+        )}
+
         {/* Weight divergence alert */}
         {purchase.weightLoss != null && Math.abs(purchase.weightLoss) > 0.5 && (
           <>
@@ -138,6 +152,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <TableRow>
               <TableHead className="text-xs">#</TableHead>
               <TableHead className="text-xs">Tipo</TableHead>
+              <TableHead className="text-xs">Categoria</TableHead>
               <TableHead className="text-xs text-right">Qtd/Peso</TableHead>
               <TableHead className="text-xs text-right">Valor</TableHead>
             </TableRow>
@@ -149,6 +164,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                 <TableRow key={q.id}>
                   <TableCell className="text-xs">{i + 1}</TableCell>
                   <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{q.category || "—"}</TableCell>
                   <TableCell className="text-xs text-right">
                     {q.itemType === "peca"
                       ? `${q.quantity || 0} pç`

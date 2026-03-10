@@ -235,6 +235,7 @@ export interface PurchaseQuoteItem {
   weight?: number;
   input?: CalculatorInput;
   result?: CalculatorResult;
+  category?: string;
 }
 
 export interface Purchase {
@@ -256,6 +257,7 @@ export interface Purchase {
   weightLoss: number | null;
   finStatus: CerFinStatus | null;
   opStatus: CerOpStatus | null;
+  bulkWeight: number | null;
 }
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
@@ -294,6 +296,7 @@ export async function loadPurchases(): Promise<Purchase[]> {
       weight: item.weight ? Number(item.weight) : undefined,
       input: item.calc_input as CalculatorInput | undefined,
       result: item.calc_result as CalculatorResult | undefined,
+      category: (item as any).category || undefined,
     });
   });
 
@@ -316,6 +319,7 @@ export async function loadPurchases(): Promise<Purchase[]> {
     weightLoss: r.weight_loss != null ? Number(r.weight_loss) : null,
     finStatus: (r.fin_status as CerFinStatus) || null,
     opStatus: (r.op_status as CerOpStatus) || null,
+    bulkWeight: r.bulk_weight != null ? Number(r.bulk_weight) : null,
   }));
 }
 
@@ -326,6 +330,7 @@ export async function createPurchase(data: {
   items: PurchaseQuoteItem[];
   notes?: string;
   erpNumber?: string;
+  bulkWeight?: number | null;
 }): Promise<Purchase | null> {
   const { data: numData } = await supabase.rpc("generate_purchase_number");
   const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR");
@@ -348,6 +353,7 @@ export async function createPurchase(data: {
       total_brl: totalBrl,
       notes: data.notes || "",
       status_history: statusHistory,
+      bulk_weight: data.bulkWeight ?? null,
     })
     .select()
     .single();
@@ -364,6 +370,7 @@ export async function createPurchase(data: {
         weight: i.weight || null,
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
+        category: i.category || null,
       }))
     );
   }
@@ -387,6 +394,7 @@ export async function createPurchase(data: {
     weightLoss: null,
     finStatus: null,
     opStatus: null,
+    bulkWeight: data.bulkWeight ?? null,
   };
 }
 
@@ -559,6 +567,7 @@ export async function registerAnalysis(
     weight: i.weight ? Number(i.weight) : undefined,
     input: i.calc_input as CalculatorInput | undefined,
     result: i.calc_result as CalculatorResult | undefined,
+    category: i.category || undefined,
   }));
 
   const newTotal = calcTotal(mappedItems);
@@ -577,7 +586,7 @@ export async function registerAnalysis(
   return true;
 }
 
-export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string }) {
+export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string; bulkWeight?: number | null }) {
   const totalBrl = calcTotal(data.items);
 
   await supabase.from("purchase_items").delete().eq("purchase_id", id);
@@ -592,6 +601,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
         weight: i.weight || null,
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
+        category: i.category || null,
       }))
     );
   }
@@ -600,6 +610,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
   const materialFlow = determineMaterialFlow(data.items);
   const updateData: any = { total_brl: totalBrl, notes: data.notes, material_flow: materialFlow };
   if (data.erpNumber !== undefined) updateData.erp_number = data.erpNumber;
+  if (data.bulkWeight !== undefined) updateData.bulk_weight = data.bulkWeight;
 
   await supabase.from("purchases").update(updateData).eq("id", id);
 }

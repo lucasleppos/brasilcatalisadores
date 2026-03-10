@@ -286,6 +286,7 @@ export type Database = {
         Row: {
           calc_input: Json | null
           calc_result: Json | null
+          category: string | null
           created_at: string | null
           id: string
           item_type: string
@@ -297,6 +298,7 @@ export type Database = {
         Insert: {
           calc_input?: Json | null
           calc_result?: Json | null
+          category?: string | null
           created_at?: string | null
           id?: string
           item_type: string
@@ -308,6 +310,7 @@ export type Database = {
         Update: {
           calc_input?: Json | null
           calc_result?: Json | null
+          category?: string | null
           created_at?: string | null
           id?: string
           item_type?: string
@@ -328,6 +331,7 @@ export type Database = {
       }
       purchases: {
         Row: {
+          bulk_weight: number | null
           buyer: string
           created_at: string | null
           date: string
@@ -350,6 +354,7 @@ export type Database = {
           weight_real: number | null
         }
         Insert: {
+          bulk_weight?: number | null
           buyer?: string
           created_at?: string | null
           date?: string
@@ -372,6 +377,7 @@ export type Database = {
           weight_real?: number | null
         }
         Update: {
+          bulk_weight?: number | null
           buyer?: string
           created_at?: string | null
           date?: string
