@@ -10,13 +10,12 @@ import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnal
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
 interface StageActionCardProps {
   purchase: Purchase;
   onCompleted: () => void;
 }
-
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function timeSince(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
