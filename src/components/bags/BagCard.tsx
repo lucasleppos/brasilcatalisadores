@@ -1,4 +1,5 @@
 import { Bag, getWeightPercentage, getMaterialTypeLabel, getStatusColor } from "@/lib/bags";
+import { fmtNum } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -35,13 +36,13 @@ export function BagCard({ bag, onClick }: BagCardProps) {
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span>Peso</span>
-            <span>{bag.totalWeight.toFixed(1)} / {bag.maxWeight} kg</span>
+            <span>{fmtNum(bag.totalWeight, 1)} / {bag.maxWeight} kg</span>
           </div>
           <Progress value={Math.min(pct, 110)} className="h-2" />
         </div>
 
         <div className="text-sm font-medium">
-          R$ {bag.totalPaidBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          R$ {fmtNum(bag.totalPaidBrl, 2)}
         </div>
       </CardContent>
     </Card>

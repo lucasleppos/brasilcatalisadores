@@ -6,8 +6,7 @@ import { Purchase, getNextStatus, getStatusColor } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import { useState } from "react";
-
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
 function timeSince(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -91,12 +90,12 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
 
         {purchase.weightDeclared != null && <>
           <div className="text-muted-foreground">Peso declarado</div>
-          <div>{purchase.weightDeclared.toFixed(2)} kg</div>
+          <div>{fmtNum(purchase.weightDeclared, 2)} kg</div>
         </>}
 
         {purchase.weightReal != null && <>
           <div className="text-muted-foreground">Peso real</div>
-          <div>{purchase.weightReal.toFixed(2)} kg</div>
+          <div>{fmtNum(purchase.weightReal, 2)} kg</div>
         </>}
       </div>
 

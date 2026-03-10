@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
 interface BagDetailProps {
   bag: Bag;
@@ -74,25 +75,25 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Peso</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{bag.totalWeight.toFixed(1)} kg</div>
+            <div className="text-2xl font-bold">{fmtNum(bag.totalWeight, 1)} kg</div>
             <Progress value={Math.min(pct, 110)} className="h-2 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">{pct.toFixed(0)}% de {bag.maxWeight} kg</p>
+            <p className="text-xs text-muted-foreground mt-1">{fmtNum(pct, 0)}% de {bag.maxWeight} kg</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Valor Total Pago</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {bag.totalPaidBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground mt-1">Custo médio: R$ {costPerKg.toFixed(2)}/kg</p>
+            <div className="text-2xl font-bold">{fmtBrl(bag.totalPaidBrl)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Custo médio: R$ {fmtNum(costPerKg, 2)}/kg</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">PPMs Estimados (Média Pond.)</CardTitle></CardHeader>
           <CardContent>
             <div className="text-sm space-y-1">
-              <div>Pt: <strong>{avgPt.toFixed(1)}</strong></div>
-              <div>Pd: <strong>{avgPd.toFixed(1)}</strong></div>
-              <div>Rh: <strong>{avgRh.toFixed(1)}</strong></div>
+              <div>Pt: <strong>{fmtNum(avgPt, 1)}</strong></div>
+              <div>Pd: <strong>{fmtNum(avgPd, 1)}</strong></div>
+              <div>Rh: <strong>{fmtNum(avgRh, 1)}</strong></div>
             </div>
           </CardContent>
         </Card>
@@ -107,7 +108,7 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
               {Object.entries(supplierTotals).map(([name, val]) => (
                 <div key={name} className="flex justify-between text-sm">
                   <span>{name}</span>
-                  <span>R$ {val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <span>{fmtBrl(val)}</span>
                 </div>
               ))}
             </div>
@@ -138,11 +139,11 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
                 {items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.supplierName}</TableCell>
-                    <TableCell>{item.weight.toFixed(2)}</TableCell>
-                    <TableCell>R$ {item.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                    <TableCell>{item.estimatedPtPpm.toFixed(1)}</TableCell>
-                    <TableCell>{item.estimatedPdPpm.toFixed(1)}</TableCell>
-                    <TableCell>{item.estimatedRhPpm.toFixed(1)}</TableCell>
+                    <TableCell>{fmtNum(item.weight, 2)}</TableCell>
+                    <TableCell>{fmtBrl(item.paidValue)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPtPpm, 1)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPdPpm, 1)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedRhPpm, 1)}</TableCell>
                     <TableCell>
                       {bag.status === "Aberto" && (
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item)}>

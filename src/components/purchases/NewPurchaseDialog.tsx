@@ -16,9 +16,9 @@ import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseIt
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n: number, d = 2) => fmtNum(n, d);
 
 const itemTypeLabels: Record<PurchaseItemType, string> = {
   peca: "Peça",
@@ -446,15 +446,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   <div className="rounded-md bg-background border p-2 space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Peso líquido</span>
-                      <span>{calcPreview.netWeightKg.toFixed(2)} kg</span>
+                      <span>{fmtNum(calcPreview.netWeightKg, 2)} kg</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Valor bruto USD</span>
-                      <span>$ {calcPreview.grossMetalValueUsd.toFixed(2)}</span>
+                      <span>$ {fmtNum(calcPreview.grossMetalValueUsd, 2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Deduções USD</span>
-                      <span className="text-destructive">- $ {calcPreview.totalDeductions.toFixed(2)}</span>
+                      <span className="text-destructive">- $ {fmtNum(calcPreview.totalDeductions, 2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1">
                       <span>Valor Final</span>
@@ -489,9 +489,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     <TableCell className="text-xs text-muted-foreground">{it.category || "—"}</TableCell>
                     <TableCell className="text-xs text-right">
                       {it.calcResult || it.calcInput
-                        ? `${(it.weight ?? it.calcInput?.grossWeight)?.toFixed(1)} kg`
+                        ? `${fmtNum(it.weight ?? it.calcInput?.grossWeight ?? 0, 1)} kg`
                         : it.itemType === "peca_sacola"
-                          ? `${it.quantity} pç${it.weight ? ` / ${it.weight.toFixed(2)} kg` : ""}`
+                          ? `${it.quantity} pç${it.weight ? ` / ${fmtNum(it.weight, 2)} kg` : ""}`
                           : `${it.quantity} pç`}
                     </TableCell>
                     <TableCell className="text-xs text-right font-semibold">

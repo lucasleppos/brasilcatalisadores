@@ -36,7 +36,7 @@ import {
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const fmtNum = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const fmtNum = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 
 // ─── KPI Card ───
 function KpiCard({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) {
@@ -165,7 +165,7 @@ function PurchasesTab() {
               <BarChart data={data?.monthly || []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="total_brl" fill="var(--color-total_brl)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -245,7 +245,7 @@ function BagsTab() {
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="bag_number" className="text-xs" />
-                    <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="total_paid_brl" fill="var(--color-total_paid_brl)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="refiner_total_value" fill="var(--color-refiner_total_value)" radius={[4, 4, 0, 0]} />
@@ -271,7 +271,7 @@ function BagsTab() {
                         "Peso (kg)": r.total_weight,
                         "Pago (R$)": r.total_paid_brl,
                         "Refinador (R$)": r.refiner_total_value || "",
-                        "Margem %": r.margin_pct !== null ? r.margin_pct.toFixed(1) : "",
+                        "Margem %": r.margin_pct !== null ? fmtNum(r.margin_pct) : "",
                       })),
                       "analise-bags"
                     );
@@ -304,7 +304,7 @@ function BagsTab() {
                       <TableCell className="text-right">
                         {r.margin_pct !== null ? (
                           <span className={r.margin_pct >= 0 ? "text-green-600" : "text-destructive"}>
-                            {r.margin_pct.toFixed(1)}%
+                            {fmtNum(r.margin_pct)}%
                           </span>
                         ) : "—"}
                       </TableCell>
@@ -465,7 +465,7 @@ function FinancialTab() {
                 <LineChart data={data?.monthly_evolution || []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                  <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"

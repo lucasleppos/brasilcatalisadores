@@ -9,9 +9,9 @@ import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n: number, d = 2) => fmtNum(n, d);
 
 const itemTypeLabels: Record<string, string> = {
   peca: "Peça",
@@ -112,7 +112,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
               <AlertTriangle className="h-5 w-5 text-red-700" />
               <div className="text-sm text-red-700">
                 <p className="font-semibold">Divergência de peso detectada</p>
-                <p className="text-xs">Declarado: {purchase.weightDeclared?.toFixed(2)} kg | Real: {purchase.weightReal?.toFixed(2)} kg | Perda: {Math.abs(purchase.weightLoss).toFixed(2)} kg</p>
+                <p className="text-xs">Declarado: {fmtNum(purchase.weightDeclared ?? 0, 2)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 2)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 2)} kg</p>
               </div>
             </div>
           </>
