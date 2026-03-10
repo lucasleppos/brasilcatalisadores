@@ -319,6 +319,7 @@ export async function loadPurchases(): Promise<Purchase[]> {
     weightLoss: r.weight_loss != null ? Number(r.weight_loss) : null,
     finStatus: (r.fin_status as CerFinStatus) || null,
     opStatus: (r.op_status as CerOpStatus) || null,
+    bulkWeight: r.bulk_weight != null ? Number(r.bulk_weight) : null,
   }));
 }
 
