@@ -567,6 +567,7 @@ export async function registerAnalysis(
     weight: i.weight ? Number(i.weight) : undefined,
     input: i.calc_input as CalculatorInput | undefined,
     result: i.calc_result as CalculatorResult | undefined,
+    category: i.category || undefined,
   }));
 
   const newTotal = calcTotal(mappedItems);
