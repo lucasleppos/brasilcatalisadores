@@ -9,9 +9,9 @@ import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n: number, d = 2) => fmtNum(n, d);
 
 const itemTypeLabels: Record<string, string> = {
   peca: "Peça",
