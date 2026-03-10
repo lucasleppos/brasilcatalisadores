@@ -36,7 +36,7 @@ import {
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const fmtNum = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const fmtNum = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 
 // ─── KPI Card ───
 function KpiCard({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) {
