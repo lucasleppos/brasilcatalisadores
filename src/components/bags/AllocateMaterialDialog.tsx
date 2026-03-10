@@ -163,7 +163,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
             {material && (
               <div className="text-sm p-3 rounded-md bg-muted space-y-1">
                 <div>Fornecedor: <strong>{material.supplierName}</strong></div>
-                <div>Peso: <strong>{fmtNum(material.weight, 2)} kg</strong></div>
+                <div>Peso: <strong>{fmtNum(material.weight, 4)} kg</strong></div>
                 <div>Valor: <strong>{fmtBrl(material.paidValue)}</strong></div>
                 <div>PPMs: Pt {material.ptPpm} | Pd {material.pdPpm} | Rh {material.rhPpm}</div>
               </div>
