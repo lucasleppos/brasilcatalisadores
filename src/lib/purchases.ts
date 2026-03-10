@@ -370,6 +370,7 @@ export async function createPurchase(data: {
         weight: i.weight || null,
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
+        category: i.category || null,
       }))
     );
   }
