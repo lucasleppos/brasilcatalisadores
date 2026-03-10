@@ -139,11 +139,11 @@ export function BagDetail({ bag, onBack, onRefresh }: BagDetailProps) {
                 {items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.supplierName}</TableCell>
-                    <TableCell>{fmtNum(item.weight, 2)}</TableCell>
+                    <TableCell>{fmtNum(item.weight, 4)}</TableCell>
                     <TableCell>{fmtBrl(item.paidValue)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedPtPpm, 1)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedPdPpm, 1)}</TableCell>
-                    <TableCell>{fmtNum(item.estimatedRhPpm, 1)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPtPpm, 4)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedPdPpm, 4)}</TableCell>
+                    <TableCell>{fmtNum(item.estimatedRhPpm, 4)}</TableCell>
                     <TableCell>
                       {bag.status === "Aberto" && (
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item)}>

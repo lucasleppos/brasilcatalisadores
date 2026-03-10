@@ -36,7 +36,7 @@ export function BagCard({ bag, onClick }: BagCardProps) {
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span>Peso</span>
-            <span>{fmtNum(bag.totalWeight, 1)} / {bag.maxWeight} kg</span>
+            <span>{fmtNum(bag.totalWeight, 4)} / {bag.maxWeight} kg</span>
           </div>
           <Progress value={Math.min(pct, 110)} className="h-2" />
         </div>
