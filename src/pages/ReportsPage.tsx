@@ -245,7 +245,7 @@ function BagsTab() {
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="bag_number" className="text-xs" />
-                    <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="total_paid_brl" fill="var(--color-total_paid_brl)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="refiner_total_value" fill="var(--color-refiner_total_value)" radius={[4, 4, 0, 0]} />
