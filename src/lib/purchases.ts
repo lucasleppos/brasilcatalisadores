@@ -609,6 +609,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
   const materialFlow = determineMaterialFlow(data.items);
   const updateData: any = { total_brl: totalBrl, notes: data.notes, material_flow: materialFlow };
   if (data.erpNumber !== undefined) updateData.erp_number = data.erpNumber;
+  if (data.bulkWeight !== undefined) updateData.bulk_weight = data.bulkWeight;
 
   await supabase.from("purchases").update(updateData).eq("id", id);
 }
