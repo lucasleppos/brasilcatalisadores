@@ -209,7 +209,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção: Peso acima do limite</AlertDialogTitle>
             <AlertDialogDescription>
-              O bag ficará com {bag && material ? fmtNum(bag.totalWeight + material.weight, 1) : "?"} kg,
+              O bag ficará com {bag && material ? fmtNum(bag.totalWeight + material.weight, 4) : "?"} kg,
               ultrapassando o limite de {bag?.maxWeight || 1000} kg. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
