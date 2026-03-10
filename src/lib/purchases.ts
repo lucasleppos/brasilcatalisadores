@@ -394,6 +394,7 @@ export async function createPurchase(data: {
     weightLoss: null,
     finStatus: null,
     opStatus: null,
+    bulkWeight: data.bulkWeight ?? null,
   };
 }
 
