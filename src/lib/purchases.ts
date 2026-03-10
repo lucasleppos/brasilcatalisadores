@@ -353,6 +353,7 @@ export async function createPurchase(data: {
       total_brl: totalBrl,
       notes: data.notes || "",
       status_history: statusHistory,
+      bulk_weight: data.bulkWeight ?? null,
     })
     .select()
     .single();
