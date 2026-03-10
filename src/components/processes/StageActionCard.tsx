@@ -239,7 +239,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
-                <Input value={rhPpm} onChange={(e) => setRhPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
+                <Input inputMode="decimal" value={rhPpm} onChange={(e) => setRhPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
               </div>
             </div>
             <Button size="sm" className="w-full" disabled={loading || !ptPpm || !pdPpm || !rhPpm} onClick={handleAnalysis}>
