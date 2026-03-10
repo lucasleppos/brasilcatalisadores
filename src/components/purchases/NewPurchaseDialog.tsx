@@ -450,7 +450,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Valor bruto USD</span>
-                      <span>$ {calcPreview.grossMetalValueUsd.toFixed(2)}</span>
+                      <span>$ {fmtNum(calcPreview.grossMetalValueUsd, 2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Deduções USD</span>
