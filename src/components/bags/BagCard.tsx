@@ -42,7 +42,7 @@ export function BagCard({ bag, onClick }: BagCardProps) {
         </div>
 
         <div className="text-sm font-medium">
-          R$ {bag.totalPaidBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          R$ {fmtNum(bag.totalPaidBrl, 2)}
         </div>
       </CardContent>
     </Card>
