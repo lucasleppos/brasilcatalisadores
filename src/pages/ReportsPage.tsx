@@ -304,7 +304,7 @@ function BagsTab() {
                       <TableCell className="text-right">
                         {r.margin_pct !== null ? (
                           <span className={r.margin_pct >= 0 ? "text-green-600" : "text-destructive"}>
-                            {r.margin_pct.toFixed(1)}%
+                            {fmtNum(r.margin_pct)}%
                           </span>
                         ) : "—"}
                       </TableCell>
