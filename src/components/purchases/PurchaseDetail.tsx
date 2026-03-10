@@ -90,6 +90,20 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
         </div>
 
+        {/* Bulk Weight (Material a Classificar) */}
+        {purchase.bulkWeight != null && purchase.bulkWeight > 0 && (
+          <>
+            <Separator />
+            <div className="rounded-md border p-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                <Package className="h-3 w-3" />
+                Material a Classificar
+              </p>
+              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight)} kg</p>
+            </div>
+          </>
+        )}
+
         {/* Weight divergence alert */}
         {purchase.weightLoss != null && Math.abs(purchase.weightLoss) > 0.5 && (
           <>
