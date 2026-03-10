@@ -152,6 +152,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <TableRow>
               <TableHead className="text-xs">#</TableHead>
               <TableHead className="text-xs">Tipo</TableHead>
+              <TableHead className="text-xs">Categoria</TableHead>
               <TableHead className="text-xs text-right">Qtd/Peso</TableHead>
               <TableHead className="text-xs text-right">Valor</TableHead>
             </TableRow>
@@ -163,6 +164,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                 <TableRow key={q.id}>
                   <TableCell className="text-xs">{i + 1}</TableCell>
                   <TableCell className="text-xs">{itemTypeLabels[q.itemType] ?? q.itemType}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{q.category || "—"}</TableCell>
                   <TableCell className="text-xs text-right">
                     {q.itemType === "peca"
                       ? `${q.quantity || 0} pç`
