@@ -271,7 +271,7 @@ function BagsTab() {
                         "Peso (kg)": r.total_weight,
                         "Pago (R$)": r.total_paid_brl,
                         "Refinador (R$)": r.refiner_total_value || "",
-                        "Margem %": r.margin_pct !== null ? r.margin_pct.toFixed(1) : "",
+                        "Margem %": r.margin_pct !== null ? fmtNum(r.margin_pct) : "",
                       })),
                       "analise-bags"
                     );
