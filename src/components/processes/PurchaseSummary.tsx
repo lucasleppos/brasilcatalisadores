@@ -95,7 +95,7 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
 
         {purchase.weightReal != null && <>
           <div className="text-muted-foreground">Peso real</div>
-          <div>{fmtNum(purchase.weightReal, 2)} kg</div>
+          <div>{fmtNum(purchase.weightReal, 4)} kg</div>
         </>}
       </div>
 

@@ -183,7 +183,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <AlertTriangle className="h-4 w-4 text-red-700" />
             <div className="text-xs text-red-700">
               <p className="font-semibold">Divergência de peso</p>
-              <p>Declarado: {fmtNum(purchase.weightDeclared ?? 0, 2)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 2)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 2)} kg</p>
+              <p>Declarado: {fmtNum(purchase.weightDeclared ?? 0, 4)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 4)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 4)} kg</p>
             </div>
           </div>
         )}
