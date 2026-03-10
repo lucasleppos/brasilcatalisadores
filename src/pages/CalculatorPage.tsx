@@ -27,28 +27,29 @@ import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase } from "@/lib/purchases";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { fmtNum, fmtBrl as fmtBrlUtil, parseNum } from "@/lib/utils";
 
-const emptyInput: CalculatorInput = {
-  grossWeight: 0,
-  tare: 0,
-  materialType: "comum",
-  ptPpm: 0,
-  pdPpm: 0,
-  rhPpm: 0,
-  clientDiscount: 15,
-  entryType: "grupo",
-  manualPrice: null,
-  customPt: null,
-  customPd: null,
-  customRh: null,
-};
-
-const fmt = (n: number, decimals = 5) => n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const fmt = (n: number, decimals = 5) => fmtNum(n, decimals);
 const fmtUsd = (n: number) => `$ ${fmt(n, 5)}`;
-const fmtBrl = (n: number) => `R$ ${fmt(n, 2)}`;
+const fmtBrl = (n: number) => fmtBrlUtil(n);
+
+const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 export default function CalculatorPage() {
-  const [input, setInput] = useState<CalculatorInput>({ ...emptyInput });
+  // All numeric inputs as strings
+  const [grossWeightStr, setGrossWeightStr] = useState("");
+  const [tareStr, setTareStr] = useState("");
+  const [ptPpmStr, setPtPpmStr] = useState("");
+  const [pdPpmStr, setPdPpmStr] = useState("");
+  const [rhPpmStr, setRhPpmStr] = useState("");
+  const [clientDiscountStr, setClientDiscountStr] = useState("15");
+  const [manualPriceStr, setManualPriceStr] = useState("");
+  const [customPtStr, setCustomPtStr] = useState("");
+  const [customPdStr, setCustomPdStr] = useState("");
+  const [customRhStr, setCustomRhStr] = useState("");
+
+  const [entryType, setEntryType] = useState<EntryType>("grupo");
+  const [materialType, setMaterialType] = useState<MaterialType>("comum");
   const [useCustomQuotes, setUseCustomQuotes] = useState(false);
   const [history, setHistory] = useState<SimulationRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -68,10 +69,23 @@ export default function CalculatorPage() {
     loadSettings().then(setSettings);
   }, []);
 
-  const update = <K extends keyof CalculatorInput>(key: K, value: CalculatorInput[K]) =>
-    setInput((prev) => ({ ...prev, [key]: value }));
+  // Build CalculatorInput from string states
+  const input: CalculatorInput = useMemo(() => ({
+    grossWeight: parseNum(grossWeightStr),
+    tare: parseNum(tareStr),
+    materialType,
+    ptPpm: parseNum(ptPpmStr),
+    pdPpm: parseNum(pdPpmStr),
+    rhPpm: parseNum(rhPpmStr),
+    clientDiscount: parseNum(clientDiscountStr),
+    entryType,
+    manualPrice: manualPriceStr ? parseNum(manualPriceStr) : null,
+    customPt: useCustomQuotes ? parseNum(customPtStr) : null,
+    customPd: useCustomQuotes ? parseNum(customPdStr) : null,
+    customRh: useCustomQuotes ? parseNum(customRhStr) : null,
+  }), [grossWeightStr, tareStr, materialType, ptPpmStr, pdPpmStr, rhPpmStr, clientDiscountStr, entryType, manualPriceStr, useCustomQuotes, customPtStr, customPdStr, customRhStr]);
 
-  const showManualPrice = input.entryType === "peca_fechada" || input.entryType === "peca_sacola";
+  const showManualPrice = entryType === "peca_fechada" || entryType === "peca_sacola";
 
   const result: CalculatorResult | null = useMemo(() => {
     if (input.grossWeight <= 0 || !settings) return null;
@@ -79,7 +93,10 @@ export default function CalculatorPage() {
   }, [input, settings]);
 
   const handleClear = () => {
-    setInput({ ...emptyInput });
+    setGrossWeightStr(""); setTareStr(""); setPtPpmStr(""); setPdPpmStr(""); setRhPpmStr("");
+    setClientDiscountStr("15"); setManualPriceStr("");
+    setCustomPtStr(""); setCustomPdStr(""); setCustomRhStr("");
+    setEntryType("grupo"); setMaterialType("comum");
     setUseCustomQuotes(false);
   };
 
@@ -90,9 +107,23 @@ export default function CalculatorPage() {
   };
 
   const loadFromHistory = (record: SimulationRecord) => {
-    setInput({ ...record.input });
+    const i = record.input;
+    setGrossWeightStr(String(i.grossWeight || ""));
+    setTareStr(String(i.tare || ""));
+    setPtPpmStr(String(i.ptPpm || ""));
+    setPdPpmStr(String(i.pdPpm || ""));
+    setRhPpmStr(String(i.rhPpm || ""));
+    setClientDiscountStr(String(i.clientDiscount || ""));
+    setManualPriceStr(i.manualPrice != null ? String(i.manualPrice) : "");
+    setEntryType(i.entryType);
+    setMaterialType(i.materialType);
     setShowHistory(false);
-    if (record.input.customPt !== null) setUseCustomQuotes(true);
+    if (i.customPt !== null) {
+      setUseCustomQuotes(true);
+      setCustomPtStr(String(i.customPt || ""));
+      setCustomPdStr(String(i.customPd || ""));
+      setCustomRhStr(String(i.customRh || ""));
+    }
   };
 
   const addToQuoteList = () => {
@@ -189,7 +220,7 @@ export default function CalculatorPage() {
               {/* Entry type */}
               <div className="space-y-1">
                 <Label className="text-xs">Tipo de Entrada</Label>
-                <Select value={input.entryType} onValueChange={(v) => update("entryType", v as EntryType)}>
+                <Select value={entryType} onValueChange={(v) => setEntryType(v as EntryType)}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="peca_fechada">Peça Fechada</SelectItem>
@@ -204,11 +235,11 @@ export default function CalculatorPage() {
                 <div className="space-y-1 p-3 rounded-md bg-muted/50 border border-primary/20">
                   <Label className="text-xs text-primary font-semibold">Preço Manual (Tabelado)</Label>
                   <Input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="R$ valor do app externo"
-                    value={input.manualPrice ?? ""}
-                    onChange={(e) => update("manualPrice", e.target.value ? parseFloat(e.target.value) : null)}
+                    value={manualPriceStr}
+                    onChange={(e) => setManualPriceStr(numFilter(e.target.value))}
                     className="h-8 text-sm"
                   />
                   <p className="text-[10px] text-muted-foreground">Se preenchido, o cálculo automático fica como referência.</p>
@@ -218,7 +249,7 @@ export default function CalculatorPage() {
               {/* Material type */}
               <div className="space-y-1">
                 <Label className="text-xs">Tipo de Material</Label>
-                <Select value={input.materialType} onValueChange={(v) => update("materialType", v as MaterialType)}>
+                <Select value={materialType} onValueChange={(v) => setMaterialType(v as MaterialType)}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="comum">Comum</SelectItem>
@@ -232,11 +263,11 @@ export default function CalculatorPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Peso Bruto (kg)</Label>
-                  <Input type="number" step="any" value={input.grossWeight || ""} onChange={(e) => update("grossWeight", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={grossWeightStr} onChange={(e) => setGrossWeightStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Tara (kg)</Label>
-                  <Input type="number" step="any" value={input.tare || ""} onChange={(e) => update("tare", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={tareStr} onChange={(e) => setTareStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                 </div>
               </div>
 
@@ -244,22 +275,22 @@ export default function CalculatorPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Pt (ppm)</Label>
-                  <Input type="number" step="any" value={input.ptPpm || ""} onChange={(e) => update("ptPpm", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={ptPpmStr} onChange={(e) => setPtPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Pd (ppm)</Label>
-                  <Input type="number" step="any" value={input.pdPpm || ""} onChange={(e) => update("pdPpm", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={pdPpmStr} onChange={(e) => setPdPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Rh (ppm)</Label>
-                  <Input type="number" step="any" value={input.rhPpm || ""} onChange={(e) => update("rhPpm", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={rhPpmStr} onChange={(e) => setRhPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                 </div>
               </div>
 
               {/* Client discount → Margem de Fornecedor */}
               <div className="space-y-1">
                 <Label className="text-xs">Margem de Fornecedor (%)</Label>
-                <Input type="number" step="any" value={input.clientDiscount || ""} onChange={(e) => update("clientDiscount", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                <Input type="text" inputMode="decimal" value={clientDiscountStr} onChange={(e) => setClientDiscountStr(numFilter(e.target.value))} className="h-8 text-sm" />
               </div>
 
               {isAdmin && (
@@ -272,13 +303,11 @@ export default function CalculatorPage() {
                     <Switch checked={useCustomQuotes} onCheckedChange={(v) => {
                        setUseCustomQuotes(v);
                       if (!v) {
-                        update("customPt", null);
-                        update("customPd", null);
-                        update("customRh", null);
+                        setCustomPtStr(""); setCustomPdStr(""); setCustomRhStr("");
                       } else {
-                        update("customPt", settings?.ptPrice ?? 0);
-                        update("customPd", settings?.pdPrice ?? 0);
-                        update("customRh", settings?.rhPrice ?? 0);
+                        setCustomPtStr(String(settings?.ptPrice ?? 0));
+                        setCustomPdStr(String(settings?.pdPrice ?? 0));
+                        setCustomRhStr(String(settings?.rhPrice ?? 0));
                       }
                     }} />
                   </div>
@@ -287,15 +316,15 @@ export default function CalculatorPage() {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Pt ($/ozt)</Label>
-                        <Input type="number" step="any" value={input.customPt ?? ""} onChange={(e) => update("customPt", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                        <Input type="text" inputMode="decimal" value={customPtStr} onChange={(e) => setCustomPtStr(numFilter(e.target.value))} className="h-8 text-sm" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Pd ($/ozt)</Label>
-                        <Input type="number" step="any" value={input.customPd ?? ""} onChange={(e) => update("customPd", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                        <Input type="text" inputMode="decimal" value={customPdStr} onChange={(e) => setCustomPdStr(numFilter(e.target.value))} className="h-8 text-sm" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Rh ($/ozt)</Label>
-                        <Input type="number" step="any" value={input.customRh ?? ""} onChange={(e) => update("customRh", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                        <Input type="text" inputMode="decimal" value={customRhStr} onChange={(e) => setCustomRhStr(numFilter(e.target.value))} className="h-8 text-sm" />
                       </div>
                     </div>
                   )}

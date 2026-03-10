@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { fmtNum, fmtBrl } from "@/lib/utils";
+import { fmtNum, fmtBrl, parseNum } from "@/lib/utils";
+
+const numFilter = (v: string) => v.replace(/[^0-9.,\-]/g, "");
 
 export function BagAnalysisPanel() {
   const { toast } = useToast();
@@ -17,7 +19,7 @@ export function BagAnalysisPanel() {
   const [items, setItems] = useState<BagItem[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Editable fields
+  // Editable fields as strings
   const [provisionalPt, setProvisionalPt] = useState("");
   const [provisionalPd, setProvisionalPd] = useState("");
   const [provisionalRh, setProvisionalRh] = useState("");
@@ -53,7 +55,7 @@ export function BagAnalysisPanel() {
   const estRh = totalW > 0 ? items.reduce((s, i) => s + i.estimatedRhPpm * i.weight, 0) / totalW : 0;
 
   const variance = (estimated: number, actual: string) => {
-    const a = parseFloat(actual);
+    const a = parseNum(actual);
     if (!a || !estimated) return null;
     return ((a - estimated) / estimated * 100);
   };
@@ -72,13 +74,13 @@ export function BagAnalysisPanel() {
     if (!selectedBag) return;
     setSaving(true);
     await updateBagAnalysis(selectedBag.id, {
-      provisionalPtPpm: provisionalPt ? parseFloat(provisionalPt) : null,
-      provisionalPdPpm: provisionalPd ? parseFloat(provisionalPd) : null,
-      provisionalRhPpm: provisionalRh ? parseFloat(provisionalRh) : null,
-      refinerPtPpm: refinerPt ? parseFloat(refinerPt) : null,
-      refinerPdPpm: refinerPd ? parseFloat(refinerPd) : null,
-      refinerRhPpm: refinerRh ? parseFloat(refinerRh) : null,
-      refinerTotalValue: refinerValue ? parseFloat(refinerValue) : null,
+      provisionalPtPpm: provisionalPt ? parseNum(provisionalPt) : null,
+      provisionalPdPpm: provisionalPd ? parseNum(provisionalPd) : null,
+      provisionalRhPpm: provisionalRh ? parseNum(provisionalRh) : null,
+      refinerPtPpm: refinerPt ? parseNum(refinerPt) : null,
+      refinerPdPpm: refinerPd ? parseNum(refinerPd) : null,
+      refinerRhPpm: refinerRh ? parseNum(refinerRh) : null,
+      refinerTotalValue: refinerValue ? parseNum(refinerValue) : null,
     });
     setSaving(false);
     toast({ title: "Dados de análise salvos" });
@@ -128,7 +130,7 @@ export function BagAnalysisPanel() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Peso Total</CardTitle></CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{fmtNum(selectedBag.totalWeight, 1)} kg</div>
+                <div className="text-xl font-bold">{fmtNum(selectedBag.totalWeight, 4)} kg</div>
               </CardContent>
             </Card>
           </div>
@@ -155,9 +157,9 @@ export function BagAnalysisPanel() {
             <CardHeader><CardTitle className="text-sm">Provisional Assay (Nosso Laboratório)</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-3">
-                <div><Label className="text-xs">Pt (ppm)</Label><Input value={provisionalPt} onChange={e => setProvisionalPt(e.target.value)} type="number" /></div>
-                <div><Label className="text-xs">Pd (ppm)</Label><Input value={provisionalPd} onChange={e => setProvisionalPd(e.target.value)} type="number" /></div>
-                <div><Label className="text-xs">Rh (ppm)</Label><Input value={provisionalRh} onChange={e => setProvisionalRh(e.target.value)} type="number" /></div>
+                <div><Label className="text-xs">Pt (ppm)</Label><Input type="text" inputMode="decimal" value={provisionalPt} onChange={e => setProvisionalPt(numFilter(e.target.value))} placeholder="0,0000" /></div>
+                <div><Label className="text-xs">Pd (ppm)</Label><Input type="text" inputMode="decimal" value={provisionalPd} onChange={e => setProvisionalPd(numFilter(e.target.value))} placeholder="0,0000" /></div>
+                <div><Label className="text-xs">Rh (ppm)</Label><Input type="text" inputMode="decimal" value={provisionalRh} onChange={e => setProvisionalRh(numFilter(e.target.value))} placeholder="0,0000" /></div>
               </div>
             </CardContent>
           </Card>
@@ -166,13 +168,13 @@ export function BagAnalysisPanel() {
             <CardHeader><CardTitle className="text-sm">Final Assay (Refinador / Cliente)</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-3 mb-3">
-                <div><Label className="text-xs">Pt (ppm)</Label><Input value={refinerPt} onChange={e => setRefinerPt(e.target.value)} type="number" /></div>
-                <div><Label className="text-xs">Pd (ppm)</Label><Input value={refinerPd} onChange={e => setRefinerPd(e.target.value)} type="number" /></div>
-                <div><Label className="text-xs">Rh (ppm)</Label><Input value={refinerRh} onChange={e => setRefinerRh(e.target.value)} type="number" /></div>
+                <div><Label className="text-xs">Pt (ppm)</Label><Input type="text" inputMode="decimal" value={refinerPt} onChange={e => setRefinerPt(numFilter(e.target.value))} placeholder="0,0000" /></div>
+                <div><Label className="text-xs">Pd (ppm)</Label><Input type="text" inputMode="decimal" value={refinerPd} onChange={e => setRefinerPd(numFilter(e.target.value))} placeholder="0,0000" /></div>
+                <div><Label className="text-xs">Rh (ppm)</Label><Input type="text" inputMode="decimal" value={refinerRh} onChange={e => setRefinerRh(numFilter(e.target.value))} placeholder="0,0000" /></div>
               </div>
               <div>
                 <Label className="text-xs">Valor Total do Refinador (R$)</Label>
-                <Input value={refinerValue} onChange={e => setRefinerValue(e.target.value)} type="number" />
+                <Input type="text" inputMode="decimal" value={refinerValue} onChange={e => setRefinerValue(numFilter(e.target.value))} />
               </div>
             </CardContent>
           </Card>
@@ -202,11 +204,11 @@ export function BagAnalysisPanel() {
                   ].map((row) => (
                     <TableRow key={row.metal}>
                       <TableCell className="font-medium">{row.metal}</TableCell>
-                      <TableCell>{fmtNum(row.est, 1)}</TableCell>
+                      <TableCell>{fmtNum(row.est, 4)}</TableCell>
                       <TableCell>{row.prov || "—"}</TableCell>
                       <TableCell>{row.final || "—"}</TableCell>
                       <TableCell><VarianceBadge value={variance(row.est, row.prov)} /></TableCell>
-                      <TableCell><VarianceBadge value={row.prov ? variance(parseFloat(row.prov), row.final) : null} /></TableCell>
+                      <TableCell><VarianceBadge value={row.prov ? variance(parseNum(row.prov), row.final) : null} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -226,11 +228,11 @@ export function BagAnalysisPanel() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Valor Refinador:</span>{" "}
-                    <strong>{fmtBrl(parseFloat(refinerValue))}</strong>
+                    <strong>{fmtBrl(parseNum(refinerValue))}</strong>
                   </div>
                   <div>
                     <VarianceBadge value={selectedBag.totalPaidBrl > 0
-                      ? ((parseFloat(refinerValue) - selectedBag.totalPaidBrl) / selectedBag.totalPaidBrl * 100)
+                      ? ((parseNum(refinerValue) - selectedBag.totalPaidBrl) / selectedBag.totalPaidBrl * 100)
                       : null
                     } />
                   </div>

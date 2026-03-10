@@ -16,9 +16,9 @@ import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseIt
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
-import { fmtNum, fmtBrl } from "@/lib/utils";
+import { fmtNum, fmtBrl, parseNum } from "@/lib/utils";
 
-const fmt = (n: number, d = 2) => fmtNum(n, d);
+const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 const itemTypeLabels: Record<PurchaseItemType, string> = {
   peca: "Peça",
@@ -48,28 +48,38 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const { toast } = useToast();
 
   // Bulk weight (Material a Classificar)
-  const [bulkWeight, setBulkWeight] = useState<number>(0);
+  const [bulkWeightStr, setBulkWeightStr] = useState("");
 
   // Simple fields
-  const [addQty, setAddQty] = useState<number>(0);
-  const [addValue, setAddValue] = useState<number>(0);
-  const [addWeight, setAddWeight] = useState<number>(0);
+  const [addQtyStr, setAddQtyStr] = useState("");
+  const [addValueStr, setAddValueStr] = useState("");
+  const [addWeightStr, setAddWeightStr] = useState("");
 
   // Category field
   const [addCategory, setAddCategory] = useState("");
 
   // Calculator fields
-  const [grossWeight, setGrossWeight] = useState<number>(0);
-  const [tareStr, setTareStr] = useState<string>("");
-  const [ptPpm, setPtPpm] = useState<number>(0);
-  const [pdPpm, setPdPpm] = useState<number>(0);
-  const [rhPpm, setRhPpm] = useState<number>(0);
+  const [grossWeightStr, setGrossWeightStr] = useState("");
+  const [tareStr, setTareStr] = useState("");
+  const [ptPpmStr, setPtPpmStr] = useState("");
+  const [pdPpmStr, setPdPpmStr] = useState("");
+  const [rhPpmStr, setRhPpmStr] = useState("");
 
   // Peça em sacola: toggle between simple and calculator mode
   const [sacolaUseCalc, setSacolaUseCalc] = useState(false);
 
   // Preview of calculation
   const [calcPreview, setCalcPreview] = useState<CalculatorResult | null>(null);
+
+  // Derived numeric values
+  const bulkWeight = parseNum(bulkWeightStr);
+  const addQty = parseInt(addQtyStr) || 0;
+  const addValue = parseNum(addValueStr);
+  const addWeight = parseNum(addWeightStr);
+  const grossWeight = parseNum(grossWeightStr);
+  const ptPpm = parseNum(ptPpmStr);
+  const pdPpm = parseNum(pdPpmStr);
+  const rhPpm = parseNum(rhPpmStr);
 
   useEffect(() => {
     if (open) {
@@ -78,7 +88,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
         setErpNumber(editPurchase.erpNumber || "");
-        setBulkWeight(editPurchase.bulkWeight || 0);
+        setBulkWeightStr(editPurchase.bulkWeight ? String(editPurchase.bulkWeight) : "");
         setItems(editPurchase.items.map(i => ({
           id: i.id,
           itemType: i.itemType,
@@ -93,7 +103,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         setSupplierId("");
         setNotes("");
         setErpNumber("");
-        setBulkWeight(0);
+        setBulkWeightStr("");
         setItems([]);
       }
       resetAddFields();
@@ -101,15 +111,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   }, [open]);
 
   const resetAddFields = () => {
-    setAddQty(0);
-    setAddValue(0);
-    setAddWeight(0);
+    setAddQtyStr("");
+    setAddValueStr("");
+    setAddWeightStr("");
     setAddCategory("");
-    setGrossWeight(0);
+    setGrossWeightStr("");
     setTareStr("");
-    setPtPpm(0);
-    setPdPpm(0);
-    setRhPpm(0);
+    setPtPpmStr("");
+    setPdPpmStr("");
+    setRhPpmStr("");
     setSacolaUseCalc(false);
     setCalcPreview(null);
   };
@@ -132,7 +142,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     if (grossWeight <= 0) return;
     const settings = await loadSettings();
     const margin = selectedSupplier?.margin ?? 0;
-    const tare = parseFloat(tareStr.replace(",", ".")) || 0;
+    const tare = parseNum(tareStr);
     const input: CalculatorInput = {
       grossWeight,
       tare,
@@ -157,7 +167,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     } else {
       setCalcPreview(null);
     }
-  }, [grossWeight, tareStr, ptPpm, pdPpm, rhPpm, addType, sacolaUseCalc, supplierId]);
+  }, [grossWeightStr, tareStr, ptPpmStr, pdPpmStr, rhPpmStr, addType, sacolaUseCalc, supplierId]);
 
   const addItem = async () => {
     const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
@@ -170,7 +180,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
       const settings = await loadSettings();
       const margin = selectedSupplier?.margin ?? 0;
-      const tare = parseFloat(tareStr.replace(",", ".")) || 0;
+      const tare = parseNum(tareStr);
       const input: CalculatorInput = {
         grossWeight,
         tare,
@@ -187,13 +197,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       };
       const hasPpms = ptPpm > 0 || pdPpm > 0 || rhPpm > 0;
       const result = hasPpms ? calculate(input, settings) : undefined;
-      const tareVal = parseFloat(tareStr.replace(",", ".")) || 0;
       setItems(prev => [
         ...prev,
         {
           id: crypto.randomUUID(),
           itemType: addType,
-          weight: grossWeight - tareVal,
+          weight: grossWeight - tare,
           calcInput: input,
           calcResult: result,
           category,
@@ -326,21 +335,20 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             <div className="space-y-1">
               <Label className="text-[10px]">Peso total recebido (kg)</Label>
               <Input
-                type="number"
-                min={0}
-                step="any"
-                value={bulkWeight || ""}
-                onChange={e => setBulkWeight(parseFloat(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={bulkWeightStr}
+                onChange={e => setBulkWeightStr(numFilter(e.target.value))}
                 className="h-8 text-sm"
-                placeholder="Peso bruto total do lote"
+                placeholder="0,0000"
               />
             </div>
             {bulkWeight > 0 && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">Classificado: {fmt(totalClassified)} kg</span>
+                  <span className="text-muted-foreground">Classificado: {fmtNum(totalClassified, 4)} kg</span>
                   <span className={`font-semibold ${bulkRemaining < 0 ? "text-destructive" : bulkRemaining === 0 ? "text-green-600" : "text-foreground"}`}>
-                    Restante: {fmt(bulkRemaining)} kg
+                    Restante: {fmtNum(bulkRemaining, 4)} kg
                   </span>
                 </div>
                 <Progress value={bulkProgress} className="h-2" />
@@ -399,17 +407,17 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[10px]">Quantidade de peças *</Label>
-                  <Input type="number" min={0} value={addQty || ""} onChange={e => setAddQty(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
+                  <Input type="text" inputMode="decimal" value={addQtyStr} onChange={e => setAddQtyStr(numFilter(e.target.value))} className="h-8 text-sm" />
                 </div>
                 {addType === "peca_sacola" && (
                   <div className="space-y-1">
                     <Label className="text-[10px]">Peso (kg)</Label>
-                    <Input type="number" min={0} step="any" value={addWeight || ""} onChange={e => setAddWeight(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="text" inputMode="decimal" value={addWeightStr} onChange={e => setAddWeightStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                   </div>
                 )}
                 <div className="space-y-1">
                   <Label className="text-[10px]">Valor total (R$)</Label>
-                  <Input type="number" min={0} step="any" value={addValue || ""} onChange={e => setAddValue(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
+                  <Input type="text" inputMode="decimal" value={addValueStr} onChange={e => setAddValueStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
                 </div>
               </div>
             )}
@@ -419,25 +427,25 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[10px]">Peso Bruto (kg) *</Label>
-                    <Input type="number" min={0} step="any" value={grossWeight || ""} onChange={e => setGrossWeight(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+                    <Input type="text" inputMode="decimal" value={grossWeightStr} onChange={e => setGrossWeightStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Tara (kg)</Label>
-                    <Input type="text" inputMode="decimal" value={tareStr} onChange={e => setTareStr(e.target.value.replace(/[^0-9.,]/g, ""))} className="h-8 text-sm" placeholder="0,000" />
+                    <Input type="text" inputMode="decimal" value={tareStr} onChange={e => setTareStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[10px]">Pt (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={ptPpm || ""} onChange={e => setPtPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
+                    <Input type="text" inputMode="decimal" value={ptPpmStr} onChange={e => setPtPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Pd (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={pdPpm || ""} onChange={e => setPdPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
+                    <Input type="text" inputMode="decimal" value={pdPpmStr} onChange={e => setPdPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Rh (ppm)</Label>
-                    <Input type="number" min={0} step="any" value={rhPpm || ""} onChange={e => setRhPpm(parseFloat(e.target.value) || 0)} className="h-8 text-sm" placeholder="Opcional" />
+                    <Input type="text" inputMode="decimal" value={rhPpmStr} onChange={e => setRhPpmStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">PPMs podem ser preenchidos depois (na edição da compra, após análise).</p>
@@ -446,7 +454,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                   <div className="rounded-md bg-background border p-2 space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Peso líquido</span>
-                      <span>{fmtNum(calcPreview.netWeightKg, 2)} kg</span>
+                      <span>{fmtNum(calcPreview.netWeightKg, 4)} kg</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Valor bruto USD</span>
@@ -489,9 +497,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     <TableCell className="text-xs text-muted-foreground">{it.category || "—"}</TableCell>
                     <TableCell className="text-xs text-right">
                       {it.calcResult || it.calcInput
-                        ? `${fmtNum(it.weight ?? it.calcInput?.grossWeight ?? 0, 1)} kg`
+                        ? `${fmtNum(it.weight ?? it.calcInput?.grossWeight ?? 0, 4)} kg`
                         : it.itemType === "peca_sacola"
-                          ? `${it.quantity} pç${it.weight ? ` / ${fmtNum(it.weight, 2)} kg` : ""}`
+                          ? `${it.quantity} pç${it.weight ? ` / ${fmtNum(it.weight, 4)} kg` : ""}`
                           : `${it.quantity} pç`}
                     </TableCell>
                     <TableCell className="text-xs text-right font-semibold">

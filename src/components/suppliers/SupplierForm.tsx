@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Supplier } from "@/lib/suppliers";
+import { parseNum } from "@/lib/utils";
+
+const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 interface SupplierFormProps {
   open: boolean;
@@ -18,7 +21,7 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [email, setEmail] = useState(initial?.email ?? "");
   const [branch, setBranch] = useState(initial?.branch ?? "");
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
-  const [margin, setMargin] = useState(initial?.margin ?? 15);
+  const [marginStr, setMarginStr] = useState(String(initial?.margin ?? 15));
 
   useEffect(() => {
     if (open) {
@@ -27,13 +30,13 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
       setEmail(initial?.email ?? "");
       setBranch(initial?.branch ?? "");
       setBuyer(initial?.buyer ?? "");
-      setMargin(initial?.margin ?? 15);
+      setMarginStr(String(initial?.margin ?? 15));
     }
   }, [open, initial]);
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), document: document.trim(), email: email.trim(), branch: branch.trim(), buyer: buyer.trim(), margin });
+    onSave({ name: name.trim(), document: document.trim(), email: email.trim(), branch: branch.trim(), buyer: buyer.trim(), margin: parseNum(marginStr) });
     onOpenChange(false);
   };
 
@@ -70,7 +73,7 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Margem (%)</Label>
-            <Input type="number" step="any" value={margin} onChange={(e) => setMargin(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+            <Input type="text" inputMode="decimal" value={marginStr} onChange={(e) => setMarginStr(numFilter(e.target.value))} className="h-8 text-sm" />
           </div>
         </div>
         <DialogFooter>
