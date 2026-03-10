@@ -600,6 +600,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
         weight: i.weight || null,
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
+        category: i.category || null,
       }))
     );
   }
