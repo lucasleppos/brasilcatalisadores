@@ -112,7 +112,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
               <AlertTriangle className="h-5 w-5 text-red-700" />
               <div className="text-sm text-red-700">
                 <p className="font-semibold">Divergência de peso detectada</p>
-                <p className="text-xs">Declarado: {fmtNum(purchase.weightDeclared ?? 0, 2)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 2)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 2)} kg</p>
+                <p className="text-xs">Declarado: {fmtNum(purchase.weightDeclared ?? 0, 4)} kg | Real: {fmtNum(purchase.weightReal ?? 0, 4)} kg | Perda: {fmtNum(Math.abs(purchase.weightLoss), 4)} kg</p>
               </div>
             </div>
           </>
