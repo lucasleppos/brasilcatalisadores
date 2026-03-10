@@ -585,7 +585,7 @@ export async function registerAnalysis(
   return true;
 }
 
-export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string }) {
+export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string; bulkWeight?: number | null }) {
   const totalBrl = calcTotal(data.items);
 
   await supabase.from("purchase_items").delete().eq("purchase_id", id);
