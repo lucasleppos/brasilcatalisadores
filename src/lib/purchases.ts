@@ -296,6 +296,7 @@ export async function loadPurchases(): Promise<Purchase[]> {
       weight: item.weight ? Number(item.weight) : undefined,
       input: item.calc_input as CalculatorInput | undefined,
       result: item.calc_result as CalculatorResult | undefined,
+      category: (item as any).category || undefined,
     });
   });
 
