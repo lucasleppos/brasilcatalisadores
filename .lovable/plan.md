@@ -1,19 +1,46 @@
+# Adicionar `inputMode="decimal"` nos campos numéricos para teclado mobile
+
+Sim, é possível. O atributo HTML `inputMode="decimal"` faz o celular abrir o teclado numérico com ponto/vírgula decimal, em vez do teclado alfanumérico padrão.
+
+## Abordagem
+
+Alterar o componente `Input` em `src/components/ui/input.tsx` para automaticamente adicionar `inputMode="decimal"` quando `type="number"`, eliminando a necessidade de alterar cada arquivo individualmente.
+
+## Campos afetados (todos os `type="number"` do projeto)
 
 
-# Corrigir edição de fornecedor com campos vazios
+| Arquivo                  | Campos                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **CalculatorPage.tsx**   | Preço Manual, Peso Bruto (kg), Tara (kg), Pt (ppm), Pd (ppm), Rh (ppm), Margem de Fornecedor (%), Pt ($/ozt), Pd ($/ozt), Rh ($/ozt) |
+| **SettingsPage.tsx**     | Todos os campos de configuração (preços, taxas, margens) — componente `Field` interno                                                |
+| **SupplierForm.tsx**     | Margem (%)                                                                                                                           |
+| **NewBagDialog.tsx**     | Peso Máximo (kg)                                                                                                                     |
+| **BagAnalysisPanel.tsx** | Pt (ppm), Pd (ppm), Rh (ppm) provisórios; Pt, Pd, Rh do refinador; Valor Total do Refinador (R$)                                     |
 
-## Problema
-O `SupplierForm` usa `useState(initial?.name ?? "")` que apenas define o valor na **primeira montagem** do componente. Como o `Dialog` permanece montado, quando o usuario clica para editar, o `initial` muda mas os estados internos nao atualizam.
 
-## Solucao
-Adicionar um `useEffect` que sincroniza os campos do formulario sempre que `initial` ou `open` mudar. Quando o dialog abre, os campos sao preenchidos com os dados do fornecedor selecionado (ou limpos para novo cadastro).
+**Total: ~25 campos numéricos** em 5 arquivos, todos corrigidos com uma única alteração no componente `Input`.
 
-## Arquivo: `src/components/suppliers/SupplierForm.tsx`
-- Importar `useEffect`
-- Adicionar `useEffect` que observa `initial` e `open`, resetando todos os estados (`name`, `document`, `email`, `branch`, `buyer`, `margin`) com os valores de `initial` quando o dialog abre
+## Alteração
 
-## Impacto
-- Nenhuma alteracao de banco
-- Apenas 1 arquivo modificado
-- Resolve tanto a edicao quanto o reset ao criar novo fornecedor
+### `src/components/ui/input.tsx`
 
+Adicionar lógica para injetar `inputMode="decimal"` automaticamente quando `type="number"`:
+
+```tsx
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, inputMode, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        inputMode={inputMode ?? (type === "number" ? "decimal" : undefined)}
+        // ... rest unchanged
+      />
+    );
+  },
+);
+```
+
+Isso garante que:
+
+- Todos os campos `type="number"` ganham teclado numérico no celular automaticamente
+- Se algum campo precisar de outro `inputMode`, basta passar explicitamente e ele não será sobrescrito
