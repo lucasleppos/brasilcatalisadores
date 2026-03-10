@@ -16,9 +16,9 @@ import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseIt
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmt = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n: number, d = 2) => fmtNum(n, d);
 
 const itemTypeLabels: Record<PurchaseItemType, string> = {
   peca: "Peça",
