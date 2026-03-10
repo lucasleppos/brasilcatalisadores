@@ -6,8 +6,7 @@ import { Purchase, getNextStatus, getStatusColor } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import { useState } from "react";
-
-const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
 function timeSince(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
