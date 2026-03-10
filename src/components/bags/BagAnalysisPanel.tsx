@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { fmtNum, fmtBrl } from "@/lib/utils";
 
 export function BagAnalysisPanel() {
   const { toast } = useToast();
@@ -62,7 +63,7 @@ export function BagAnalysisPanel() {
     const positive = value >= 0;
     return (
       <Badge className={positive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-        {positive ? "+" : ""}{value.toFixed(1)}%
+        {positive ? "+" : ""}{fmtNum(value, 1)}%
       </Badge>
     );
   };
@@ -81,7 +82,6 @@ export function BagAnalysisPanel() {
     });
     setSaving(false);
     toast({ title: "Dados de análise salvos" });
-    // Refresh
     const updated = await loadBags();
     setBags(updated.filter(b => b.status === "Fechado" || b.status === "Exportado"));
   };
@@ -116,19 +116,19 @@ export function BagAnalysisPanel() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Valor Total Pago</CardTitle></CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">R$ {selectedBag.totalPaidBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                <div className="text-xl font-bold">{fmtBrl(selectedBag.totalPaidBrl)}</div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Custo Médio/kg</CardTitle></CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">R$ {costPerKg.toFixed(2)}</div>
+                <div className="text-xl font-bold">R$ {fmtNum(costPerKg, 2)}</div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Peso Total</CardTitle></CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{selectedBag.totalWeight.toFixed(1)} kg</div>
+                <div className="text-xl font-bold">{fmtNum(selectedBag.totalWeight, 1)} kg</div>
               </CardContent>
             </Card>
           </div>
@@ -142,7 +142,7 @@ export function BagAnalysisPanel() {
                   {Object.entries(supplierTotals).map(([name, val]) => (
                     <div key={name} className="flex justify-between text-sm">
                       <span>{name}</span>
-                      <span>R$ {val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      <span>{fmtBrl(val)}</span>
                     </div>
                   ))}
                 </div>
@@ -202,7 +202,7 @@ export function BagAnalysisPanel() {
                   ].map((row) => (
                     <TableRow key={row.metal}>
                       <TableCell className="font-medium">{row.metal}</TableCell>
-                      <TableCell>{row.est.toFixed(1)}</TableCell>
+                      <TableCell>{fmtNum(row.est, 1)}</TableCell>
                       <TableCell>{row.prov || "—"}</TableCell>
                       <TableCell>{row.final || "—"}</TableCell>
                       <TableCell><VarianceBadge value={variance(row.est, row.prov)} /></TableCell>
@@ -222,11 +222,11 @@ export function BagAnalysisPanel() {
                 <div className="flex items-center gap-6 text-sm">
                   <div>
                     <span className="text-muted-foreground">Valor Pago:</span>{" "}
-                    <strong>R$ {selectedBag.totalPaidBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                    <strong>{fmtBrl(selectedBag.totalPaidBrl)}</strong>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Valor Refinador:</span>{" "}
-                    <strong>R$ {parseFloat(refinerValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                    <strong>{fmtBrl(parseFloat(refinerValue))}</strong>
                   </div>
                   <div>
                     <VarianceBadge value={selectedBag.totalPaidBrl > 0

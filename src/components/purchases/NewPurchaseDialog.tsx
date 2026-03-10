@@ -489,9 +489,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     <TableCell className="text-xs text-muted-foreground">{it.category || "—"}</TableCell>
                     <TableCell className="text-xs text-right">
                       {it.calcResult || it.calcInput
-                        ? `${(it.weight ?? it.calcInput?.grossWeight)?.toFixed(1)} kg`
+                        ? `${fmtNum(it.weight ?? it.calcInput?.grossWeight ?? 0, 1)} kg`
                         : it.itemType === "peca_sacola"
-                          ? `${it.quantity} pç${it.weight ? ` / ${it.weight.toFixed(2)} kg` : ""}`
+                          ? `${it.quantity} pç${it.weight ? ` / ${fmtNum(it.weight, 2)} kg` : ""}`
                           : `${it.quantity} pç`}
                     </TableCell>
                     <TableCell className="text-xs text-right font-semibold">

@@ -465,7 +465,7 @@ function FinancialTab() {
                 <LineChart data={data?.monthly_evolution || []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                  <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"
