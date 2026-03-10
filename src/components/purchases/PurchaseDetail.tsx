@@ -197,7 +197,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                   <div key={lr.id} className="rounded-md border p-2 text-xs flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <Badge variant="outline" className="text-[10px]">v{lr.versao}</Badge>
-                      <span>Pt: {fmt(lr.ptPpm)} | Pd: {fmt(lr.pdPpm)} | Rh: {fmt(lr.rhPpm)}</span>
+                      <span>Pt: {fmt(lr.ptPpm, 4)} | Pd: {fmt(lr.pdPpm, 4)} | Rh: {fmt(lr.rhPpm, 4)}</span>
                     </div>
                     <span className="text-muted-foreground">{new Date(lr.createdAt).toLocaleString("pt-BR")}</span>
                   </div>
