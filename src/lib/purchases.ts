@@ -257,6 +257,7 @@ export interface Purchase {
   weightLoss: number | null;
   finStatus: CerFinStatus | null;
   opStatus: CerOpStatus | null;
+  bulkWeight: number | null;
 }
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
