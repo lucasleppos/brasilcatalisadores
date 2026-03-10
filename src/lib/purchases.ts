@@ -330,6 +330,7 @@ export async function createPurchase(data: {
   items: PurchaseQuoteItem[];
   notes?: string;
   erpNumber?: string;
+  bulkWeight?: number | null;
 }): Promise<Purchase | null> {
   const { data: numData } = await supabase.rpc("generate_purchase_number");
   const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR");
