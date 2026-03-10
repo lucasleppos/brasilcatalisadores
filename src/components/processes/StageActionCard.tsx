@@ -235,7 +235,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Pd (ppm)</label>
-                <Input value={pdPpm} onChange={(e) => setPdPpm(e.target.value)} placeholder="0" className="h-8 text-sm" />
+                <Input inputMode="decimal" value={pdPpm} onChange={(e) => setPdPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
