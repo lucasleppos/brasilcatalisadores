@@ -165,7 +165,7 @@ function PurchasesTab() {
               <BarChart data={data?.monthly || []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <YAxis className="text-xs" tickFormatter={(v) => `R$${fmtNum(v / 1000)}k`} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="total_brl" fill="var(--color-total_brl)" radius={[4, 4, 0, 0]} />
               </BarChart>
