@@ -25,7 +25,6 @@ export default function PurchasesPage() {
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
   const hideTotal = isFieldHidden("compras", "total_brl");
-  const hideErp = isFieldHidden("compras", "erp_number");
   const isBuyer = role === "comprador";
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
