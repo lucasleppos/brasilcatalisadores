@@ -78,7 +78,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Boleto Syge</p>
-            <p>{purchase.erpNumber || "—"}</p>
+            <p className={purchase.erpNumber ? "font-mono" : "text-red-500"}>{purchase.erpNumber || "—"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Itens</p>

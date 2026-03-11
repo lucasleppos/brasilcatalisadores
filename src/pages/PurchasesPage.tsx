@@ -136,7 +136,11 @@ export default function PurchasesPage() {
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
-                    {!hideErp && <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>}
+                    {!hideErp && (
+                      <TableCell className={`text-sm ${p.erpNumber ? "text-muted-foreground" : "text-red-500 bg-red-50 dark:bg-red-950/20"}`}>
+                        {p.erpNumber || "—"}
+                      </TableCell>
+                    )}
                     <TableCell className="text-sm">{p.items.length}</TableCell>
                     {!hideTotal && (
                       <TableCell className="text-sm text-right font-semibold">
