@@ -25,7 +25,6 @@ export default function PurchasesPage() {
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
   const hideTotal = isFieldHidden("compras", "total_brl");
-  const hideErp = isFieldHidden("compras", "erp_number");
   const isBuyer = role === "comprador";
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -114,9 +113,9 @@ export default function PurchasesPage() {
             <TableHeader>
               <TableRow>
                 <SortableTableHead column="purchaseNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nº Pedido</SortableTableHead>
+                <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>
                 <SortableTableHead column="supplierName" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Fornecedor</SortableTableHead>
                 <SortableTableHead column="buyer" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Comprador</SortableTableHead>
-                {!hideErp && <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>}
                 <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Itens</SortableTableHead>
                 {!hideTotal && <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>}
                 <SortableTableHead column="status" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Status</SortableTableHead>
@@ -134,13 +133,11 @@ export default function PurchasesPage() {
                 sorted.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
+                    <TableCell className={`text-sm ${p.erpNumber ? "text-muted-foreground" : "text-red-500 bg-red-50 dark:bg-red-950/20"}`}>
+                      {p.erpNumber || "—"}
+                    </TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
-                    {!hideErp && (
-                      <TableCell className={`text-sm ${p.erpNumber ? "text-muted-foreground" : "text-red-500 bg-red-50 dark:bg-red-950/20"}`}>
-                        {p.erpNumber || "—"}
-                      </TableCell>
-                    )}
                     <TableCell className="text-sm">{p.items.length}</TableCell>
                     {!hideTotal && (
                       <TableCell className="text-sm text-right font-semibold">

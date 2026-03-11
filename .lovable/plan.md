@@ -1,21 +1,19 @@
 
 
-# Reposicionar e garantir exibição da coluna "Boleto Syge"
+# Corrigir edição de fornecedor com campos vazios
 
 ## Problema
-A coluna "Boleto Syge" existe no código mas está condicionada à permissão `hideErp`. O perfil de permissão do usuário provavelmente oculta esse campo. Além disso, a ordem atual é: Nº Pedido → Fornecedor → Comprador → Boleto Syge. O usuário quer: **Nº Pedido → Boleto Syge → Fornecedor → Comprador**.
+O `SupplierForm` usa `useState(initial?.name ?? "")` que apenas define o valor na **primeira montagem** do componente. Como o `Dialog` permanece montado, quando o usuario clica para editar, o `initial` muda mas os estados internos nao atualizam.
 
-## Alterações
+## Solucao
+Adicionar um `useEffect` que sincroniza os campos do formulario sempre que `initial` ou `open` mudar. Quando o dialog abre, os campos sao preenchidos com os dados do fornecedor selecionado (ou limpos para novo cadastro).
 
-### `src/pages/PurchasesPage.tsx`
-1. **Reordenar colunas** no header e no body: mover "Boleto Syge" para logo após "Nº Pedido"
-2. **Remover a condição `hideErp`** da coluna — ela passará a ser sempre visível (o destaque vermelho para campo vazio já está implementado)
-3. Remover a variável `hideErp` e a referência a `isFieldHidden("compras", "erp_number")`
+## Arquivo: `src/components/suppliers/SupplierForm.tsx`
+- Importar `useEffect`
+- Adicionar `useEffect` que observa `initial` e `open`, resetando todos os estados (`name`, `document`, `email`, `branch`, `buyer`, `margin`) com os valores de `initial` quando o dialog abre
 
-Ordem final das colunas:
-```
-Nº Pedido | Boleto Syge | Fornecedor | Comprador | Itens | Total | Status | Ações
-```
-
-**1 arquivo afetado**, ~6 linhas alteradas (reordenação + remoção do condicional).
+## Impacto
+- Nenhuma alteracao de banco
+- Apenas 1 arquivo modificado
+- Resolve tanto a edicao quanto o reset ao criar novo fornecedor
 
