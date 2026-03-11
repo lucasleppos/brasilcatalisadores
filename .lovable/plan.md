@@ -1,19 +1,31 @@
 
 
-# Corrigir edição de fornecedor com campos vazios
+# Adicionar "Boleto Syge" na tabela de compras, cards de processos e resumo
 
-## Problema
-O `SupplierForm` usa `useState(initial?.name ?? "")` que apenas define o valor na **primeira montagem** do componente. Como o `Dialog` permanece montado, quando o usuario clica para editar, o `initial` muda mas os estados internos nao atualizam.
+## Alterações
 
-## Solucao
-Adicionar um `useEffect` que sincroniza os campos do formulario sempre que `initial` ou `open` mudar. Quando o dialog abre, os campos sao preenchidos com os dados do fornecedor selecionado (ou limpos para novo cadastro).
+### 1. `src/pages/PurchasesPage.tsx` — Tabela de compras
+- Na coluna "Boleto Syge" que já existe, adicionar estilo condicional: quando `erpNumber` estiver vazio, exibir o texto "—" com fundo/texto avermelhado (ex: `text-red-500 bg-red-50`) para destacar visualmente a ausência.
 
-## Arquivo: `src/components/suppliers/SupplierForm.tsx`
-- Importar `useEffect`
-- Adicionar `useEffect` que observa `initial` e `open`, resetando todos os estados (`name`, `document`, `email`, `branch`, `buyer`, `margin`) com os valores de `initial` quando o dialog abre
+### 2. `src/components/processes/StageActionCard.tsx` — Cards do processo
+- Adicionar linha com "Boleto Syge" no header do card, abaixo do comprador.
+- Se vazio, mostrar badge "Sem Boleto" em vermelho discreto.
+- Se preenchido, mostrar o valor em fonte mono.
 
-## Impacto
-- Nenhuma alteracao de banco
-- Apenas 1 arquivo modificado
-- Resolve tanto a edicao quanto o reset ao criar novo fornecedor
+### 3. `src/components/processes/PurchaseSummary.tsx` — Resumo nos diálogos de confirmação
+- Adicionar linha "Boleto Syge" na grade de informações (entre "Pedido" e "Fornecedor").
+- Se vazio, exibir "—" em vermelho.
+
+### 4. `src/components/purchases/PurchaseDetail.tsx` — Detalhe da compra (dialog)
+- Verificar se já exibe `erpNumber`. Se não, adicionar no resumo superior.
+
+## Arquivos afetados
+| Arquivo | Mudança |
+|---------|---------|
+| `PurchasesPage.tsx` | Estilo vermelho na célula Boleto Syge vazio |
+| `StageActionCard.tsx` | Exibir erpNumber no card |
+| `PurchaseSummary.tsx` | Exibir erpNumber no resumo |
+| `PurchaseDetail.tsx` | Exibir erpNumber se ausente |
+
+Nenhuma alteração de banco — `erp_number` já existe na tabela `purchases`.
 
