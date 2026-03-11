@@ -64,6 +64,11 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
         <div className="text-muted-foreground">Pedido</div>
         <div className="font-mono font-semibold">{purchase.purchaseNumber}</div>
 
+        <div className="text-muted-foreground">Boleto Syge</div>
+        <div className={purchase.erpNumber ? "font-mono" : "text-red-500"}>
+          {purchase.erpNumber || "—"}
+        </div>
+
         <div className="text-muted-foreground">Fornecedor</div>
         <div className="font-medium">{purchase.supplierName}</div>
 

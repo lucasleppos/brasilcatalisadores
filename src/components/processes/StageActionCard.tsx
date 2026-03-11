@@ -155,6 +155,9 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             {purchase.buyer && (
               <p className="text-[10px] text-muted-foreground">Comprador: {purchase.buyer}</p>
             )}
+            <p className={`text-[10px] ${purchase.erpNumber ? "text-muted-foreground font-mono" : "text-red-500"}`}>
+              Boleto Syge: {purchase.erpNumber || "Sem Boleto"}
+            </p>
           </div>
           <div className="text-right space-y-0.5">
             <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
