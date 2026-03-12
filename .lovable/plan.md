@@ -1,19 +1,33 @@
 
+# Módulo Catálogo de Peças + Peso Real por Item
 
-# Corrigir edição de fornecedor com campos vazios
+## Status: ✅ Implementado
 
-## Problema
-O `SupplierForm` usa `useState(initial?.name ?? "")` que apenas define o valor na **primeira montagem** do componente. Como o `Dialog` permanece montado, quando o usuario clica para editar, o `initial` muda mas os estados internos nao atualizam.
+### O que foi feito
 
-## Solucao
-Adicionar um `useEffect` que sincroniza os campos do formulario sempre que `initial` ou `open` mudar. Quando o dialog abre, os campos sao preenchidos com os dados do fornecedor selecionado (ou limpos para novo cadastro).
+1. **Banco de dados**
+   - Tabela `catalog_groups` (nome + margem %)
+   - Tabela `catalog_parts` (marca, carro, código, referência, peso, PPMs, grupo)
+   - 3 colunas em `purchase_items`: `catalog_part_id`, `weight_real`, `weight_loss`
+   - RLS com módulo `catalogo`
 
-## Arquivo: `src/components/suppliers/SupplierForm.tsx`
-- Importar `useEffect`
-- Adicionar `useEffect` que observa `initial` e `open`, resetando todos os estados (`name`, `document`, `email`, `branch`, `buyer`, `margin`) com os valores de `initial` quando o dialog abre
+2. **Módulo Catálogo (`/catalogo`)**
+   - Página com tabela, busca e filtro por grupo
+   - CRUD de peças (criar, editar, deletar)
+   - Importação via Excel com mapeamento de colunas
+   - Gerenciador de Grupos com margem %
 
-## Impacto
-- Nenhuma alteracao de banco
-- Apenas 1 arquivo modificado
-- Resolve tanto a edicao quanto o reset ao criar novo fornecedor
+3. **Integração na Compra**
+   - Campo de busca de peças do catálogo no tipo "Peça"
+   - Ao selecionar: auto-preenche peso, PPMs, calcula valor com margem do grupo
+   - Campo de valor editável (pode ser sobrescrito)
+   - `catalogPartId` vinculado ao item
 
+4. **Peso Real por Item**
+   - Função `registerItemRealWeight` para registrar peso real após manuseio
+   - PurchaseDetail exibe colunas "Peso Real" e "Perda" por item
+   - Resumo totalizado: peso catálogo vs real vs perda (kg e %)
+
+### Pendente (próximas iterações)
+- UI de registro de peso real por item no StageActionCard (etapa de conferência)
+- Permissão `catalogo` precisa ser configurada no módulo de Permissões
