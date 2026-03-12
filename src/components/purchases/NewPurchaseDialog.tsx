@@ -37,6 +37,7 @@ interface PendingItem {
   calcInput?: CalculatorInput;
   calcResult?: CalculatorResult;
   category?: string;
+  catalogPartId?: string;
 }
 
 export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
