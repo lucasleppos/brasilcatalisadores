@@ -630,6 +630,22 @@ export async function deletePurchase(id: string) {
   await supabase.from("purchases").delete().eq("id", id);
 }
 
+/** Register real weight for a purchase item (post-handling) */
+export async function registerItemRealWeight(itemId: string, weightReal: number): Promise<boolean> {
+  const { data: item } = await supabase.from("purchase_items").select("weight").eq("id", itemId).single();
+  if (!item) return false;
+
+  const catalogWeight = Number(item.weight) || 0;
+  const weightLoss = catalogWeight > 0 ? catalogWeight - weightReal : 0;
+
+  const { error } = await supabase
+    .from("purchase_items")
+    .update({ weight_real: weightReal, weight_loss: weightLoss })
+    .eq("id", itemId);
+
+  return !error;
+}
+
 // ===== Status Labels & Colors =====
 
 export const STATUS_LABELS: Record<string, string> = {
