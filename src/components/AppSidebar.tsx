@@ -9,6 +9,7 @@ import {
   Calculator,
   UserCog,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { usePermissions } from "@/lib/permissions";
