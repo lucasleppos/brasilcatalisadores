@@ -609,6 +609,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
         category: i.category || null,
+        catalog_part_id: i.catalogPartId || null,
       }))
     );
   }
