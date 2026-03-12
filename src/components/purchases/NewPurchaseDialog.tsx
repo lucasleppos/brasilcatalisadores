@@ -17,6 +17,8 @@ import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 import { fmtNum, fmtBrl, parseNum } from "@/lib/utils";
+import PartSearch from "@/components/catalog/PartSearch";
+import { CatalogPart } from "@/lib/catalog";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
