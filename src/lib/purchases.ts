@@ -236,6 +236,9 @@ export interface PurchaseQuoteItem {
   input?: CalculatorInput;
   result?: CalculatorResult;
   category?: string;
+  catalogPartId?: string;
+  weightReal?: number;
+  weightLoss?: number;
 }
 
 export interface Purchase {
