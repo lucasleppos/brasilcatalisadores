@@ -19,6 +19,7 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import UsersPage from "@/pages/UsersPage";
 import ProfilePage from "@/pages/ProfilePage";
 import PermissionsPage from "@/pages/PermissionsPage";
+import CatalogPage from "@/pages/CatalogPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/configuracoes" element={<ProtectedRoute module="configuracoes"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute module="usuarios"><AppLayout><UsersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/permissoes" element={<ProtectedRoute module="permissoes"><AppLayout><PermissionsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/catalogo" element={<ProtectedRoute module="catalogo"><AppLayout><CatalogPage /></AppLayout></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

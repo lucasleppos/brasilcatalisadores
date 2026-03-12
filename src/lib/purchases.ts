@@ -236,6 +236,9 @@ export interface PurchaseQuoteItem {
   input?: CalculatorInput;
   result?: CalculatorResult;
   category?: string;
+  catalogPartId?: string;
+  weightReal?: number;
+  weightLoss?: number;
 }
 
 export interface Purchase {
@@ -297,6 +300,9 @@ export async function loadPurchases(): Promise<Purchase[]> {
       input: item.calc_input as CalculatorInput | undefined,
       result: item.calc_result as CalculatorResult | undefined,
       category: (item as any).category || undefined,
+      catalogPartId: item.catalog_part_id || undefined,
+      weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
+      weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
     });
   });
 
@@ -371,6 +377,7 @@ export async function createPurchase(data: {
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
         category: i.category || null,
+        catalog_part_id: i.catalogPartId || null,
       }))
     );
   }
@@ -568,6 +575,9 @@ export async function registerAnalysis(
     input: i.calc_input as CalculatorInput | undefined,
     result: i.calc_result as CalculatorResult | undefined,
     category: i.category || undefined,
+    catalogPartId: i.catalog_part_id || undefined,
+    weightReal: i.weight_real != null ? Number(i.weight_real) : undefined,
+    weightLoss: i.weight_loss != null ? Number(i.weight_loss) : undefined,
   }));
 
   const newTotal = calcTotal(mappedItems);
@@ -602,6 +612,7 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
         calc_input: (i.input as any) || null,
         calc_result: (i.result as any) || null,
         category: i.category || null,
+        catalog_part_id: i.catalogPartId || null,
       }))
     );
   }
@@ -617,6 +628,22 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
 
 export async function deletePurchase(id: string) {
   await supabase.from("purchases").delete().eq("id", id);
+}
+
+/** Register real weight for a purchase item (post-handling) */
+export async function registerItemRealWeight(itemId: string, weightReal: number): Promise<boolean> {
+  const { data: item } = await supabase.from("purchase_items").select("weight").eq("id", itemId).single();
+  if (!item) return false;
+
+  const catalogWeight = Number(item.weight) || 0;
+  const weightLoss = catalogWeight > 0 ? catalogWeight - weightReal : 0;
+
+  const { error } = await supabase
+    .from("purchase_items")
+    .update({ weight_real: weightReal, weight_loss: weightLoss })
+    .eq("id", itemId);
+
+  return !error;
 }
 
 // ===== Status Labels & Colors =====

@@ -17,6 +17,8 @@ import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 import { fmtNum, fmtBrl, parseNum } from "@/lib/utils";
+import PartSearch from "@/components/catalog/PartSearch";
+import { CatalogPart } from "@/lib/catalog";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
@@ -35,6 +37,7 @@ interface PendingItem {
   calcInput?: CalculatorInput;
   calcResult?: CalculatorResult;
   category?: string;
+  catalogPartId?: string;
 }
 
 export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
@@ -251,6 +254,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       input: i.calcInput,
       result: i.calcResult,
       category: i.category,
+      catalogPartId: i.catalogPartId,
     }));
 
     if (isEditing) {
@@ -380,6 +384,42 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 <SelectItem value="ceramico">Cerâmico</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Catalog search for peça type */}
+            {addType === "peca" && (
+              <div className="space-y-1">
+                <Label className="text-[10px]">Buscar no Catálogo (opcional)</Label>
+                <PartSearch onSelect={async (part: CatalogPart) => {
+                  const settings = await loadSettings();
+                  const margin = part.groupMargin ?? selectedSupplier?.margin ?? 0;
+                  const input: CalculatorInput = {
+                    grossWeight: part.weight,
+                    tare: 0,
+                    materialType: "comum",
+                    ptPpm: part.ptPpm,
+                    pdPpm: part.pdPpm,
+                    rhPpm: part.rhPpm,
+                    clientDiscount: margin,
+                    entryType: "peca_sacola",
+                    manualPrice: null,
+                    customPt: null, customPd: null, customRh: null,
+                  };
+                  const hasPpms = part.ptPpm > 0 || part.pdPpm > 0 || part.rhPpm > 0;
+                  const result = hasPpms ? calculate(input, settings) : undefined;
+                  setItems(prev => [...prev, {
+                    id: crypto.randomUUID(),
+                    itemType: "peca",
+                    quantity: 1,
+                    weight: part.weight,
+                    totalValue: result?.finalValueBrl,
+                    calcInput: input,
+                    calcResult: result,
+                    category: part.groupName || undefined,
+                    catalogPartId: part.id,
+                  }]);
+                }} />
+              </div>
+            )}
 
             {/* Category field */}
             <div className="space-y-1">

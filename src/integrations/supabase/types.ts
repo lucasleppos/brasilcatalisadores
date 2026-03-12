@@ -137,6 +137,77 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_groups: {
+        Row: {
+          created_at: string
+          id: string
+          margin: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          margin?: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          margin?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      catalog_parts: {
+        Row: {
+          brand: string
+          code: string
+          created_at: string
+          group_id: string | null
+          id: string
+          pd_ppm: number
+          pt_ppm: number
+          reference: string
+          rh_ppm: number
+          vehicle: string
+          weight: number
+        }
+        Insert: {
+          brand?: string
+          code?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          pd_ppm?: number
+          pt_ppm?: number
+          reference?: string
+          rh_ppm?: number
+          vehicle?: string
+          weight?: number
+        }
+        Update: {
+          brand?: string
+          code?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          pd_ppm?: number
+          pt_ppm?: number
+          reference?: string
+          rh_ppm?: number
+          vehicle?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_parts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demonstrativos: {
         Row: {
           created_by: string | null
@@ -286,6 +357,7 @@ export type Database = {
         Row: {
           calc_input: Json | null
           calc_result: Json | null
+          catalog_part_id: string | null
           category: string | null
           created_at: string | null
           id: string
@@ -294,10 +366,13 @@ export type Database = {
           quantity: number | null
           total_value: number | null
           weight: number | null
+          weight_loss: number | null
+          weight_real: number | null
         }
         Insert: {
           calc_input?: Json | null
           calc_result?: Json | null
+          catalog_part_id?: string | null
           category?: string | null
           created_at?: string | null
           id?: string
@@ -306,10 +381,13 @@ export type Database = {
           quantity?: number | null
           total_value?: number | null
           weight?: number | null
+          weight_loss?: number | null
+          weight_real?: number | null
         }
         Update: {
           calc_input?: Json | null
           calc_result?: Json | null
+          catalog_part_id?: string | null
           category?: string | null
           created_at?: string | null
           id?: string
@@ -318,8 +396,17 @@ export type Database = {
           quantity?: number | null
           total_value?: number | null
           weight?: number | null
+          weight_loss?: number | null
+          weight_real?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_items_catalog_part_id_fkey"
+            columns: ["catalog_part_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_parts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_items_purchase_id_fkey"
             columns: ["purchase_id"]

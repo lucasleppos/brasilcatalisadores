@@ -1,66 +1,33 @@
 
+# Módulo Catálogo de Peças + Peso Real por Item
 
-# Peso Real por Item — Rastreamento de Perda após Manuseio
+## Status: ✅ Implementado
 
-## Contexto
+### O que foi feito
 
-Hoje o sistema já rastreia peso declarado vs real no **nível do pedido** (campos `weight_declared`, `weight_real`, `weight_loss` na tabela `purchases`). Com a introdução do catálogo, cada item terá um peso de referência vindo do catálogo. O usuário quer confirmar esse peso após o manuseio físico (abertura das peças, trituração) e contabilizar a perda.
+1. **Banco de dados**
+   - Tabela `catalog_groups` (nome + margem %)
+   - Tabela `catalog_parts` (marca, carro, código, referência, peso, PPMs, grupo)
+   - 3 colunas em `purchase_items`: `catalog_part_id`, `weight_real`, `weight_loss`
+   - RLS com módulo `catalogo`
 
-## Alterações
+2. **Módulo Catálogo (`/catalogo`)**
+   - Página com tabela, busca e filtro por grupo
+   - CRUD de peças (criar, editar, deletar)
+   - Importação via Excel com mapeamento de colunas
+   - Gerenciador de Grupos com margem %
 
-### 1. Banco de dados — `purchase_items`
+3. **Integração na Compra**
+   - Campo de busca de peças do catálogo no tipo "Peça"
+   - Ao selecionar: auto-preenche peso, PPMs, calcula valor com margem do grupo
+   - Campo de valor editável (pode ser sobrescrito)
+   - `catalogPartId` vinculado ao item
 
-Adicionar 3 colunas à tabela `purchase_items`:
+4. **Peso Real por Item**
+   - Função `registerItemRealWeight` para registrar peso real após manuseio
+   - PurchaseDetail exibe colunas "Peso Real" e "Perda" por item
+   - Resumo totalizado: peso catálogo vs real vs perda (kg e %)
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| `catalog_part_id` | uuid (nullable) | Referência à peça do catálogo |
-| `weight_real` | numeric (nullable) | Peso real medido após manuseio |
-| `weight_loss` | numeric (nullable) | Diferença: peso catálogo − peso real |
-
-O `weight_loss` será calculado automaticamente: `weight (catálogo) - weight_real`.
-
-### 2. `src/lib/purchases.ts` — Tipo e funções
-
-- Adicionar `catalogPartId`, `weightReal`, `weightLoss` ao `PurchaseQuoteItem`
-- Criar função `registerItemRealWeight(itemId, weightReal)` que:
-  - Busca o peso original do item (do catálogo ou `weight`)
-  - Calcula a perda (`weight - weightReal`)
-  - Atualiza `weight_real` e `weight_loss` no `purchase_items`
-
-### 3. Integração no Processo — Etapa de Conferência/Pesagem
-
-No `StageActionCard.tsx`, nas etapas relevantes (Conferência, Pesagem, ou etapa dedicada), adicionar:
-
-- Lista dos itens do pedido com peso do catálogo
-- Campo para inserir **peso real** de cada item
-- Exibição da **perda** em tempo real (com destaque visual se > tolerância)
-- Badge de alerta quando há perda significativa
-
-### 4. Visualização da perda — `PurchaseDetail.tsx`
-
-Na tabela de itens do detalhe da compra:
-- Nova coluna "Peso Real" (exibida quando preenchido)
-- Nova coluna "Perda" com indicador visual (vermelho se perda, verde se ok)
-
-### 5. Resumo do pedido — Totalizadores
-
-No detalhe da compra, exibir totalizadores:
-- **Peso total catálogo**: soma dos pesos dos itens
-- **Peso total real**: soma dos pesos reais
-- **Perda total**: diferença, com % de perda
-
-## Arquivos afetados
-
-| Arquivo | Mudança |
-|---------|---------|
-| Migração SQL | 3 colunas em `purchase_items` |
-| `src/lib/purchases.ts` | Novos campos no tipo + função `registerItemRealWeight` |
-| `StageActionCard.tsx` | UI para registrar peso real por item |
-| `PurchaseDetail.tsx` | Exibir peso real e perda por item |
-| `NewPurchaseDialog.tsx` | Passar `catalogPartId` ao criar item do catálogo |
-
-## Observação
-
-Esta alteração será implementada junto com o módulo Catálogo (plano anterior aprovado). Os campos `weight_real` e `weight_loss` por item só fazem sentido com peças vindas do catálogo, onde há um peso de referência para comparar.
-
+### Pendente (próximas iterações)
+- UI de registro de peso real por item no StageActionCard (etapa de conferência)
+- Permissão `catalogo` precisa ser configurada no módulo de Permissões

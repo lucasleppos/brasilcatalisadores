@@ -9,6 +9,7 @@ import {
   Calculator,
   UserCog,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { usePermissions } from "@/lib/permissions";
@@ -38,6 +39,7 @@ const menuItems: MenuItem[] = [
   { title: "Bags", url: "/bags", icon: ShoppingBag, module: "bags" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, module: "relatorios" },
   { title: "Calculadora", url: "/calculadora", icon: Calculator, module: "calculadora" },
+  { title: "Catálogo", url: "/catalogo", icon: BookOpen, module: "catalogo" },
   { title: "Configurações", url: "/configuracoes", icon: Settings, module: "configuracoes" },
   { title: "Usuários", url: "/usuarios", icon: UserCog, module: "usuarios" },
   { title: "Permissões", url: "/permissoes", icon: Shield, module: "permissoes" },
