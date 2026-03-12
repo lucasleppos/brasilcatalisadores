@@ -145,6 +145,44 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </>
         )}
 
+        {/* Weight tracking summary */}
+        {(() => {
+          const itemsWithWeight = purchase.items.filter(q => q.weight && q.weight > 0);
+          const itemsWithReal = itemsWithWeight.filter(q => q.weightReal != null);
+          if (itemsWithReal.length === 0) return null;
+          const totalCatalog = itemsWithWeight.reduce((s, q) => s + (q.weight || 0), 0);
+          const totalReal = itemsWithReal.reduce((s, q) => s + (q.weightReal || 0), 0);
+          const totalLoss = totalCatalog - totalReal;
+          const lossPercent = totalCatalog > 0 ? (totalLoss / totalCatalog) * 100 : 0;
+          return (
+            <>
+              <Separator />
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  Resumo de Peso Real
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Catálogo</p>
+                    <p className="font-semibold">{fmtNum(totalCatalog, 4)} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Real</p>
+                    <p className="font-semibold">{fmtNum(totalReal, 4)} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Perda</p>
+                    <p className={`font-semibold ${totalLoss > 0 ? "text-red-600" : "text-green-600"}`}>
+                      {fmtNum(totalLoss, 4)} kg ({fmtNum(lossPercent, 2)}%)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
         <Separator />
 
         <Table>
@@ -154,6 +192,8 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
               <TableHead className="text-xs">Tipo</TableHead>
               <TableHead className="text-xs">Categoria</TableHead>
               <TableHead className="text-xs text-right">Qtd/Peso</TableHead>
+              <TableHead className="text-xs text-right">Peso Real</TableHead>
+              <TableHead className="text-xs text-right">Perda</TableHead>
               <TableHead className="text-xs text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -171,6 +211,16 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                       : q.itemType === "peca_sacola" && !q.input
                         ? `${q.quantity || 0} pç${q.weight ? ` / ${fmt(q.weight, 4)} kg` : ""}`
                         : q.input ? `${fmt(q.input.grossWeight - q.input.tare, 4)} kg` : (q.weight ? `${fmt(q.weight, 4)} kg` : "-")}
+                  </TableCell>
+                  <TableCell className="text-xs text-right">
+                    {q.weightReal != null ? `${fmt(q.weightReal, 4)} kg` : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-right">
+                    {q.weightLoss != null ? (
+                      <span className={q.weightLoss > 0 ? "text-red-600 font-semibold" : "text-green-600"}>
+                        {q.weightLoss > 0 ? `-${fmt(q.weightLoss, 4)}` : fmt(q.weightLoss, 4)} kg
+                      </span>
+                    ) : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-right font-semibold">
                     {val > 0 ? fmtBrl(val) : (
