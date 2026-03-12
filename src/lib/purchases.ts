@@ -300,6 +300,9 @@ export async function loadPurchases(): Promise<Purchase[]> {
       input: item.calc_input as CalculatorInput | undefined,
       result: item.calc_result as CalculatorResult | undefined,
       category: (item as any).category || undefined,
+      catalogPartId: item.catalog_part_id || undefined,
+      weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
+      weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
     });
   });
 
