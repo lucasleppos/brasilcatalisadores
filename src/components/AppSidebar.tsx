@@ -59,7 +59,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarContent className="bg-sidebar">
         {/* Logo */}
-        <div className="px-4 py-6 border-b border-green-900">
+        <div className="px-4 py-6 border-b border-sidebar-border">
           {collapsed ?
           <span className="text-sidebar-primary font-display text-lg font-bold block text-center">BS</span> :
 
