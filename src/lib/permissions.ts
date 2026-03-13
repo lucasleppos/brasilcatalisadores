@@ -72,6 +72,16 @@ export const MODULE_DEFINITIONS: Record<string, {
       { key: "refiner_total_value", label: "Valor Refinadora" },
     ],
   },
+  catalogo: {
+    label: "Catálogo",
+    actions: [
+      { key: "create", label: "Criar" },
+      { key: "edit", label: "Editar" },
+      { key: "delete", label: "Excluir" },
+      { key: "import", label: "Importar Excel" },
+    ],
+    fields: [],
+  },
   relatorios: { label: "Relatórios", actions: [], fields: [] },
   calculadora: { label: "Calculadora", actions: [], fields: [] },
   configuracoes: { label: "Configurações", actions: [], fields: [] },

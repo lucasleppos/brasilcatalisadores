@@ -1,27 +1,33 @@
 
+# Módulo Catálogo de Peças + Peso Real por Item
 
-# Adicionar módulo "Catálogo" nas definições de permissões
+## Status: ✅ Implementado
 
-## Problema
-O módulo `catalogo` já está protegido via `ProtectedRoute` e presente no sidebar, mas não aparece em `MODULE_DEFINITIONS` no `src/lib/permissions.ts`. Isso impede que o admin configure acesso ao Catálogo pela tela de Permissões.
+### O que foi feito
 
-## Alteração
+1. **Banco de dados**
+   - Tabela `catalog_groups` (nome + margem %)
+   - Tabela `catalog_parts` (marca, carro, código, referência, peso, PPMs, grupo)
+   - 3 colunas em `purchase_items`: `catalog_part_id`, `weight_real`, `weight_loss`
+   - RLS com módulo `catalogo`
 
-### `src/lib/permissions.ts`
-Adicionar entrada `catalogo` ao `MODULE_DEFINITIONS` (após `bags`, antes de `relatorios`):
+2. **Módulo Catálogo (`/catalogo`)**
+   - Página com tabela, busca e filtro por grupo
+   - CRUD de peças (criar, editar, deletar)
+   - Importação via Excel com mapeamento de colunas
+   - Gerenciador de Grupos com margem %
 
-```typescript
-catalogo: {
-  label: "Catálogo",
-  actions: [
-    { key: "create", label: "Criar" },
-    { key: "edit", label: "Editar" },
-    { key: "delete", label: "Excluir" },
-    { key: "import", label: "Importar Excel" },
-  ],
-  fields: [],
-},
-```
+3. **Integração na Compra**
+   - Campo de busca de peças do catálogo no tipo "Peça"
+   - Ao selecionar: auto-preenche peso, PPMs, calcula valor com margem do grupo
+   - Campo de valor editável (pode ser sobrescrito)
+   - `catalogPartId` vinculado ao item
 
-**1 arquivo, ~8 linhas adicionadas.** Após isso, o módulo aparecerá automaticamente na tela de Permissões para configuração de acesso por perfil.
+4. **Peso Real por Item**
+   - Função `registerItemRealWeight` para registrar peso real após manuseio
+   - PurchaseDetail exibe colunas "Peso Real" e "Perda" por item
+   - Resumo totalizado: peso catálogo vs real vs perda (kg e %)
 
+### Pendente (próximas iterações)
+- UI de registro de peso real por item no StageActionCard (etapa de conferência)
+- Permissão `catalogo` precisa ser configurada no módulo de Permissões
