@@ -65,7 +65,7 @@ export function AppSidebar() {
 
           <div>
               <h1 className="text-sidebar-primary font-display text-lg font-bold leading-tight">
-                Brasil Sust.
+                Brasil Sustentabilidade
               </h1>
               <p className="text-sidebar-foreground text-xs tracking-widest uppercase mt-0.5">
                 Catalisador Pro
