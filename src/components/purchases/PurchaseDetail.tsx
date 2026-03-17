@@ -30,14 +30,20 @@ function getItemValue(q: PurchaseQuoteItem): number {
 export default function PurchaseDetail({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [demonstrativos, setDemonstrativos] = useState<Demonstrativo[]>([]);
+  const [evidences, setEvidences] = useState<StageEvidence[]>([]);
+  const [labAnalyses, setLabAnalyses] = useState<LabAnalysis[]>([]);
 
   useEffect(() => {
     if (purchase) {
       loadLabResults(purchase.id).then(setLabResults);
       loadDemonstrativos(purchase.id).then(setDemonstrativos);
+      loadEvidences(purchase.id).then(setEvidences);
+      loadLabAnalyses(purchase.id).then(setLabAnalyses);
     } else {
       setLabResults([]);
       setDemonstrativos([]);
+      setEvidences([]);
+      setLabAnalyses([]);
     }
   }, [purchase?.id]);
 
