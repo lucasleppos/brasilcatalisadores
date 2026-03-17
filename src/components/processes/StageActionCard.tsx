@@ -233,31 +233,12 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </div>
           </div>
         ) : isAnalysis ? (
-          /* Lab analysis form */
-          <div className="space-y-2 pt-1 border-t border-border/40">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <FlaskConical className="h-3 w-3" />
-              Resultado da Análise (PPM)
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] text-muted-foreground">Pt (ppm)</label>
-                <Input inputMode="decimal" value={ptPpm} onChange={(e) => setPtPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground">Pd (ppm)</label>
-                <Input inputMode="decimal" value={pdPpm} onChange={(e) => setPdPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
-                <Input inputMode="decimal" value={rhPpm} onChange={(e) => setRhPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-            </div>
-            <Button size="sm" className="w-full" disabled={loading || !ptPpm || !pdPpm || !rhPpm} onClick={handleAnalysis}>
-              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FlaskConical className="h-3 w-3 mr-1" />}
-              Registrar Análise
-            </Button>
-          </div>
+          /* Lab analysis form — 3 analyses → average */
+          <TripleAnalysisForm
+            purchaseId={purchase.id}
+            onCompleted={onCompleted}
+            onChecklistChange={handleChecklistChange}
+          />
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
