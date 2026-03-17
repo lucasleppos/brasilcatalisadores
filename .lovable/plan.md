@@ -1,45 +1,38 @@
 
-# Tarefas Obrigatórias por Etapa — Sistema de Evidências + Checklist
 
-## Status: ✅ Fase 1 Implementada
+# Fix: PDF bloqueado pelo Chrome ao abrir em nova aba
 
-### O que foi feito
+## Problema
 
-1. **Banco de dados**
-   - Tabela `stage_evidence` (fotos, pesagens, notas por etapa)
-   - Tabela `lab_analyses` (3 análises individuais por compra)
-   - Bucket `stage-photos` (storage público para fotos)
-   - RLS com `user_can_do(uid, 'processos', 'advance_stage')`
+O `window.open(blobUrl, "_blank")` é bloqueado por ad blockers e pelo popup blocker do Chrome, gerando `ERR_BLOCKED_BY_CLIENT`.
 
-2. **Core logic (`src/lib/stage-tasks.ts`)**
-   - `STAGE_REQUIREMENTS`: definição de tarefas obrigatórias por etapa
-   - CRUD de evidências (`addEvidence`, `loadEvidences`, `deleteEvidence`)
-   - Upload de fotos para storage (`uploadStagePhoto`)
-   - CRUD de análises individuais (`addLabAnalysis`, `loadLabAnalyses`)
-   - `canAdvanceStage()`: valida se todas tarefas obrigatórias foram cumpridas
-   - `calcAnalysisAverage()`: média + desvio padrão das 3 análises
+## Solução
 
-3. **Componentes novos**
-   - `PhotoCapture.tsx`: botão de câmera/galeria com preview e upload
-   - `StageChecklist.tsx`: checklist visual integrado no card de cada etapa
-   - `TripleAnalysisForm.tsx`: formulário de 3 análises com média e alerta de desvio
+Trocar de `window.open` para download direto via `<a>` tag com `download` attribute. Isso evita popups e faz o browser baixar o arquivo diretamente.
 
-4. **Integração**
-   - `StageActionCard.tsx`: checklist bloqueia botão "Avançar" até tarefas cumpridas
-   - `StageActionCard.tsx`: análise substituída pelo TripleAnalysisForm (3→média)
-   - `PurchaseDetail.tsx`: timeline de evidências coletadas (fotos, pesos, notas, análises)
+## Arquivos afetados
 
-### Etapas com checklist obrigatório
-- Em Conferência: foto + confirmação de itens
-- Cerâmico: Em Separação: foto
-- Peças: Em Corte: foto + peso cerâmica extraída
-- Peças: Em Trituração: peso + foto
-- Cerâmico: Em Trituração/Homogeneização: peso + foto
-- Cerâmico: Lab em Análise / Análise: 3 análises individuais → média
-- Peças: Aprovado - Aguardando Pagamento: comprovante (opcional)
+### `src/components/processes/StageActionCard.tsx`
+- No handler de PDF: trocar `window.open(url, "_blank")` por criar um `<a>` temporário com `a.href = url`, `a.download = "demonstrativo.pdf"`, `a.click()`
 
-### Pendente (próximas iterações)
-- Foto obrigatória no bag lacrado (etapa de alocação)
-- Comparação automática de peso entre etapas (corte vs trituração)
-- Configuração de thresholds de desvio nas Settings
-- Tela de confirmação enriquecida na aprovação do demonstrativo
+### `src/components/processes/PurchaseSummary.tsx`
+- Mesmo fix no `handlePdf`: trocar `window.open(url, "_blank")` por download direto via `<a>` tag
+
+## Mudança concreta
+
+```typescript
+// Antes:
+window.open(url, "_blank");
+
+// Depois:
+const a = document.createElement("a");
+a.href = url;
+a.download = `demonstrativo-${purchase.purchaseNumber}.pdf`;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+```
+
+Simples, 2 arquivos, mesma mudança em cada.
+
