@@ -357,7 +357,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                 <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
                   setLoading(true);
                   try {
-                    const demos = await loadDemonstrativos(purchase.id);
+                    let demos = await loadDemonstrativos(purchase.id);
+                    if (demos.length === 0) {
+                      await createDemonstrativo(purchase.id, purchase.totalBrl);
+                      demos = await loadDemonstrativos(purchase.id);
+                    }
                     const latest = demos[demos.length - 1];
                     if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
                     const url = await generateDemonstrativoPdf(purchase.id, latest.id);
@@ -369,7 +373,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                 <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
                   setLoading(true);
                   try {
-                    const demos = await loadDemonstrativos(purchase.id);
+                    let demos = await loadDemonstrativos(purchase.id);
+                    if (demos.length === 0) {
+                      await createDemonstrativo(purchase.id, purchase.totalBrl);
+                      demos = await loadDemonstrativos(purchase.id);
+                    }
                     const latest = demos[demos.length - 1];
                     if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
                     const url = await generateDemonstrativoPdf(purchase.id, latest.id);
