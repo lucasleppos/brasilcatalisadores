@@ -365,7 +365,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                     const latest = demos[demos.length - 1];
                     if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
                      const url = await generateDemonstrativoPdf(purchase.id, latest.id);
-                     const a = document.createElement("a"); a.href = url; a.download = `demonstrativo-${purchase.purchaseNumber}.pdf`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                     const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_"); const fname = `${safeName(purchase.erpNumber)}_${safeName(purchase.purchaseNumber)}_${safeName(purchase.supplierName)}.pdf`; const a = document.createElement("a"); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                   } catch { toast.error("Erro ao gerar PDF"); } finally { setLoading(false); }
                 }}>
                   <FileDown className="h-3 w-3 mr-1" />PDF
