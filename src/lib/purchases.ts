@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
+import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
 
 // ===== Material Flow Types =====
@@ -431,12 +432,20 @@ export async function updatePurchaseStatus(id: string, status: string) {
 
 /** Advance to next status automatically (used by workflow) */
 export async function advanceStage(id: string, currentStatus: string): Promise<boolean> {
-  // Get purchase to know material_flow
-  const { data: purchase } = await supabase.from("purchases").select("material_flow").eq("id", id).single();
+  // Get purchase to know material_flow and total
+  const { data: purchase } = await supabase.from("purchases").select("material_flow, total_brl").eq("id", id).single();
   const materialFlow = (purchase?.material_flow as MaterialFlow) || null;
   const next = getNextStatus(currentStatus, materialFlow);
   if (!next) return false;
   const result = await updatePurchaseStatus(id, next);
+
+  // Auto-create demonstrativo when entering a stage that requires it
+  const demoStages = ["Peças: Gerar Boleto de Aprovação", "Peças: Aguardando Demonstrativo", "Cerâmico: Em Precificação", "Cerâmico: Gerar Boleto de Aprovação"];
+  if (demoStages.includes(next)) {
+    const totalBrl = Number(purchase?.total_brl) || 0;
+    await createDemonstrativo(id, totalBrl);
+  }
+
   return !!result;
 }
 
