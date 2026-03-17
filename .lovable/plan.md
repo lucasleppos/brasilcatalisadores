@@ -1,45 +1,29 @@
 
-# Tarefas Obrigatórias por Etapa — Sistema de Evidências + Checklist
 
-## Status: ✅ Fase 1 Implementada
+# Fix: Demonstrativo não é criado ao chegar na etapa de gerar boleto
 
-### O que foi feito
+## Problema
 
-1. **Banco de dados**
-   - Tabela `stage_evidence` (fotos, pesagens, notas por etapa)
-   - Tabela `lab_analyses` (3 análises individuais por compra)
-   - Bucket `stage-photos` (storage público para fotos)
-   - RLS com `user_can_do(uid, 'processos', 'advance_stage')`
+A função `createDemonstrativo` existe em `src/lib/demonstrativos.ts` mas **nunca é chamada** em nenhum lugar do código. Quando o pedido chega na etapa "Gerar Boleto de Aprovação" (ou etapas equivalentes como "Peças: Aguardando Demonstrativo" / "Cerâmico: Em Precificação"), o botão PDF tenta carregar demonstrativos via `loadDemonstrativos`, encontra a tabela vazia e exibe "Nenhum demonstrativo encontrado".
 
-2. **Core logic (`src/lib/stage-tasks.ts`)**
-   - `STAGE_REQUIREMENTS`: definição de tarefas obrigatórias por etapa
-   - CRUD de evidências (`addEvidence`, `loadEvidences`, `deleteEvidence`)
-   - Upload de fotos para storage (`uploadStagePhoto`)
-   - CRUD de análises individuais (`addLabAnalysis`, `loadLabAnalyses`)
-   - `canAdvanceStage()`: valida se todas tarefas obrigatórias foram cumpridas
-   - `calcAnalysisAverage()`: média + desvio padrão das 3 análises
+## Solução
 
-3. **Componentes novos**
-   - `PhotoCapture.tsx`: botão de câmera/galeria com preview e upload
-   - `StageChecklist.tsx`: checklist visual integrado no card de cada etapa
-   - `TripleAnalysisForm.tsx`: formulário de 3 análises com média e alerta de desvio
+### `src/lib/purchases.ts` — `advanceStage`
 
-4. **Integração**
-   - `StageActionCard.tsx`: checklist bloqueia botão "Avançar" até tarefas cumpridas
-   - `StageActionCard.tsx`: análise substituída pelo TripleAnalysisForm (3→média)
-   - `PurchaseDetail.tsx`: timeline de evidências coletadas (fotos, pesos, notas, análises)
+Ao avançar para uma etapa que exige demonstrativo, criar automaticamente o registro:
 
-### Etapas com checklist obrigatório
-- Em Conferência: foto + confirmação de itens
-- Cerâmico: Em Separação: foto
-- Peças: Em Corte: foto + peso cerâmica extraída
-- Peças: Em Trituração: peso + foto
-- Cerâmico: Em Trituração/Homogeneização: peso + foto
-- Cerâmico: Lab em Análise / Análise: 3 análises individuais → média
-- Peças: Aprovado - Aguardando Pagamento: comprovante (opcional)
+- Quando o `next` status for `"Gerar Boleto de Aprovação"`, `"Peças: Aguardando Demonstrativo"`, ou `"Cerâmico: Em Precificação"`:
+  1. Buscar o `total_brl` do pedido
+  2. Chamar `createDemonstrativo(id, totalBrl)` antes de retornar
 
-### Pendente (próximas iterações)
-- Foto obrigatória no bag lacrado (etapa de alocação)
-- Comparação automática de peso entre etapas (corte vs trituração)
-- Configuração de thresholds de desvio nas Settings
-- Tela de confirmação enriquecida na aprovação do demonstrativo
+### `src/components/processes/StageActionCard.tsx` — fallback
+
+Adicionar lógica de fallback nos handlers de PDF: se `loadDemonstrativos` retorna vazio, criar o demonstrativo na hora com `createDemonstrativo(purchase.id, purchase.totalBrl)` e então gerar o PDF. Isso cobre pedidos que já estão na etapa sem demonstrativo criado.
+
+## Arquivos afetados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/lib/purchases.ts` | Importar `createDemonstrativo`, chamá-lo em `advanceStage` quando status alvo requer demonstrativo |
+| `src/components/processes/StageActionCard.tsx` | Fallback: criar demonstrativo se não existir ao clicar PDF |
+
