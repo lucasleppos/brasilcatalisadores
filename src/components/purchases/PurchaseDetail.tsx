@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package } from "lucide-react";
+import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon } from "lucide-react";
 import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
+import { loadEvidences, StageEvidence, loadLabAnalyses, LabAnalysis } from "@/lib/stage-tasks";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -29,14 +30,20 @@ function getItemValue(q: PurchaseQuoteItem): number {
 export default function PurchaseDetail({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [demonstrativos, setDemonstrativos] = useState<Demonstrativo[]>([]);
+  const [evidences, setEvidences] = useState<StageEvidence[]>([]);
+  const [labAnalyses, setLabAnalyses] = useState<LabAnalysis[]>([]);
 
   useEffect(() => {
     if (purchase) {
       loadLabResults(purchase.id).then(setLabResults);
       loadDemonstrativos(purchase.id).then(setDemonstrativos);
+      loadEvidences(purchase.id).then(setEvidences);
+      loadLabAnalyses(purchase.id).then(setLabAnalyses);
     } else {
       setLabResults([]);
       setDemonstrativos([]);
+      setEvidences([]);
+      setLabAnalyses([]);
     }
   }, [purchase?.id]);
 
@@ -313,6 +320,60 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Evidence Timeline */}
+        {(evidences.length > 0 || labAnalyses.length > 0) && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                📋 Evidências Coletadas
+              </p>
+              <div className="space-y-1.5">
+                {/* Group evidences by stage */}
+                {(() => {
+                  const stages = [...new Set(evidences.map(e => e.stage))];
+                  return stages.map(stage => (
+                    <div key={stage} className="space-y-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground">{stage}</p>
+                      {evidences.filter(e => e.stage === stage).map(ev => (
+                        <div key={ev.id} className="rounded border p-1.5 text-[10px] flex items-center gap-2">
+                          {ev.dataType === "photo" && <Camera className="h-3 w-3 text-blue-600 shrink-0" />}
+                          {ev.dataType === "weight" && <Scale className="h-3 w-3 text-amber-600 shrink-0" />}
+                          {ev.dataType === "note" && <NoteIcon className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">
+                            {ev.dataType === "photo" && ev.fileUrl && (
+                              <a href={ev.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Ver foto</a>
+                            )}
+                            {ev.dataType === "weight" && ev.valueNumeric != null && `${fmtNum(ev.valueNumeric, 4)} kg`}
+                            {ev.dataType === "note" && ev.valueText && `"${ev.valueText}"`}
+                          </span>
+                          <span className="text-muted-foreground">{new Date(ev.createdAt).toLocaleString("pt-BR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+
+                {/* Lab analyses */}
+                {labAnalyses.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground">Análises Individuais (Lab)</p>
+                    {labAnalyses.map(a => (
+                      <div key={a.id} className="rounded border p-1.5 text-[10px] flex items-center gap-2">
+                        <FlaskConical className="h-3 w-3 text-lime-600 shrink-0" />
+                        <span className="flex-1">
+                          Análise {a.analysisNumber}: Pt {fmtNum(a.ptPpm, 4)} | Pd {fmtNum(a.pdPpm, 4)} | Rh {fmtNum(a.rhPpm, 4)}
+                        </span>
+                        <span className="text-muted-foreground">{new Date(a.createdAt).toLocaleString("pt-BR")}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </>

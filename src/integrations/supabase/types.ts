@@ -252,6 +252,57 @@ export type Database = {
           },
         ]
       }
+      lab_analyses: {
+        Row: {
+          analysis_number: number
+          created_at: string
+          created_by: string | null
+          id: string
+          lab_result_id: string | null
+          pd_ppm: number
+          pt_ppm: number
+          purchase_id: string
+          rh_ppm: number
+        }
+        Insert: {
+          analysis_number: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lab_result_id?: string | null
+          pd_ppm?: number
+          pt_ppm?: number
+          purchase_id: string
+          rh_ppm?: number
+        }
+        Update: {
+          analysis_number?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lab_result_id?: string | null
+          pd_ppm?: number
+          pt_ppm?: number
+          purchase_id?: string
+          rh_ppm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_analyses_lab_result_id_fkey"
+            columns: ["lab_result_id"]
+            isOneToOne: false
+            referencedRelation: "lab_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_analyses_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lab_results: {
         Row: {
           created_at: string
@@ -583,6 +634,53 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      stage_evidence: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_type: string
+          file_url: string | null
+          id: string
+          purchase_id: string
+          stage: string
+          task_key: string
+          value_numeric: number | null
+          value_text: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_type: string
+          file_url?: string | null
+          id?: string
+          purchase_id: string
+          stage: string
+          task_key: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_type?: string
+          file_url?: string | null
+          id?: string
+          purchase_id?: string
+          stage?: string
+          task_key?: string
+          value_numeric?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_evidence_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {

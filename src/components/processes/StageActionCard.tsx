@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,9 @@ import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnal
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
+import StageChecklist from "./StageChecklist";
+import TripleAnalysisForm from "./TripleAnalysisForm";
+import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
 interface StageActionCardProps {
@@ -33,6 +36,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [notes, setNotes] = useState("");
   const [weightReal, setWeightReal] = useState("");
   const [contestMotivo, setContestMotivo] = useState("");
+  const [checklistReady, setChecklistReady] = useState(true);
+
+  const handleChecklistChange = useCallback((canAdvance: boolean) => {
+    setChecklistReady(canAdvance);
+  }, []);
 
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
@@ -225,31 +233,12 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </div>
           </div>
         ) : isAnalysis ? (
-          /* Lab analysis form */
-          <div className="space-y-2 pt-1 border-t border-border/40">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <FlaskConical className="h-3 w-3" />
-              Resultado da Análise (PPM)
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] text-muted-foreground">Pt (ppm)</label>
-                <Input inputMode="decimal" value={ptPpm} onChange={(e) => setPtPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground">Pd (ppm)</label>
-                <Input inputMode="decimal" value={pdPpm} onChange={(e) => setPdPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground">Rh (ppm)</label>
-                <Input inputMode="decimal" value={rhPpm} onChange={(e) => setRhPpm(e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="0,0000" className="h-8 text-sm" />
-              </div>
-            </div>
-            <Button size="sm" className="w-full" disabled={loading || !ptPpm || !pdPpm || !rhPpm} onClick={handleAnalysis}>
-              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FlaskConical className="h-3 w-3 mr-1" />}
-              Registrar Análise
-            </Button>
-          </div>
+          /* Lab analysis form — 3 analyses → average */
+          <TripleAnalysisForm
+            purchaseId={purchase.id}
+            onCompleted={onCompleted}
+            onChecklistChange={handleChecklistChange}
+          />
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
@@ -346,8 +335,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </AlertDialog>
           </div>
         ) : (
-          /* Default: simple advance */
+          /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Stage Checklist */}
+            <StageChecklist
+              purchaseId={purchase.id}
+              status={purchase.status}
+              onChecklistChange={handleChecklistChange}
+            />
+
             {canGeneratePdf && (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
@@ -387,7 +383,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="default" className="w-full" disabled={loading}>
+                <Button size="sm" variant="default" className="w-full" disabled={loading || !checklistReady}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
                   Concluir {purchase.status}
                 </Button>
