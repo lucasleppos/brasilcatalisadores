@@ -53,7 +53,7 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
         const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
         window.open(`https://wa.me/?text=${msg}`, "_blank");
         toast.info("PDF gerado. Anexe o arquivo baixado na conversa do WhatsApp.");
-        const a = document.createElement("a"); a.href = url; a.download = "demonstrativo.pdf"; a.click();
+        const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_"); const fname = `${safeName(purchase.erpNumber)}_${safeName(purchase.purchaseNumber)}_${safeName(purchase.supplierName)}.pdf`; const a = document.createElement("a"); a.href = url; a.download = fname; a.click();
       }
     } catch { toast.error("Erro ao compartilhar"); } finally { setLoading(false); }
   };

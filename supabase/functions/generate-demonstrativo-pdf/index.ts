@@ -290,8 +290,8 @@ Deno.serve(async (req) => {
 
     // Generate output
     const pdfOutput = doc.output("arraybuffer");
-    const safeNum = (purchase.purchase_number || "").replace(/[^a-zA-Z0-9-]/g, "_");
-    const filename = `demonstrativo-${safeNum}-v${demo.versao}.pdf`;
+    const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_");
+    const filename = `${safeName(purchase.erp_number)}_${safeName(purchase.purchase_number)}_${safeName(purchase.supplier_name)}.pdf`;
 
     return new Response(pdfOutput, {
       headers: {
