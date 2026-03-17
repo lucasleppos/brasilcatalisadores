@@ -290,7 +290,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
                           try {
                             const url = await generateDemonstrativoPdf(purchase.id, d.id);
-                            window.open(url, "_blank");
+                            const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_"); const fname = `${safeName(purchase.erpNumber)}_${safeName(purchase.purchaseNumber)}_${safeName(purchase.supplierName)}.pdf`; const a = document.createElement("a"); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                           } catch { toast.error("Erro ao gerar PDF"); }
                         }}>
                           <FileDown className="h-3 w-3" />
@@ -305,7 +305,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                             } else {
                               const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
                               window.open(`https://wa.me/?text=${msg}`, "_blank");
-                              const a = document.createElement("a"); a.href = url; a.download = "demonstrativo.pdf"; a.click();
+                              const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_"); const fname = `${safeName(purchase.erpNumber)}_${safeName(purchase.purchaseNumber)}_${safeName(purchase.supplierName)}.pdf`; const a = document.createElement("a"); a.href = url; a.download = fname; a.click();
                               toast.info("PDF gerado. Anexe na conversa do WhatsApp.");
                             }
                           } catch { toast.error("Erro ao compartilhar"); }

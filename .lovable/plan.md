@@ -1,43 +1,45 @@
 
+# Tarefas Obrigatórias por Etapa — Sistema de Evidências + Checklist
 
-# Ajustes no PDF do Demonstrativo
+## Status: ✅ Fase 1 Implementada
 
-## 1. Remover linha de Recuperação no PDF
+### O que foi feito
 
-No arquivo `supabase/functions/generate-demonstrativo-pdf/index.ts`, linha 228, remover a entrada de recuperação do array `pricingInfo`:
+1. **Banco de dados**
+   - Tabela `stage_evidence` (fotos, pesagens, notas por etapa)
+   - Tabela `lab_analyses` (3 análises individuais por compra)
+   - Bucket `stage-photos` (storage público para fotos)
+   - RLS com `user_can_do(uid, 'processos', 'advance_stage')`
 
-```typescript
-// Remover esta linha:
-`Recuperação Pt: ${fmt(Number(settings.recovery_pt))}% | Pd: ${fmt(Number(settings.recovery_pd))}% | Rh: ${fmt(Number(settings.recovery_rh))}%`,
-```
+2. **Core logic (`src/lib/stage-tasks.ts`)**
+   - `STAGE_REQUIREMENTS`: definição de tarefas obrigatórias por etapa
+   - CRUD de evidências (`addEvidence`, `loadEvidences`, `deleteEvidence`)
+   - Upload de fotos para storage (`uploadStagePhoto`)
+   - CRUD de análises individuais (`addLabAnalysis`, `loadLabAnalyses`)
+   - `canAdvanceStage()`: valida se todas tarefas obrigatórias foram cumpridas
+   - `calcAnalysisAverage()`: média + desvio padrão das 3 análises
 
-O array `pricingInfo` ficará apenas com cotações de metais e câmbio.
+3. **Componentes novos**
+   - `PhotoCapture.tsx`: botão de câmera/galeria com preview e upload
+   - `StageChecklist.tsx`: checklist visual integrado no card de cada etapa
+   - `TripleAnalysisForm.tsx`: formulário de 3 análises com média e alerta de desvio
 
-## 2. Renomear arquivo para incluir Boleto Syge, Nº Pedido e Fornecedor
+4. **Integração**
+   - `StageActionCard.tsx`: checklist bloqueia botão "Avançar" até tarefas cumpridas
+   - `StageActionCard.tsx`: análise substituída pelo TripleAnalysisForm (3→média)
+   - `PurchaseDetail.tsx`: timeline de evidências coletadas (fotos, pesos, notas, análises)
 
-### Edge Function (servidor)
-Linha 294-295: mudar o `filename` para usar `erp_number`, `purchase_number` e `supplier_name`:
+### Etapas com checklist obrigatório
+- Em Conferência: foto + confirmação de itens
+- Cerâmico: Em Separação: foto
+- Peças: Em Corte: foto + peso cerâmica extraída
+- Peças: Em Trituração: peso + foto
+- Cerâmico: Em Trituração/Homogeneização: peso + foto
+- Cerâmico: Lab em Análise / Análise: 3 análises individuais → média
+- Peças: Aprovado - Aguardando Pagamento: comprovante (opcional)
 
-```typescript
-const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_");
-const filename = `${safeName(purchase.erp_number)}_${safeName(purchase.purchase_number)}_${safeName(purchase.supplier_name)}.pdf`;
-```
-
-### Client-side (3 arquivos)
-Atualizar o `a.download` em todos os locais que fazem download para usar o mesmo padrão com `purchase.erpNumber`, `purchase.purchaseNumber` e `purchase.supplierName`:
-
-- `StageActionCard.tsx` — 4 ocorrências (linhas 257, 281, 368, 392)
-- `PurchaseSummary.tsx` — 2 ocorrências (linhas 37, 56)
-- `PurchaseDetail.tsx` — 1 ocorrência (linha 308)
-
-O nome ficará no formato: `BoletoSyge_NºPedido_Fornecedor.pdf`
-
-## Arquivos afetados
-
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/functions/generate-demonstrativo-pdf/index.ts` | Remover linha de recuperação; alterar filename |
-| `src/components/processes/StageActionCard.tsx` | Atualizar `a.download` em 4 pontos |
-| `src/components/processes/PurchaseSummary.tsx` | Atualizar `a.download` em 2 pontos |
-| `src/components/purchases/PurchaseDetail.tsx` | Atualizar `a.download` em 1 ponto |
-
+### Pendente (próximas iterações)
+- Foto obrigatória no bag lacrado (etapa de alocação)
+- Comparação automática de peso entre etapas (corte vs trituração)
+- Configuração de thresholds de desvio nas Settings
+- Tela de confirmação enriquecida na aprovação do demonstrativo
