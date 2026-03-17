@@ -36,6 +36,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [notes, setNotes] = useState("");
   const [weightReal, setWeightReal] = useState("");
   const [contestMotivo, setContestMotivo] = useState("");
+  const [checklistReady, setChecklistReady] = useState(true);
+
+  const handleChecklistChange = useCallback((canAdvance: boolean) => {
+    setChecklistReady(canAdvance);
+  }, []);
 
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
