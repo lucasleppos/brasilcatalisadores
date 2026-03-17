@@ -335,8 +335,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </AlertDialog>
           </div>
         ) : (
-          /* Default: simple advance */
+          /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Stage Checklist */}
+            <StageChecklist
+              purchaseId={purchase.id}
+              status={purchase.status}
+              onChecklistChange={handleChecklistChange}
+            />
+
             {canGeneratePdf && (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
@@ -376,7 +383,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="default" className="w-full" disabled={loading}>
+                <Button size="sm" variant="default" className="w-full" disabled={loading || !checklistReady}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
                   Concluir {purchase.status}
                 </Button>
