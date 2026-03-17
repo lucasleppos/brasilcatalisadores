@@ -225,7 +225,6 @@ Deno.serve(async (req) => {
         const pricingInfo = [
           `Pt: USD ${fmt(Number(settings.pt_price))} | Pd: USD ${fmt(Number(settings.pd_price))} | Rh: USD ${fmt(Number(settings.rh_price))}`,
           `Câmbio: ${fmtBrl(Number(settings.usd_to_brl))}`,
-          `Recuperação Pt: ${fmt(Number(settings.recovery_pt))}% | Pd: ${fmt(Number(settings.recovery_pd))}% | Rh: ${fmt(Number(settings.recovery_rh))}%`,
         ];
 
         for (const line of pricingInfo) {
