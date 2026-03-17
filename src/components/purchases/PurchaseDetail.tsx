@@ -325,6 +325,60 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </>
         )}
 
+        {/* Evidence Timeline */}
+        {(evidences.length > 0 || labAnalyses.length > 0) && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                📋 Evidências Coletadas
+              </p>
+              <div className="space-y-1.5">
+                {/* Group evidences by stage */}
+                {(() => {
+                  const stages = [...new Set(evidences.map(e => e.stage))];
+                  return stages.map(stage => (
+                    <div key={stage} className="space-y-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground">{stage}</p>
+                      {evidences.filter(e => e.stage === stage).map(ev => (
+                        <div key={ev.id} className="rounded border p-1.5 text-[10px] flex items-center gap-2">
+                          {ev.dataType === "photo" && <Camera className="h-3 w-3 text-blue-600 shrink-0" />}
+                          {ev.dataType === "weight" && <Scale className="h-3 w-3 text-amber-600 shrink-0" />}
+                          {ev.dataType === "note" && <NoteIcon className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">
+                            {ev.dataType === "photo" && ev.fileUrl && (
+                              <a href={ev.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Ver foto</a>
+                            )}
+                            {ev.dataType === "weight" && ev.valueNumeric != null && `${fmtNum(ev.valueNumeric, 4)} kg`}
+                            {ev.dataType === "note" && ev.valueText && `"${ev.valueText}"`}
+                          </span>
+                          <span className="text-muted-foreground">{new Date(ev.createdAt).toLocaleString("pt-BR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+
+                {/* Lab analyses */}
+                {labAnalyses.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground">Análises Individuais (Lab)</p>
+                    {labAnalyses.map(a => (
+                      <div key={a.id} className="rounded border p-1.5 text-[10px] flex items-center gap-2">
+                        <FlaskConical className="h-3 w-3 text-lime-600 shrink-0" />
+                        <span className="flex-1">
+                          Análise {a.analysisNumber}: Pt {fmtNum(a.ptPpm, 4)} | Pd {fmtNum(a.pdPpm, 4)} | Rh {fmtNum(a.rhPpm, 4)}
+                        </span>
+                        <span className="text-muted-foreground">{new Date(a.createdAt).toLocaleString("pt-BR")}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
         <Separator />
         <div>
           <p className="text-xs text-muted-foreground mb-1">Histórico de Status</p>
