@@ -34,7 +34,7 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
       const latest = demos[demos.length - 1];
       if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
       const url = await generateDemonstrativoPdf(purchase.id, latest.id);
-      window.open(url, "_blank");
+      const a = document.createElement("a"); a.href = url; a.download = `demonstrativo-${purchase.purchaseNumber}.pdf`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch { toast.error("Erro ao gerar PDF"); } finally { setLoading(false); }
   };
 
