@@ -449,6 +449,42 @@ export async function advanceStage(id: string, currentStatus: string): Promise<b
   return !!result;
 }
 
+/** Contest a demonstrativo — sets status to Contestado and reverts flow */
+export async function contestDemonstrativo(purchaseId: string, motivo: string): Promise<boolean> {
+  const { data: purchase } = await supabase.from("purchases").select("status, material_flow").eq("id", purchaseId).single();
+  if (!purchase) return false;
+
+  const isC = purchase.status.startsWith("Cerâmico");
+  const contestedStatus = isC ? "Cerâmico: Demonstrativo Contestado" : "Peças: Demonstrativo Contestado";
+
+  // Update demonstrativo with contestation reason
+  const { data: demos } = await supabase
+    .from("demonstrativos")
+    .select("id")
+    .eq("purchase_id", purchaseId)
+    .eq("status", "pendente")
+    .order("enviado_em", { ascending: false })
+    .limit(1);
+
+  if (demos && demos.length > 0) {
+    await supabase.from("demonstrativos").update({
+      status: "contestado",
+      motivo_contestacao: motivo,
+      respondido_em: new Date().toISOString(),
+    }).eq("id", demos[0].id);
+  }
+
+  // Set status to Contestado first
+  await updatePurchaseStatus(purchaseId, contestedStatus);
+  // Then advance from Contestado (which reverts to Aguardando Demonstrativo / Trituração)
+  const materialFlow = (purchase.material_flow as MaterialFlow) || null;
+  const next = getNextStatus(contestedStatus, materialFlow);
+  if (next) {
+    await updatePurchaseStatus(purchaseId, next);
+  }
+  return true;
+}
+
 /** Advance financial sub-status (cerâmico) */
 export async function advanceFinStatus(id: string, currentFinStatus: CerFinStatus): Promise<boolean> {
   const next = getNextFinStatus(currentFinStatus);
