@@ -17,6 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 export default function CatalogPage() {
+  const { role } = useAuth();
+  const isSuperAdmin = role === "super_admin";
   const [parts, setParts] = useState<CatalogPart[]>([]);
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [search, setSearch] = useState("");
