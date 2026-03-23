@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
+import { Activity } from "lucide-react";
 import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
+import { subDays, isAfter, parseISO } from "date-fns";
+import { DateRange } from "react-day-picker";
 import ProcessKPIs from "./ProcessKPIs";
-import ProcessFilters from "./ProcessFilters";
+import ProcessFilters, { DateFilterPreset } from "./ProcessFilters";
 import StageActionCard from "./StageActionCard";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
