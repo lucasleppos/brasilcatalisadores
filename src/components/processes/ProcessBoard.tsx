@@ -75,8 +75,8 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     parallelMatch: "op",
   },
   {
-    label: "Encerrados",
-    statuses: ["Peças: Encerrado", "Cerâmico: Encerrado"],
+    label: "Concluídos",
+    statuses: ["Concluído", "Peças: Encerrado", "Cerâmico: Encerrado"],
   },
 ];
 
