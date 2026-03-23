@@ -73,7 +73,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       .from("purchases")
       .select("id, supplier_name, total_brl, location")
       .eq("location", "matriz")
-      .in("status", ["Enviado ao Bag", "Exportação/Venda"]);
+      .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     if (!purchases) { setAvailableMaterials([]); return; }
 

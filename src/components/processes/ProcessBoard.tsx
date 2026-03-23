@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, TrendingUp, Package, Clock, BarChart3 } from "lucide-react";
+import { Activity } from "lucide-react";
 import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
+import { subDays, isAfter, parseISO } from "date-fns";
+import { DateRange } from "react-day-picker";
 import ProcessKPIs from "./ProcessKPIs";
-import ProcessFilters from "./ProcessFilters";
+import ProcessFilters, { DateFilterPreset } from "./ProcessFilters";
 import StageActionCard from "./StageActionCard";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -74,8 +75,8 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     parallelMatch: "op",
   },
   {
-    label: "Encerrados",
-    statuses: ["Peças: Encerrado", "Cerâmico: Encerrado"],
+    label: "Concluídos",
+    statuses: ["Concluído", "Peças: Encerrado", "Cerâmico: Encerrado"],
   },
 ];
 
@@ -93,6 +94,8 @@ export default function ProcessBoard() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [buyerFilter, setBuyerFilter] = useState("all");
+  const [datePreset, setDatePreset] = useState<DateFilterPreset>("month");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
   const reload = () => loadPurchases().then(setPurchases);
   useEffect(() => { reload(); }, []);
@@ -104,8 +107,26 @@ export default function ProcessBoard() {
     let result = purchases;
     if (supplierFilter !== "all") result = result.filter((p) => p.supplierName === supplierFilter);
     if (buyerFilter !== "all") result = result.filter((p) => p.buyer === buyerFilter);
+
+    // Date filter
+    if (customRange?.from) {
+      const from = customRange.from;
+      const to = customRange.to || customRange.from;
+      result = result.filter((p) => {
+        const d = parseISO(p.date);
+        return d >= from && d <= new Date(to.getTime() + 86400000);
+      });
+    } else if (datePreset === "week") {
+      const cutoff = subDays(new Date(), 7);
+      result = result.filter((p) => isAfter(parseISO(p.date), cutoff));
+    } else if (datePreset === "month") {
+      const cutoff = subDays(new Date(), 30);
+      result = result.filter((p) => isAfter(parseISO(p.date), cutoff));
+    }
+    // "all" = no date filter
+
     return result;
-  }, [purchases, supplierFilter, buyerFilter]);
+  }, [purchases, supplierFilter, buyerFilter, datePreset, customRange]);
 
   const isAdmin = role === "super_admin" || role === "admin";
 
@@ -154,7 +175,7 @@ export default function ProcessBoard() {
 
   const pendingCount = useMemo(() =>
     visibleGroups
-      .filter((g) => g.label !== "Encerrados")
+      .filter((g) => g.label !== "Concluídos")
       .reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
   , [visibleGroups, tasksByGroup]);
 
@@ -189,6 +210,10 @@ export default function ProcessBoard() {
         onSupplierChange={setSupplierFilter}
         onBuyerChange={setBuyerFilter}
         pendingCount={pendingCount}
+        datePreset={datePreset}
+        onDatePresetChange={setDatePreset}
+        customRange={customRange}
+        onCustomRangeChange={setCustomRange}
       />
 
       {/* Tasks by group — fixed tabs */}

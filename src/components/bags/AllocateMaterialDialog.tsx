@@ -46,7 +46,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
       .from("purchases")
       .select("id, supplier_name, total_brl, location")
       .eq("location", "matriz")
-      .in("status", ["Enviado ao Bag", "Exportação/Venda"]);
+      .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     if (!purchases) return;
 

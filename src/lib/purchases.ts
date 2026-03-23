@@ -26,10 +26,9 @@ const PECAS_STATUSES = [
   "Peças: Em Corte",
   "Peças: Em Trituração",
   "Peças: Em Amostragem",
-  "Peças: Pesagem Realizada",
   "Peças: Peso Divergente",
   "Peças: Alocado ao Bag",
-  "Peças: Encerrado",
+  "Concluído",
 ] as const;
 
 // Cerâmico flow statuses
@@ -44,6 +43,7 @@ const CERAMICO_STATUSES = [
   "Cerâmico: Demonstrativo Contestado",
   "Cerâmico: Aprovado",
   "Cerâmico: Encerrado",
+  "Concluído",
 ] as const;
 
 // Cerâmico parallel sub-statuses
@@ -105,10 +105,9 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Em Corte": ["operacional"],
   "Peças: Em Trituração": ["operacional"],
   "Peças: Em Amostragem": ["operacional"],
-  "Peças: Pesagem Realizada": ["operacional"],
   "Peças: Peso Divergente": ["admin", "super_admin"],
   "Peças: Alocado ao Bag": ["admin", "super_admin"],
-  "Peças: Encerrado": [],
+  "Concluído": [],
   // Cerâmico
   "Cerâmico: Em Separação": ["operacional"],
   "Cerâmico: Em Trituração/Homogeneização": ["operacional"],
@@ -147,10 +146,9 @@ export const PECAS_FLOW: string[] = [
   "Peças: Em Corte",
   "Peças: Em Trituração",
   "Peças: Em Amostragem",
-  "Peças: Pesagem Realizada",
   // "Peças: Peso Divergente" is a special state, not in linear sequence
   "Peças: Alocado ao Bag",
-  "Peças: Encerrado",
+  "Concluído",
 ];
 
 export const CERAMICO_FLOW: string[] = [
@@ -166,6 +164,7 @@ export const CERAMICO_FLOW: string[] = [
   "Cerâmico: Aprovado",
   // After Aprovado, parallel sub-flows start — no more linear progression
   "Cerâmico: Encerrado",
+  "Concluído",
 ];
 
 export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
@@ -184,7 +183,8 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // For ceramico, after "Aprovado" there's no single next — parallel sub-flows start
   if (current === "Cerâmico: Aprovado") return null;
-  if (current === "Peças: Encerrado" || current === "Cerâmico: Encerrado") return null;
+  if (current === "Concluído") return null;
+  if (current === "Peças: Encerrado" || current === "Cerâmico: Encerrado") return "Concluído";
 
   const flow = getFlowStatuses(materialFlow);
   const idx = flow.indexOf(current);
@@ -449,6 +449,42 @@ export async function advanceStage(id: string, currentStatus: string): Promise<b
   return !!result;
 }
 
+/** Contest a demonstrativo — sets status to Contestado and reverts flow */
+export async function contestDemonstrativo(purchaseId: string, motivo: string): Promise<boolean> {
+  const { data: purchase } = await supabase.from("purchases").select("status, material_flow").eq("id", purchaseId).single();
+  if (!purchase) return false;
+
+  const isC = purchase.status.startsWith("Cerâmico");
+  const contestedStatus = isC ? "Cerâmico: Demonstrativo Contestado" : "Peças: Demonstrativo Contestado";
+
+  // Update demonstrativo with contestation reason
+  const { data: demos } = await supabase
+    .from("demonstrativos")
+    .select("id")
+    .eq("purchase_id", purchaseId)
+    .eq("status", "pendente")
+    .order("enviado_em", { ascending: false })
+    .limit(1);
+
+  if (demos && demos.length > 0) {
+    await supabase.from("demonstrativos").update({
+      status: "contestado",
+      motivo_contestacao: motivo,
+      respondido_em: new Date().toISOString(),
+    }).eq("id", demos[0].id);
+  }
+
+  // Set status to Contestado first
+  await updatePurchaseStatus(purchaseId, contestedStatus);
+  // Then advance from Contestado (which reverts to Aguardando Demonstrativo / Trituração)
+  const materialFlow = (purchase.material_flow as MaterialFlow) || null;
+  const next = getNextStatus(contestedStatus, materialFlow);
+  if (next) {
+    await updatePurchaseStatus(purchaseId, next);
+  }
+  return true;
+}
+
 /** Advance financial sub-status (cerâmico) */
 export async function advanceFinStatus(id: string, currentFinStatus: CerFinStatus): Promise<boolean> {
   const next = getNextFinStatus(currentFinStatus);
@@ -691,10 +727,7 @@ export function getStatusColor(status: string): string {
 
 /** Check if a purchase is fully closed */
 export function isPurchaseClosed(purchase: Purchase): boolean {
-  if (purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda") {
-    return true;
-  }
-  return false;
+  return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
 }
 
 /** Check if cerâmico is in parallel phase */
