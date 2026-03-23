@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
 import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
+import PiecePricingPanel from "./PiecePricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -48,11 +49,12 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
   const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
+  const isPiecePricing = purchase.status === "Peças: Aguardando Demonstrativo";
   const isWeighing = purchase.status === "Peças: Pesagem Realizada";
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
-  const canGeneratePdf = isDemonstrative || purchase.status === "Peças: Aguardando Demonstrativo" || purchase.status === "Cerâmico: Em Precificação";
+  const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -345,6 +347,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Piece Pricing Panel for "Aguardando Demonstrativo" */}
+            {isPiecePricing && (
+              <PiecePricingPanel purchase={purchase} onCompleted={onCompleted} />
+            )}
+
             {/* Stage Checklist */}
             <StageChecklist
               purchaseId={purchase.id}
