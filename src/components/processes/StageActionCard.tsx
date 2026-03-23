@@ -347,6 +347,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Piece Pricing Panel for "Aguardando Demonstrativo" */}
+            {isPiecePricing && (
+              <PiecePricingPanel purchase={purchase} onCompleted={onCompleted} />
+            )}
+
             {/* Stage Checklist */}
             <StageChecklist
               purchaseId={purchase.id}
