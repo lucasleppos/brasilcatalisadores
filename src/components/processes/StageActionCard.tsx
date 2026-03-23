@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
 import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
+import PiecePricingPanel from "./PiecePricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
