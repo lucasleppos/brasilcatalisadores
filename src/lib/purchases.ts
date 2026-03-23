@@ -344,8 +344,23 @@ export async function createPurchase(data: {
 
   const totalBrl = calcTotal(data.items);
   const materialFlow = determineMaterialFlow(data.items);
-  const initialStatus = "Aguardando Inclusão";
-  const statusHistory = [{ status: initialStatus, date: new Date().toISOString() }];
+  
+  // Peças skip initial stages — go directly to "Em Conferência"
+  let initialStatus: string;
+  let statusHistory: { status: string; date: string }[];
+  
+  if (materialFlow === "pecas") {
+    const now = new Date().toISOString();
+    initialStatus = "Em Conferência";
+    statusHistory = [
+      { status: "Aguardando Inclusão", date: now },
+      { status: "Aguardando Conferência", date: now },
+      { status: "Em Conferência", date: now },
+    ];
+  } else {
+    initialStatus = "Aguardando Inclusão";
+    statusHistory = [{ status: initialStatus, date: new Date().toISOString() }];
+  }
 
   const { data: row, error } = await supabase
     .from("purchases")
@@ -673,6 +688,42 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
 
 export async function deletePurchase(id: string) {
   await supabase.from("purchases").delete().eq("id", id);
+}
+
+/** Add a single item to an existing purchase and recalculate total */
+export async function addItemToPurchase(purchaseId: string, item: {
+  catalogPartId: string;
+  itemType: PurchaseItemType;
+  quantity: number;
+  totalValue: number;
+  weight?: number;
+}): Promise<boolean> {
+  const { error } = await supabase.from("purchase_items").insert({
+    purchase_id: purchaseId,
+    item_type: item.itemType,
+    quantity: item.quantity,
+    total_value: item.totalValue,
+    weight: item.weight || null,
+    catalog_part_id: item.catalogPartId,
+  });
+  if (error) return false;
+
+  // Recalculate total
+  const { data: allItems } = await supabase.from("purchase_items").select("total_value").eq("purchase_id", purchaseId);
+  const newTotal = (allItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
+  await supabase.from("purchases").update({ total_brl: newTotal }).eq("id", purchaseId);
+  return true;
+}
+
+/** Remove item from purchase and recalculate total */
+export async function removeItemFromPurchase(purchaseId: string, itemId: string): Promise<boolean> {
+  const { error } = await supabase.from("purchase_items").delete().eq("id", itemId);
+  if (error) return false;
+
+  const { data: allItems } = await supabase.from("purchase_items").select("total_value").eq("purchase_id", purchaseId);
+  const newTotal = (allItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
+  await supabase.from("purchases").update({ total_brl: newTotal }).eq("id", purchaseId);
+  return true;
 }
 
 /** Register real weight for a purchase item (post-handling) */
