@@ -207,7 +207,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">
-                              {item.catalogPartId ? `Peça catálogo` : item.itemType}
+                              {item.catalogPartCode || item.catalogPartRef || item.itemType}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {item.quantity || 1}x · {fmtBrl((item.totalValue || 0) / (item.quantity || 1))}/un
