@@ -1,40 +1,41 @@
 
 
-# Quantidade total de peças no card + Múltiplas fotos na Conferência
+# Foto obrigatória ao criar compra
 
-## Problema 1: "1 itens" no card
-O card exibe `purchase.items.length` (número de linhas/itens), mas o usuário quer ver a **quantidade total de peças** (soma dos campos `quantity` de cada item). Ex: 1 item com quantity=50 deve mostrar "50 peças".
+## Problema
+O usuário quer que ao criar uma compra, seja obrigatório tirar/enviar pelo menos uma foto do material antes de confirmar, independente do tipo de material.
 
-### Alteração em `StageActionCard.tsx`
-- Linha 172: calcular `totalQty = purchase.items.reduce((sum, i) => sum + (i.quantity || 1), 0)`
-- Exibir `{totalQty} peças` em vez de `{purchase.items.length} itens`
+## Alterações
 
----
+### `src/components/purchases/NewPurchaseDialog.tsx`
 
-## Problema 2: Apenas 1 foto na Conferência
-Atualmente a task `photo_recebimento` aceita apenas 1 evidência. Uma vez feito upload, marca como concluído e não permite mais fotos.
+1. **Adicionar state para fotos**: `const [photos, setPhotos] = useState<string[]>([])` para URLs das fotos enviadas
+2. **Importar** `PhotoCapture` (já existe em `src/components/processes/PhotoCapture.tsx`) e `Camera`/`Image` icons
+3. **Adicionar seção de foto** após o campo "Boleto Syge" e antes de "Material a Classificar":
+   - Label "Foto do material recebido *"
+   - Componente `PhotoCapture` para upload/câmera
+   - Lista de thumbnails das fotos já enviadas (com botão de remover)
+   - Indicador visual se nenhuma foto foi enviada
+4. **Bloquear o botão "Criar Compra"**: adicionar `photos.length === 0` à condição `disabled` do botão de confirmação
+5. **Salvar as fotos como evidência**: no `handleConfirm`, após criar a compra, salvar cada foto como `stage_evidence` com `task_key: "photo_recebimento_compra"` e `stage: "Recebimento"`
+6. **Reset**: limpar `photos` ao abrir/fechar o dialog
 
-### Alteração em `StageChecklist.tsx`
-- Para tasks do tipo `photo`: permitir múltiplas evidências (não marcar como "concluído" que esconde o botão de upload)
-- Mudar `isCompleted` para considerar "pelo menos 1 foto" como suficiente para o checklist, mas continuar exibindo o botão de upload para adicionar mais
-- Listar todas as fotos já enviadas (não apenas a primeira)
-- `getEvidence` → `getEvidences` (retornar array filtrado por taskKey)
+### Problema do `purchaseId` para upload
 
-### Alteração em `src/lib/stage-tasks.ts`
-- Na definição da task `photo_recebimento`, adicionar flag `multi: true` ao `TaskRequirement` interface
-- Adicionar campo opcional `multi?: boolean` ao tipo `TaskRequirement`
+O `PhotoCapture` precisa de um `purchaseId` para fazer upload no storage (path `{purchaseId}/...`). Na criação, o ID ainda não existe. Solução: usar um ID temporário (`crypto.randomUUID()`) para o path do storage e depois associar ao pedido via `stage_evidence`.
 
-### Lógica visual
-- Task com `multi: true`: mostra lista de fotos já enviadas + botão para adicionar mais
-- Task sem `multi`: comportamento atual (1 evidência, depois marca concluído)
+Alternativamente, fazer upload com um prefixo temporário (`temp/{uuid}/...`) e após criar a compra, salvar as evidências com o ID real.
 
----
+### Fluxo
+1. Usuário abre dialog de nova compra
+2. Tira/envia foto(s) — upload vai para storage com path temporário
+3. Preenche fornecedor, itens etc.
+4. Botão "Criar Compra" só habilita se há pelo menos 1 foto + fornecedor + itens
+5. Ao confirmar, cria a compra e registra as fotos como `stage_evidence`
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/lib/stage-tasks.ts` | Adicionar `multi?: boolean` ao `TaskRequirement`; marcar `photo_recebimento` com `multi: true` |
-| `src/components/processes/StageChecklist.tsx` | Suportar múltiplas evidências para tasks `multi`; listar todas as fotos; manter botão upload visível |
-| `src/components/processes/StageActionCard.tsx` | Exibir soma de `quantity` em vez de `items.length` |
+| `src/components/purchases/NewPurchaseDialog.tsx` | Seção de foto, state, validação, salvar evidências após criação |
 
