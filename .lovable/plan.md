@@ -1,45 +1,52 @@
 
-# Tarefas Obrigatórias por Etapa — Sistema de Evidências + Checklist
 
-## Status: ✅ Fase 1 Implementada
+# Correções no Fluxo de Peças + Filtro de Data nos Processos
 
-### O que foi feito
+## Observações do Usuário
 
-1. **Banco de dados**
-   - Tabela `stage_evidence` (fotos, pesagens, notas por etapa)
-   - Tabela `lab_analyses` (3 análises individuais por compra)
-   - Bucket `stage-photos` (storage público para fotos)
-   - RLS com `user_can_do(uid, 'processos', 'advance_stage')`
+1. **Manter "Peças: Peso Divergente"** — não remover esta etapa do fluxo
+2. **Adicionar filtro de data** no módulo de Processos com opções: Semana, Mês, ou seleção livre
 
-2. **Core logic (`src/lib/stage-tasks.ts`)**
-   - `STAGE_REQUIREMENTS`: definição de tarefas obrigatórias por etapa
-   - CRUD de evidências (`addEvidence`, `loadEvidences`, `deleteEvidence`)
-   - Upload de fotos para storage (`uploadStagePhoto`)
-   - CRUD de análises individuais (`addLabAnalysis`, `loadLabAnalyses`)
-   - `canAdvanceStage()`: valida se todas tarefas obrigatórias foram cumpridas
-   - `calcAnalysisAverage()`: média + desvio padrão das 3 análises
+## Alterações
 
-3. **Componentes novos**
-   - `PhotoCapture.tsx`: botão de câmera/galeria com preview e upload
-   - `StageChecklist.tsx`: checklist visual integrado no card de cada etapa
-   - `TripleAnalysisForm.tsx`: formulário de 3 análises com média e alerta de desvio
+### 1. `src/lib/purchases.ts` — Correções no fluxo (do plano anterior aprovado)
 
-4. **Integração**
-   - `StageActionCard.tsx`: checklist bloqueia botão "Avançar" até tarefas cumpridas
-   - `StageActionCard.tsx`: análise substituída pelo TripleAnalysisForm (3→média)
-   - `PurchaseDetail.tsx`: timeline de evidências coletadas (fotos, pesos, notas, análises)
+Aplicar as correções já aprovadas **sem remover** "Peças: Peso Divergente":
+- Criar função `contestDemonstrativo(id, motivo)` que muda status para "Contestado" corretamente
+- Remover apenas "Peças: Pesagem Realizada" (redundante com Amostragem) — manter "Peso Divergente"
+- Após "Peças: Em Amostragem", ir para "Peças: Alocado ao Bag" (ou "Peso Divergente" se divergir)
+- Adicionar status "Concluído" como etapa final unificada
+- Corrigir `getNextStatus` para "Contestado" reverter para "Aguardando Demonstrativo"
 
-### Etapas com checklist obrigatório
-- Em Conferência: foto + confirmação de itens
-- Cerâmico: Em Separação: foto
-- Peças: Em Corte: foto + peso cerâmica extraída
-- Peças: Em Trituração: peso + foto
-- Cerâmico: Em Trituração/Homogeneização: peso + foto
-- Cerâmico: Lab em Análise / Análise: 3 análises individuais → média
-- Peças: Aprovado - Aguardando Pagamento: comprovante (opcional)
+### 2. `src/components/processes/ProcessFilters.tsx` — Filtro de Data
 
-### Pendente (próximas iterações)
-- Foto obrigatória no bag lacrado (etapa de alocação)
-- Comparação automática de peso entre etapas (corte vs trituração)
-- Configuração de thresholds de desvio nas Settings
-- Tela de confirmação enriquecida na aprovação do demonstrativo
+Adicionar ao componente de filtros:
+- **ToggleGroup** com 3 opções: "Semana" (últimos 7 dias), "Mês" (últimos 30 dias), "Todos"
+- **Botão de data livre** usando Popover + Calendar (date range picker) para selecionar período personalizado
+- Quando selecionado um período livre, desmarcar os toggles pré-definidos
+
+Props novas: `dateRange`, `onDateRangeChange`
+
+### 3. `src/components/processes/ProcessBoard.tsx` — Integrar filtro de data
+
+- Adicionar state `dateFilter` (tipo: `"week" | "month" | "all" | "custom"`) e `customDateRange` (`{from: Date, to: Date}`)
+- No `useMemo` de `filtered`, aplicar filtro por `purchase.date` conforme o período selecionado
+- Passar props de data para `ProcessFilters`
+
+### 4. Correções de Bags e Contestação (do plano anterior)
+
+- `AllocationPanel.tsx` e `AllocateMaterialDialog.tsx`: incluir "Peças: Alocado ao Bag" no filtro de status
+- `StageActionCard.tsx`: usar `contestDemonstrativo` no handler de contestação
+- `ProcessBoard.tsx`: renomear "Encerrados" para "Concluídos", filtrar por "Concluído"
+
+## Arquivos afetados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/lib/purchases.ts` | `contestDemonstrativo`, remover "Pesagem Realizada" (manter "Peso Divergente"), adicionar "Concluído" |
+| `src/components/processes/ProcessFilters.tsx` | Adicionar ToggleGroup (Semana/Mês/Todos) + DateRange picker |
+| `src/components/processes/ProcessBoard.tsx` | State de filtro de data, aplicar no `filtered`, passar props, aba "Concluídos" |
+| `src/components/processes/StageActionCard.tsx` | Usar `contestDemonstrativo` |
+| `src/components/bags/AllocationPanel.tsx` | Incluir "Peças: Alocado ao Bag" no filtro |
+| `src/components/bags/AllocateMaterialDialog.tsx` | Incluir "Peças: Alocado ao Bag" no filtro |
+
