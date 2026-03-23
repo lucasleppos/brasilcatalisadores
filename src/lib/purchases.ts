@@ -677,9 +677,8 @@ export async function registerAnalysis(
 }
 
 export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string; bulkWeight?: number | null }) {
-  const totalBrl = calcTotal(data.items);
-
-  await supabase.from("purchase_items").delete().eq("purchase_id", id);
+  // Delete only non-catalog items (preserve priced pieces added via PiecePricingPanel)
+  await supabase.from("purchase_items").delete().eq("purchase_id", id).is("catalog_part_id", null);
 
   if (data.items.length > 0) {
     await supabase.from("purchase_items").insert(
@@ -696,6 +695,15 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
       }))
     );
   }
+
+  // Sum catalog items total to include in purchase total
+  const { data: catalogItems } = await supabase
+    .from("purchase_items")
+    .select("total_value")
+    .eq("purchase_id", id)
+    .not("catalog_part_id", "is", null);
+  const catalogTotal = (catalogItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
+  const totalBrl = calcTotal(data.items) + catalogTotal;
 
   // Recalculate material_flow
   const materialFlow = determineMaterialFlow(data.items);
