@@ -1,41 +1,42 @@
 
 
-# Foto obrigatória ao criar compra
+# Fluxo Peças: Pular etapas iniciais + Seleção de peças na Precificação
 
-## Problema
-O usuário quer que ao criar uma compra, seja obrigatório tirar/enviar pelo menos uma foto do material antes de confirmar, independente do tipo de material.
+## 1. Criar compra de Peças já em "Em Conferência"
 
-## Alterações
+### `src/lib/purchases.ts` — `createPurchase`
+- Quando `materialFlow === "pecas"`, o `initialStatus` muda de `"Aguardando Inclusão"` para `"Em Conferência"`
+- O `statusHistory` já inclui as 3 transições: Aguardando Inclusão → Aguardando Conferência → Em Conferência (registradas automaticamente)
 
-### `src/components/purchases/NewPurchaseDialog.tsx`
+### Impacto no `ProcessBoard`
+- Pedidos de peças não aparecerão mais nas abas "Inclusão" e "Conferência aguardando" — irão direto para "Conferência"
 
-1. **Adicionar state para fotos**: `const [photos, setPhotos] = useState<string[]>([])` para URLs das fotos enviadas
-2. **Importar** `PhotoCapture` (já existe em `src/components/processes/PhotoCapture.tsx`) e `Camera`/`Image` icons
-3. **Adicionar seção de foto** após o campo "Boleto Syge" e antes de "Material a Classificar":
-   - Label "Foto do material recebido *"
-   - Componente `PhotoCapture` para upload/câmera
-   - Lista de thumbnails das fotos já enviadas (com botão de remover)
-   - Indicador visual se nenhuma foto foi enviada
-4. **Bloquear o botão "Criar Compra"**: adicionar `photos.length === 0` à condição `disabled` do botão de confirmação
-5. **Salvar as fotos como evidência**: no `handleConfirm`, após criar a compra, salvar cada foto como `stage_evidence` com `task_key: "photo_recebimento_compra"` e `stage: "Recebimento"`
-6. **Reset**: limpar `photos` ao abrir/fechar o dialog
+## 2. Na etapa "Peças: Aguardando Demonstrativo" — tela de seleção de peças do catálogo
 
-### Problema do `purchaseId` para upload
+Atualmente, quando o pedido chega em "Aguardando Demonstrativo", o card mostra apenas botões de PDF/WhatsApp/Avançar. O usuário quer que **antes de gerar o demonstrativo**, apareça uma interface para selecionar peças do catálogo, definir quantidade e valor, e adicionar ao pedido.
 
-O `PhotoCapture` precisa de um `purchaseId` para fazer upload no storage (path `{purchaseId}/...`). Na criação, o ID ainda não existe. Solução: usar um ID temporário (`crypto.randomUUID()`) para o path do storage e depois associar ao pedido via `stage_evidence`.
+### Novo componente: `src/components/processes/PiecePricingPanel.tsx`
+- Integra o `PartSearch` (já existe) para buscar peças no catálogo
+- Ao selecionar uma peça, ela aparece numa área de "staging" (não é adicionada automaticamente)
+- Na área de staging: campos de **Quantidade** e **Valor (R$)** editáveis
+- Botão **"Adicionar"** confirma e insere como `purchase_item` vinculado ao pedido
+- Lista os itens já adicionados ao pedido (com opção de remover)
+- O total do pedido é recalculado conforme itens são adicionados
+- Botões de PDF/WhatsApp/Avançar ficam abaixo, habilitados somente quando há itens precificados
 
-Alternativamente, fazer upload com um prefixo temporário (`temp/{uuid}/...`) e após criar a compra, salvar as evidências com o ID real.
+### `src/components/processes/StageActionCard.tsx`
+- Quando `purchase.status === "Peças: Aguardando Demonstrativo"`, renderizar o `PiecePricingPanel` acima dos botões de PDF
+- Passar `purchase` e callback `onCompleted` para reload
 
-### Fluxo
-1. Usuário abre dialog de nova compra
-2. Tira/envia foto(s) — upload vai para storage com path temporário
-3. Preenche fornecedor, itens etc.
-4. Botão "Criar Compra" só habilita se há pelo menos 1 foto + fornecedor + itens
-5. Ao confirmar, cria a compra e registra as fotos como `stage_evidence`
+### `src/lib/purchases.ts`
+- Nova função `addItemToPurchase(purchaseId, item)`: insere na tabela `purchase_items` e recalcula `total_brl` no pedido
+- Nova função `removeItemFromPurchase(purchaseId, itemId)`: remove e recalcula
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/purchases/NewPurchaseDialog.tsx` | Seção de foto, state, validação, salvar evidências após criação |
+| `src/lib/purchases.ts` | `createPurchase` com status inicial "Em Conferência" para peças; `addItemToPurchase`; `removeItemFromPurchase` |
+| `src/components/processes/PiecePricingPanel.tsx` | **Novo** — busca catálogo, staging com qty/valor, adiciona ao pedido |
+| `src/components/processes/StageActionCard.tsx` | Renderizar `PiecePricingPanel` na etapa "Aguardando Demonstrativo" |
 
