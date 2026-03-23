@@ -7,12 +7,13 @@ export interface TaskRequirement {
   type: "photo" | "weight" | "note" | "analysis";
   label: string;
   required: boolean;
+  multi?: boolean;
 }
 
 export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
   // Conferência
   "Em Conferência": [
-    { key: "photo_recebimento", type: "photo", label: "Foto do material recebido", required: true },
+    { key: "photo_recebimento", type: "photo", label: "Foto do material recebido", required: true, multi: true },
     { key: "confirm_itens", type: "note", label: "Confirmar itens do pedido", required: true },
   ],
   // Cerâmico: Separação
