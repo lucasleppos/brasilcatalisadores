@@ -26,10 +26,9 @@ const PECAS_STATUSES = [
   "Peças: Em Corte",
   "Peças: Em Trituração",
   "Peças: Em Amostragem",
-  "Peças: Pesagem Realizada",
   "Peças: Peso Divergente",
   "Peças: Alocado ao Bag",
-  "Peças: Encerrado",
+  "Concluído",
 ] as const;
 
 // Cerâmico flow statuses
@@ -44,6 +43,7 @@ const CERAMICO_STATUSES = [
   "Cerâmico: Demonstrativo Contestado",
   "Cerâmico: Aprovado",
   "Cerâmico: Encerrado",
+  "Concluído",
 ] as const;
 
 // Cerâmico parallel sub-statuses
@@ -105,10 +105,9 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Em Corte": ["operacional"],
   "Peças: Em Trituração": ["operacional"],
   "Peças: Em Amostragem": ["operacional"],
-  "Peças: Pesagem Realizada": ["operacional"],
   "Peças: Peso Divergente": ["admin", "super_admin"],
   "Peças: Alocado ao Bag": ["admin", "super_admin"],
-  "Peças: Encerrado": [],
+  "Concluído": [],
   // Cerâmico
   "Cerâmico: Em Separação": ["operacional"],
   "Cerâmico: Em Trituração/Homogeneização": ["operacional"],
@@ -147,10 +146,9 @@ export const PECAS_FLOW: string[] = [
   "Peças: Em Corte",
   "Peças: Em Trituração",
   "Peças: Em Amostragem",
-  "Peças: Pesagem Realizada",
   // "Peças: Peso Divergente" is a special state, not in linear sequence
   "Peças: Alocado ao Bag",
-  "Peças: Encerrado",
+  "Concluído",
 ];
 
 export const CERAMICO_FLOW: string[] = [
@@ -166,6 +164,7 @@ export const CERAMICO_FLOW: string[] = [
   "Cerâmico: Aprovado",
   // After Aprovado, parallel sub-flows start — no more linear progression
   "Cerâmico: Encerrado",
+  "Concluído",
 ];
 
 export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
@@ -184,7 +183,8 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // For ceramico, after "Aprovado" there's no single next — parallel sub-flows start
   if (current === "Cerâmico: Aprovado") return null;
-  if (current === "Peças: Encerrado" || current === "Cerâmico: Encerrado") return null;
+  if (current === "Concluído") return null;
+  if (current === "Peças: Encerrado" || current === "Cerâmico: Encerrado") return "Concluído";
 
   const flow = getFlowStatuses(materialFlow);
   const idx = flow.indexOf(current);
