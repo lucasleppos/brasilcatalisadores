@@ -727,10 +727,7 @@ export function getStatusColor(status: string): string {
 
 /** Check if a purchase is fully closed */
 export function isPurchaseClosed(purchase: Purchase): boolean {
-  if (purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda") {
-    return true;
-  }
-  return false;
+  return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
 }
 
 /** Check if cerâmico is in parallel phase */
