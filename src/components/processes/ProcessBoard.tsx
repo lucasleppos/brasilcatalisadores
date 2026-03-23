@@ -175,7 +175,7 @@ export default function ProcessBoard() {
 
   const pendingCount = useMemo(() =>
     visibleGroups
-      .filter((g) => g.label !== "Encerrados")
+      .filter((g) => g.label !== "Concluídos")
       .reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
   , [visibleGroups, tasksByGroup]);
 
