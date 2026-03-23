@@ -238,6 +238,8 @@ export interface PurchaseQuoteItem {
   result?: CalculatorResult;
   category?: string;
   catalogPartId?: string;
+  catalogPartCode?: string;
+  catalogPartRef?: string;
   weightReal?: number;
   weightLoss?: number;
 }
@@ -289,9 +291,25 @@ export async function loadPurchases(): Promise<Purchase[]> {
     .select("*")
     .in("purchase_id", ids.length > 0 ? ids : ["__none__"]);
 
+  // Fetch catalog parts for items that have catalog_part_id
+  const allCatalogPartIds = [...new Set(
+    (itemRows || []).filter((i: any) => i.catalog_part_id).map((i: any) => i.catalog_part_id)
+  )];
+  let catalogPartsMap: Record<string, { code: string; reference: string }> = {};
+  if (allCatalogPartIds.length > 0) {
+    const { data: catalogParts } = await supabase
+      .from("catalog_parts")
+      .select("id, code, reference")
+      .in("id", allCatalogPartIds);
+    (catalogParts || []).forEach((cp: any) => {
+      catalogPartsMap[cp.id] = { code: cp.code, reference: cp.reference };
+    });
+  }
+
   const itemsByPurchase: Record<string, PurchaseQuoteItem[]> = {};
   (itemRows || []).forEach((item: any) => {
     if (!itemsByPurchase[item.purchase_id]) itemsByPurchase[item.purchase_id] = [];
+    const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
     itemsByPurchase[item.purchase_id].push({
       id: item.id,
       itemType: item.item_type as PurchaseItemType,
@@ -302,6 +320,8 @@ export async function loadPurchases(): Promise<Purchase[]> {
       result: item.calc_result as CalculatorResult | undefined,
       category: (item as any).category || undefined,
       catalogPartId: item.catalog_part_id || undefined,
+      catalogPartCode: cp?.code || undefined,
+      catalogPartRef: cp?.reference || undefined,
       weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
       weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
     });

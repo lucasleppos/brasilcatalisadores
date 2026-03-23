@@ -60,6 +60,19 @@ Deno.serve(async (req) => {
     const latestLab = labRes.data?.[0] || null;
     const settings = settingsRes.data;
 
+    // Fetch catalog part codes for items with catalog_part_id
+    const catalogPartIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id))];
+    let catalogPartsMap: Record<string, { code: string; reference: string }> = {};
+    if (catalogPartIds.length > 0) {
+      const { data: catalogParts } = await sb
+        .from("catalog_parts")
+        .select("id, code, reference")
+        .in("id", catalogPartIds);
+      (catalogParts || []).forEach((cp: any) => {
+        catalogPartsMap[cp.id] = { code: cp.code, reference: cp.reference };
+      });
+    }
+
     const isCeramico = purchase.material_flow === "ceramico";
 
     // ===== Build PDF =====
@@ -177,7 +190,9 @@ Deno.serve(async (req) => {
       }
 
       doc.text(`${i + 1}`, colX[0] + 2, y + 4);
-      doc.text(typeLabels[item.item_type] || item.item_type, colX[1] + 2, y + 4);
+      const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+      const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
+      doc.text(typeLabel, colX[1] + 2, y + 4);
       doc.text(qtyWeight, colX[2] + 2, y + 4);
       doc.text(unitVal, colX[3] + 2, y + 4);
       doc.text(totalVal, colX[4] + 2, y + 4);
