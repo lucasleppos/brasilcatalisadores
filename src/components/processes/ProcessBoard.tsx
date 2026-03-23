@@ -210,6 +210,10 @@ export default function ProcessBoard() {
         onSupplierChange={setSupplierFilter}
         onBuyerChange={setBuyerFilter}
         pendingCount={pendingCount}
+        datePreset={datePreset}
+        onDatePresetChange={setDatePreset}
+        customRange={customRange}
+        onCustomRangeChange={setCustomRange}
       />
 
       {/* Tasks by group — fixed tabs */}
