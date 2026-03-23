@@ -169,7 +169,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
           <div className="text-right space-y-0.5">
             <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
-            <p className="text-xs text-muted-foreground">{purchase.items.length} itens</p>
+            <p className="text-xs text-muted-foreground">{purchase.items.reduce((sum, i) => sum + (i.quantity || 1), 0)} peças</p>
             {purchase.materialFlow && (
               <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
                 {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}

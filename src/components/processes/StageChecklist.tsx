@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, Circle, Camera, Scale, FileText, Loader2, Image } from "lucide-react";
+import { CheckCircle2, Circle, Camera, Scale, FileText, Loader2, Image, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -54,11 +54,11 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange }
   if (requirements.length === 0 || isAnalysisStage) return null;
   if (loading) return <div className="flex items-center gap-1 text-xs text-muted-foreground py-2"><Loader2 className="h-3 w-3 animate-spin" />Carregando checklist...</div>;
 
-  const isCompleted = (req: TaskRequirement) =>
-    evidences.some(e => e.taskKey === req.key);
+  const getEvidences = (key: string) =>
+    evidences.filter(e => e.taskKey === key);
 
-  const getEvidence = (key: string) =>
-    evidences.find(e => e.taskKey === key);
+  const isCompleted = (req: TaskRequirement) =>
+    getEvidences(req.key).length > 0;
 
   const handlePhotoUploaded = async (taskKey: string, url: string) => {
     setSaving(taskKey);
@@ -119,7 +119,8 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange }
       <p className="text-xs font-medium text-muted-foreground">Checklist da Etapa</p>
       {requirements.filter(r => r.type !== "analysis").map((req) => {
         const done = isCompleted(req);
-        const ev = getEvidence(req.key);
+        const taskEvidences = getEvidences(req.key);
+        const isMulti = req.multi === true;
 
         return (
           <div key={req.key} className="rounded-md border p-2 space-y-1.5">
@@ -131,24 +132,53 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange }
                 {getIcon(req.type)}
                 {req.label}
                 {!req.required && <span className="text-muted-foreground">(opcional)</span>}
+                {isMulti && taskEvidences.length > 0 && (
+                  <span className="text-muted-foreground">({taskEvidences.length})</span>
+                )}
               </span>
             </div>
 
-            {done && ev ? (
+            {/* Show existing evidences for multi tasks */}
+            {isMulti && taskEvidences.length > 0 && (
+              <div className="pl-5 space-y-1">
+                {taskEvidences.map((ev, idx) => (
+                  <div key={ev.id} className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    {ev.dataType === "photo" && ev.fileUrl && (
+                      <span className="flex items-center gap-1 cursor-pointer" onClick={() => window.open(ev.fileUrl!, "_blank")}>
+                        <Image className="h-3 w-3" />
+                        <span className="underline">Foto {idx + 1}</span>
+                      </span>
+                    )}
+                    <span className="ml-1">{new Date(ev.createdAt).toLocaleString("pt-BR")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* For multi: always show upload. For single: show evidence or upload */}
+            {isMulti ? (
+              <div className="pl-5">
+                <PhotoCapture
+                  purchaseId={purchaseId}
+                  disabled={saving === req.key}
+                  onUploaded={(url) => handlePhotoUploaded(req.key, url)}
+                />
+              </div>
+            ) : done && taskEvidences[0] ? (
               <div className="pl-5 text-[10px] text-muted-foreground">
-                {ev.dataType === "photo" && ev.fileUrl && (
-                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => window.open(ev.fileUrl!, "_blank")}>
+                {taskEvidences[0].dataType === "photo" && taskEvidences[0].fileUrl && (
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => window.open(taskEvidences[0].fileUrl!, "_blank")}>
                     <Image className="h-3 w-3" />
                     <span className="underline">Ver foto</span>
                   </div>
                 )}
-                {ev.dataType === "weight" && ev.valueNumeric != null && (
-                  <span>Registrado: {fmtNum(ev.valueNumeric, 4)} kg</span>
+                {taskEvidences[0].dataType === "weight" && taskEvidences[0].valueNumeric != null && (
+                  <span>Registrado: {fmtNum(taskEvidences[0].valueNumeric, 4)} kg</span>
                 )}
-                {ev.dataType === "note" && ev.valueText && (
-                  <span>"{ev.valueText}"</span>
+                {taskEvidences[0].dataType === "note" && taskEvidences[0].valueText && (
+                  <span>"{taskEvidences[0].valueText}"</span>
                 )}
-                <span className="ml-2">{new Date(ev.createdAt).toLocaleString("pt-BR")}</span>
+                <span className="ml-2">{new Date(taskEvidences[0].createdAt).toLocaleString("pt-BR")}</span>
               </div>
             ) : (
               <div className="pl-5">
