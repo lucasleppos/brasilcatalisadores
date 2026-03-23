@@ -1,42 +1,33 @@
 
 
-# Fluxo Peças: Pular etapas iniciais + Seleção de peças na Precificação
+# Implementação: Dialog Grande para Precificação de Peças
 
-## 1. Criar compra de Peças já em "Em Conferência"
+## Resumo
+Refatorar o `PiecePricingPanel` de um painel inline pequeno para um Dialog grande (`max-w-4xl`) com layout em duas colunas, facilitando a inclusão de 50+ peças.
 
-### `src/lib/purchases.ts` — `createPurchase`
-- Quando `materialFlow === "pecas"`, o `initialStatus` muda de `"Aguardando Inclusão"` para `"Em Conferência"`
-- O `statusHistory` já inclui as 3 transições: Aguardando Inclusão → Aguardando Conferência → Em Conferência (registradas automaticamente)
+## Alterações
 
-### Impacto no `ProcessBoard`
-- Pedidos de peças não aparecerão mais nas abas "Inclusão" e "Conferência aguardando" — irão direto para "Conferência"
+### `src/components/processes/PiecePricingPanel.tsx` — Refatoração completa
 
-## 2. Na etapa "Peças: Aguardando Demonstrativo" — tela de seleção de peças do catálogo
+**No card do processo**: renderizar apenas um botão "Precificar Peças" com badge mostrando contagem de itens e total.
 
-Atualmente, quando o pedido chega em "Aguardando Demonstrativo", o card mostra apenas botões de PDF/WhatsApp/Avançar. O usuário quer que **antes de gerar o demonstrativo**, apareça uma interface para selecionar peças do catálogo, definir quantidade e valor, e adicionar ao pedido.
+**No Dialog** (`max-w-4xl`, `max-h-[85vh]`):
+- **Header**: título "Precificação de Peças" + badge de contagem + info do pedido (número + fornecedor + total)
+- **Coluna esquerda**: `PartSearch` + card de staging (peça selecionada com campos de quantidade e valor unitário + botão Adicionar)
+- **Coluna direita**: `ScrollArea` com lista numerada de peças já adicionadas (quantidade, valor unitário, total, botão remover) + rodapé fixo com total do pedido
+- **Footer**: botão "Concluir" para fechar
 
-### Novo componente: `src/components/processes/PiecePricingPanel.tsx`
-- Integra o `PartSearch` (já existe) para buscar peças no catálogo
-- Ao selecionar uma peça, ela aparece numa área de "staging" (não é adicionada automaticamente)
-- Na área de staging: campos de **Quantidade** e **Valor (R$)** editáveis
-- Botão **"Adicionar"** confirma e insere como `purchase_item` vinculado ao pedido
-- Lista os itens já adicionados ao pedido (com opção de remover)
-- O total do pedido é recalculado conforme itens são adicionados
-- Botões de PDF/WhatsApp/Avançar ficam abaixo, habilitados somente quando há itens precificados
+Novos imports: `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogFooter`, `DialogDescription`, `ScrollArea`, `X` icon.
 
-### `src/components/processes/StageActionCard.tsx`
-- Quando `purchase.status === "Peças: Aguardando Demonstrativo"`, renderizar o `PiecePricingPanel` acima dos botões de PDF
-- Passar `purchase` e callback `onCompleted` para reload
+O state `open` controla visibilidade do dialog. Toda a lógica de `handleAdd`, `handleRemove`, `handleSelectPart` permanece igual.
 
-### `src/lib/purchases.ts`
-- Nova função `addItemToPurchase(purchaseId, item)`: insere na tabela `purchase_items` e recalcula `total_brl` no pedido
-- Nova função `removeItemFromPurchase(purchaseId, itemId)`: remove e recalcula
+### `src/components/processes/StageActionCard.tsx` — Sem mudanças necessárias
+
+O `PiecePricingPanel` já é renderizado como componente filho. Como o dialog é interno ao componente, não precisa de alteração no StageActionCard.
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/lib/purchases.ts` | `createPurchase` com status inicial "Em Conferência" para peças; `addItemToPurchase`; `removeItemFromPurchase` |
-| `src/components/processes/PiecePricingPanel.tsx` | **Novo** — busca catálogo, staging com qty/valor, adiciona ao pedido |
-| `src/components/processes/StageActionCard.tsx` | Renderizar `PiecePricingPanel` na etapa "Aguardando Demonstrativo" |
+| `src/components/processes/PiecePricingPanel.tsx` | Refatorar para Dialog com 2 colunas, botão trigger no card |
 
