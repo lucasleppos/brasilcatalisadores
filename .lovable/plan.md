@@ -1,42 +1,44 @@
 
 
-# Mostrar código da peça em vez de "Peça catálogo" + no PDF
+# Problema: Edição da compra apaga peças precificadas
 
-## Problema
-Na lista de peças adicionadas (PiecePricingPanel) e no PDF/WhatsApp, aparece "Peça catálogo" ou "Peça" genérico em vez do código real da peça selecionada do catálogo. O fornecedor precisa ver cada código para conferir o pedido.
+## Causa raiz
 
-## Alterações
+A função `updatePurchase` (linha 682 de `purchases.ts`) faz **DELETE de todos os `purchase_items`** do pedido e re-insere apenas os itens que vêm do dialog de edição. Porém, as peças adicionadas pelo `PiecePricingPanel` (com `catalog_part_id`) **não fazem parte do formulário de edição** — então ao salvar a edição, esses itens são apagados.
 
-### 1. `src/lib/purchases.ts` — Carregar dados do catálogo junto aos itens
+## Solução
 
-Na função `loadPurchases`, após buscar os `purchase_items`, buscar também os dados das peças do catálogo (`catalog_parts`) para os itens que têm `catalog_part_id`. Adicionar campos `catalogPartCode` e `catalogPartRef` ao `PurchaseQuoteItem`:
+### `src/lib/purchases.ts` — `updatePurchase`
 
-- Novo campo na interface: `catalogPartCode?: string`, `catalogPartRef?: string`
-- Após carregar itens, coletar todos `catalog_part_id` únicos → buscar na tabela `catalog_parts` (code, reference, brand) → mapear nos itens
+Em vez de deletar todos os itens e re-inserir, preservar os itens que têm `catalog_part_id` (adicionados via precificação):
 
-### 2. `src/components/processes/PiecePricingPanel.tsx` — Exibir código real
+1. Deletar apenas os itens **sem** `catalog_part_id` (os itens originais da compra editáveis)
+2. Re-inserir os itens editados do formulário (que também não têm `catalog_part_id`)
+3. Os itens com `catalog_part_id` permanecem intocados
 
-Linha 210: trocar `{item.catalogPartId ? 'Peça catálogo' : item.itemType}` por:
-```tsx
-{item.catalogPartCode || item.catalogPartRef || item.itemType}
+Mudança na linha 682:
+```typescript
+// Antes:
+await supabase.from("purchase_items").delete().eq("purchase_id", id);
+
+// Depois:
+await supabase.from("purchase_items").delete().eq("purchase_id", id).is("catalog_part_id", null);
 ```
 
-### 3. `supabase/functions/generate-demonstrativo-pdf/index.ts` — Código no PDF
+4. No recálculo do total, somar também os itens de catálogo existentes:
+```typescript
+const { data: catalogItems } = await supabase
+  .from("purchase_items")
+  .select("total_value")
+  .eq("purchase_id", id)
+  .not("catalog_part_id", "is", null);
+const catalogTotal = (catalogItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
+const totalBrl = calcTotal(data.items) + catalogTotal;
+```
 
-- Buscar `catalog_parts` para os itens com `catalog_part_id` (query adicional)
-- Na coluna "Tipo" da tabela de itens (linha 180), mostrar o código da peça em vez de "Peça":
-  ```typescript
-  // Em vez de: typeLabels[item.item_type]
-  // Para peças com catalog_part_id: mostrar code ou reference da peça
-  ```
-
-### 4. WhatsApp — Já usa o PDF ou dados do demonstrativo, então ao corrigir o PDF o WhatsApp será corrigido automaticamente se o texto for gerado do mesmo dado.
-
-## Arquivos afetados
+## Arquivo afetado
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/lib/purchases.ts` | Adicionar `catalogPartCode`/`catalogPartRef` ao `PurchaseQuoteItem`; buscar `catalog_parts` no `loadPurchases` |
-| `src/components/processes/PiecePricingPanel.tsx` | Exibir código real em vez de "Peça catálogo" |
-| `supabase/functions/generate-demonstrativo-pdf/index.ts` | Buscar dados do catálogo; exibir código da peça na coluna "Tipo" |
+| `src/lib/purchases.ts` | `updatePurchase`: deletar apenas itens sem `catalog_part_id`; somar total dos itens de catálogo ao recalcular |
 
