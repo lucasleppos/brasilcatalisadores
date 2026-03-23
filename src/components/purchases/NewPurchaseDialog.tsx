@@ -50,6 +50,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const [erpNumber, setErpNumber] = useState("");
   const [items, setItems] = useState<PendingItem[]>([]);
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [tempUploadId] = useState(() => crypto.randomUUID());
   const { toast } = useToast();
 
   // Bulk weight (Material a Classificar)
@@ -110,6 +112,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         setErpNumber("");
         setBulkWeightStr("");
         setItems([]);
+        setPhotos([]);
       }
       resetAddFields();
     }
@@ -246,6 +249,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier || items.length === 0) return;
+    if (!isEditing && photos.length === 0) return;
 
     const purchaseItems: PurchaseQuoteItem[] = items.map(i => ({
       id: i.id,
@@ -263,7 +267,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       await updatePurchase(editPurchase!.id, { items: purchaseItems, notes, erpNumber, bulkWeight: bulkWeight || null });
       toast({ title: "Compra atualizada com sucesso!" });
     } else {
-      await createPurchase({
+      const newPurchase = await createPurchase({
         supplierId: supplier.id,
         supplierName: supplier.name,
         buyer: supplier.buyer || "",
@@ -272,6 +276,20 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         erpNumber,
         bulkWeight: bulkWeight || null,
       });
+
+      if (newPurchase) {
+        // Save photos as stage evidence
+        for (const url of photos) {
+          await addEvidence({
+            purchaseId: newPurchase.id,
+            stage: "Recebimento",
+            taskKey: "photo_recebimento_compra",
+            dataType: "photo",
+            fileUrl: url,
+          });
+        }
+      }
+
       toast({ title: "Compra criada com sucesso!" });
     }
 
@@ -331,6 +349,39 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             <Label className="text-xs">Boleto Syge (opcional)</Label>
             <Input value={erpNumber} onChange={e => setErpNumber(e.target.value)} placeholder="Ex: OC-12345" className="h-8 text-sm" />
           </div>
+
+          {/* Foto obrigatória */}
+          {!isEditing && (
+            <div className="space-y-2 p-3 rounded-md border bg-muted/30">
+              <Label className="text-xs font-semibold flex items-center gap-1">
+                <Camera className="h-3 w-3" />
+                Foto do material recebido *
+              </Label>
+              {photos.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {photos.map((url, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden border">
+                      <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setPhotos(prev => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-0.5 right-0.5 bg-background/80 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <PhotoCapture
+                purchaseId={tempUploadId}
+                onUploaded={(url) => setPhotos(prev => [...prev, url])}
+              />
+              {photos.length === 0 && (
+                <p className="text-[10px] text-destructive">Envie pelo menos uma foto para criar a compra.</p>
+              )}
+            </div>
+          )}
 
           {/* Material a Classificar */}
           <div className="space-y-2 p-3 rounded-md border bg-muted/30">
@@ -574,7 +625,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || items.length === 0}>
+          <Button onClick={handleConfirm} disabled={!supplierId || items.length === 0 || (!isEditing && photos.length === 0)}>
             <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
           </Button>
         </DialogFooter>
