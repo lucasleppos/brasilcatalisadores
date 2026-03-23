@@ -12,10 +12,13 @@ import CatalogImport from "@/components/catalog/CatalogImport";
 import GroupManager from "@/components/catalog/GroupManager";
 import { toast } from "sonner";
 import { fmtNum } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
 export default function CatalogPage() {
+  const { role } = useAuth();
+  const isSuperAdmin = role === "super_admin";
   const [parts, setParts] = useState<CatalogPart[]>([]);
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [search, setSearch] = useState("");
@@ -117,7 +120,7 @@ export default function CatalogPage() {
           <SelectContent>
             <SelectItem value="all">Todos os grupos</SelectItem>
             {groups.map(g => (
-              <SelectItem key={g.id} value={g.id}>{g.name} ({g.margin}%)</SelectItem>
+              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -152,7 +155,7 @@ export default function CatalogPage() {
                 <TableCell className="text-xs text-right">{fmtNum(p.rhPpm, 4)}</TableCell>
                 <TableCell>
                   {p.groupName ? (
-                    <Badge variant="outline" className="text-[10px]">{p.groupName} ({p.groupMargin}%)</Badge>
+                    <Badge variant="outline" className="text-[10px]">{p.groupName}</Badge>
                   ) : "—"}
                 </TableCell>
                 <TableCell className="flex gap-1">
@@ -216,7 +219,7 @@ export default function CatalogPage() {
                   <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     {groups.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name} ({g.margin}%)</SelectItem>
+                      <SelectItem key={g.id} value={g.id}>{g.name}{isSuperAdmin ? ` (${g.margin}%)` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
