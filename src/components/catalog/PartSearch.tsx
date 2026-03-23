@@ -65,7 +65,7 @@ export default function PartSearch({ onSelect }: PartSearchProps) {
               <div className="flex justify-between items-center">
                 <span className="font-medium">{part.code || part.reference}</span>
                 {part.groupName && (
-                  <Badge variant="outline" className="text-[10px]">{part.groupName} ({part.groupMargin}%)</Badge>
+                  <Badge variant="outline" className="text-[10px]">{part.groupName}</Badge>
                 )}
               </div>
               <div className="text-muted-foreground">
