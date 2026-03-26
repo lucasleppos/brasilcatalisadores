@@ -1,26 +1,22 @@
 
 
-# Melhorias na Conferência Peça em Sacola
+# Validação de quantidade na conferência
 
-## Problema 1: Busca de peças difícil
-O campo atual usa busca manual com botão "Buscar" que retorna apenas 1 resultado por `code`. O componente `PartSearch` já existente no catálogo faz busca com autocomplete (debounce, dropdown com sugestões, busca por código/ref/marca/carro) — muito mais amigável.
+## O que muda
 
-## Problema 2: "Salvar e Continuar" não fecha a tela
-O `handleSave` salva os dados mas não chama `onOpenChange(false)` para fechar o dialog.
+O botão "Encerrar Conferência" só será habilitado quando a quantidade de peças conferidas for **igual** à quantidade declarada na compra. Um indicador visual mostrará o progresso (ex: "2/5 peças conferidas") e um alerta quando faltar peças.
 
 ## Alterações
 
 ### `src/components/processes/SacolaConferenciaPanel.tsx`
 
-1. **Substituir o campo de código manual + botão "Buscar"** pelo componente `PartSearch` existente (`src/components/catalog/PartSearch.tsx`)
-   - Ao selecionar uma peça no autocomplete, preenche automaticamente o código e associa o `catalog_part_id`
-   - Manter campo de peso líquido separado
-   - Permitir também adicionar peça sem catálogo (campo de código manual como fallback)
-   - Remover states `foundPart`, `searchDone`, `searching` e a função `handleSearch`
-
-2. **Fechar dialog ao salvar**: Adicionar `onOpenChange(false)` no final do `handleSave` (após o `toast.success`)
+1. **Calcular quantidade declarada** a partir de `purchase.items` (soma de `quantity || 1` dos itens `peca_sacola`)
+2. **Bloquear "Encerrar"** no `handleFinish`: se `pieces.length !== declaredQty`, exibir toast de erro e retornar
+3. **Desabilitar botão "Encerrar"** visualmente quando `pieces.length !== declaredQty`
+4. **Indicador de progresso** no rodapé: mostrar `{pieces.length}/{declaredQty} peças conferidas` com cor verde quando completo, amarelo/vermelho quando incompleto
+5. O botão "Salvar e Continuar" permanece sem essa trava (permite salvar parcial e retomar depois)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/processes/SacolaConferenciaPanel.tsx` | Usar `PartSearch` para autocomplete + fechar ao salvar |
+| `src/components/processes/SacolaConferenciaPanel.tsx` | Validação de quantidade + indicador visual |
 
