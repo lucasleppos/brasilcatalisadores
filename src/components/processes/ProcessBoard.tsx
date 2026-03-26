@@ -39,6 +39,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
   {
     label: "Prep. Amostra / Análise",
     statuses: [
+      "Peças: Laboratório",
       "Cerâmico: Amostra Enviada ao Lab",
       "Cerâmico: Lab em Análise",
       "Cerâmico: Resultado Incluído",

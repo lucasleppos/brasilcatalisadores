@@ -14,6 +14,7 @@ import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
+import SacolaLabPanel from "./SacolaLabPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [contestMotivo, setContestMotivo] = useState("");
   const [checklistReady, setChecklistReady] = useState(true);
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
+  const [labOpen, setLabOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -58,6 +60,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && purchase.items.some(i => i.itemType === "peca_sacola");
+  const isSacolaLab = purchase.status === "Peças: Laboratório" && purchase.items.some(i => i.itemType === "peca_sacola");
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -357,6 +360,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               purchase={purchase}
               open={conferenciaOpen}
               onOpenChange={setConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isSacolaLab ? (
+          /* Sacola Lab: Iniciar Análise button */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setLabOpen(true)}>
+              <FlaskConical className="h-3 w-3 mr-1" /> Iniciar Análise
+            </Button>
+            <SacolaLabPanel
+              purchase={purchase}
+              open={labOpen}
+              onOpenChange={setLabOpen}
               onCompleted={onCompleted}
             />
           </div>

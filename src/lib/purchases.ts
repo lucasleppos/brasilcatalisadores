@@ -19,6 +19,7 @@ const COMMON_STATUSES = [
 // Peças flow statuses
 const PECAS_STATUSES = [
   "Peças: Trituração e Amostragem",
+  "Peças: Laboratório",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   "Peças: Demonstrativo Contestado",
@@ -104,6 +105,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Aprovado - Aguardando Pagamento": ["admin", "super_admin"],
   "Peças: Pagamento Realizado": ["admin", "super_admin"],
   "Peças: Trituração e Amostragem": ["operacional"],
+  "Peças: Laboratório": ["laboratorio"],
   "Peças: Em Corte": ["operacional"],
   "Peças: Em Trituração": ["operacional"],
   "Peças: Em Amostragem": ["operacional"],
@@ -141,6 +143,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
 export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
   "Peças: Trituração e Amostragem",
+  "Peças: Laboratório",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   // "Peças: Demonstrativo Contestado" is a loop state, not in linear sequence

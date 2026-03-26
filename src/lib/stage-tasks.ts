@@ -50,6 +50,8 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
     { key: "analysis_2", type: "analysis", label: "Análise 2 (Pt/Pd/Rh)", required: true },
     { key: "analysis_3", type: "analysis", label: "Análise 3 (Pt/Pd/Rh)", required: true },
   ],
+  // Peças: Laboratório — handled by SacolaLabPanel, not generic checklist
+  "Peças: Laboratório": [],
   // Pagamento (optional photo)
   "Peças: Aprovado - Aguardando Pagamento": [
     { key: "photo_comprovante", type: "photo", label: "Comprovante de pagamento", required: false },
