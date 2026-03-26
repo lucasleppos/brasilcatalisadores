@@ -14,6 +14,7 @@ import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
+import SacolaLabPanel from "./SacolaLabPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [contestMotivo, setContestMotivo] = useState("");
   const [checklistReady, setChecklistReady] = useState(true);
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
+  const [labOpen, setLabOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -58,6 +60,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && purchase.items.some(i => i.itemType === "peca_sacola");
+  const isSacolaLab = purchase.status === "Peças: Laboratório" && purchase.items.some(i => i.itemType === "peca_sacola");
 
   const handleConfirm = async () => {
     setLoading(true);
