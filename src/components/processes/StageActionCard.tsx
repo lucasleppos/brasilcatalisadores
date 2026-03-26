@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle } from "lucide-react";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import PurchaseSummary from "./PurchaseSummary";
 import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
+import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
