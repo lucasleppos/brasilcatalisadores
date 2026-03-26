@@ -347,6 +347,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               {enrichedDialogContent("Confirmar aprovação?", "O pedido avançará para a próxima etapa.", handleConfirm, "Confirmar")}
             </AlertDialog>
           </div>
+        ) : isSacolaConferencia ? (
+          /* Sacola: Iniciar Conferência button */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setConferenciaOpen(true)}>
+              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+            </Button>
+            <SacolaConferenciaPanel
+              purchase={purchase}
+              open={conferenciaOpen}
+              onOpenChange={setConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
