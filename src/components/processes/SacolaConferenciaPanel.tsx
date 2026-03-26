@@ -5,14 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum } from "@/lib/utils";
+import PartSearch from "@/components/catalog/PartSearch";
+import { CatalogPart } from "@/lib/catalog";
 
 interface ConferenciaPiece {
-  id?: string; // purchase_item id if already saved
+  id?: string;
   code: string;
   catalogPartId: string | null;
   catalogPartName: string | null;
@@ -28,12 +30,10 @@ interface SacolaConferenciaPanelProps {
 
 export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, onCompleted }: SacolaConferenciaPanelProps) {
   const [pieces, setPieces] = useState<ConferenciaPiece[]>([]);
-  const [code, setCode] = useState("");
   const [weight, setWeight] = useState("");
-  const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [foundPart, setFoundPart] = useState<{ id: string; reference: string; code: string } | null>(null);
-  const [searchDone, setSearchDone] = useState(false);
+  const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
+  const [manualCode, setManualCode] = useState("");
 
   // Load existing conferência items on open
   useEffect(() => {
@@ -74,41 +74,27 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     })));
   };
 
-  const handleSearch = async () => {
-    if (!code.trim()) return;
-    setSearching(true);
-    setFoundPart(null);
-    setSearchDone(false);
-
-    const { data } = await supabase
-      .from("catalog_parts")
-      .select("id, code, reference")
-      .ilike("code", `%${code.trim()}%`)
-      .limit(1);
-
-    if (data && data.length > 0) {
-      setFoundPart(data[0]);
-    }
-    setSearchDone(true);
-    setSearching(false);
+  const handlePartSelect = (part: CatalogPart) => {
+    setSelectedPart(part);
+    setManualCode(part.code || part.reference);
   };
 
   const handleAdd = () => {
     const w = parseFloat(weight.replace(",", "."));
-    if (!code.trim()) { toast.error("Informe o código da peça"); return; }
+    const code = selectedPart ? (selectedPart.code || selectedPart.reference) : manualCode.trim();
+    if (!code) { toast.error("Informe o código da peça"); return; }
     if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
 
     setPieces(prev => [...prev, {
-      code: code.trim(),
-      catalogPartId: foundPart?.id || null,
-      catalogPartName: foundPart?.reference || null,
+      code,
+      catalogPartId: selectedPart?.id || null,
+      catalogPartName: selectedPart ? (selectedPart.reference || selectedPart.code) : null,
       weight: w,
     }]);
 
-    setCode("");
+    setSelectedPart(null);
+    setManualCode("");
     setWeight("");
-    setFoundPart(null);
-    setSearchDone(false);
   };
 
   const handleRemove = async (index: number) => {
@@ -144,6 +130,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       );
 
       toast.success("Conferência salva");
+      onOpenChange(false);
     } catch {
       toast.error("Erro ao salvar");
     } finally {
@@ -240,31 +227,25 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         <div className="space-y-3 rounded-md border p-3">
           <p className="text-xs font-medium text-muted-foreground">Adicionar Peça</p>
           <div className="space-y-1.5">
-            <Label className="text-xs">Código da peça</Label>
-            <div className="flex gap-2">
-              <Input
-                value={code}
-                onChange={e => { setCode(e.target.value); setSearchDone(false); setFoundPart(null); }}
-                placeholder="Ex: ABC-123"
-                className="h-8 text-sm flex-1"
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
-              />
-              <Button size="sm" variant="outline" className="h-8" onClick={handleSearch} disabled={searching || !code.trim()}>
-                {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-              </Button>
-            </div>
-            {searchDone && (
-              foundPart ? (
-                <p className="text-xs text-green-700 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> {foundPart.reference} ({foundPart.code})
-                </p>
-              ) : (
-                <p className="text-xs text-amber-600 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Código não encontrado no catálogo
-                </p>
-              )
+            <Label className="text-xs">Buscar peça no catálogo</Label>
+            <PartSearch onSelect={handlePartSelect} />
+            {selectedPart && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-green-600" /> {selectedPart.reference || selectedPart.code} — {selectedPart.brand} {selectedPart.vehicle}
+              </p>
             )}
           </div>
+          {!selectedPart && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ou código manual (se não encontrar)</Label>
+              <Input
+                value={manualCode}
+                onChange={e => setManualCode(e.target.value)}
+                placeholder="Ex: ABC-123"
+                className="h-8 text-sm"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs">Peso líquido (kg)</Label>
             <Input
@@ -275,7 +256,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               className="h-8 text-sm"
             />
           </div>
-          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!code.trim()}>
+          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!selectedPart && !manualCode.trim()}>
             <Plus className="h-3 w-3 mr-1" /> Adicionar Peça
           </Button>
         </div>
