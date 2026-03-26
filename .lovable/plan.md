@@ -1,44 +1,30 @@
 
 
-# Problema: Edição da compra apaga peças precificadas
+# Fase 1 — Remover calculadora de "Peça em Sacola" na criação
 
-## Causa raiz
+## O que muda
 
-A função `updatePurchase` (linha 682 de `purchases.ts`) faz **DELETE de todos os `purchase_items`** do pedido e re-insere apenas os itens que vêm do dialog de edição. Porém, as peças adicionadas pelo `PiecePricingPanel` (com `catalog_part_id`) **não fazem parte do formulário de edição** — então ao salvar a edição, esses itens são apagados.
+Na tela de criação/edição de compra, ao selecionar "Peça em Sacola", o switch "Usar calculadora (PPMs)" será removido. O formulário exibirá apenas **Quantidade** + **Peso (kg)** (opcional). O cálculo por PPM só acontecerá em etapas futuras (após análise do laboratório).
 
-## Solução
+## Alterações técnicas
 
-### `src/lib/purchases.ts` — `updatePurchase`
+### 1. `src/components/purchases/NewPurchaseDialog.tsx`
 
-Em vez de deletar todos os itens e re-inserir, preservar os itens que têm `catalog_part_id` (adicionados via precificação):
+- **Remover o switch** de calculadora para `peca_sacola` (linhas 489-497)
+- **Simplificar `showSimpleFields`/`showCalcFields`**: `peca_sacola` sempre usa campos simples (quantidade + peso), nunca calculadora
+  - `showSimpleFields = addType === "peca" || addType === "peca_sacola"`
+  - `showCalcFields = addType === "ceramico"`
+- **Remover referências a `sacolaUseCalc`** nas condições de `runCalcPreview` (linha 173) e `addItem` (linha 181)
+- **Remover o campo "Valor total (R$)"** quando `peca_sacola` — o valor virá depois da análise, não na criação
+- O state `sacolaUseCalc` pode permanecer (usado internamente) mas ficará sempre `false` para sacola
 
-1. Deletar apenas os itens **sem** `catalog_part_id` (os itens originais da compra editáveis)
-2. Re-inserir os itens editados do formulário (que também não têm `catalog_part_id`)
-3. Os itens com `catalog_part_id` permanecem intocados
+### 2. `src/lib/purchases.ts` — `determineMaterialFlow`
 
-Mudança na linha 682:
-```typescript
-// Antes:
-await supabase.from("purchase_items").delete().eq("purchase_id", id);
-
-// Depois:
-await supabase.from("purchase_items").delete().eq("purchase_id", id).is("catalog_part_id", null);
-```
-
-4. No recálculo do total, somar também os itens de catálogo existentes:
-```typescript
-const { data: catalogItems } = await supabase
-  .from("purchase_items")
-  .select("total_value")
-  .eq("purchase_id", id)
-  .not("catalog_part_id", "is", null);
-const catalogTotal = (catalogItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
-const totalBrl = calcTotal(data.items) + catalogTotal;
-```
-
-## Arquivo afetado
+- Atualizar para que `peca_sacola` **nunca** gere fluxo cerâmico na criação (a condição `i.itemType === "peca_sacola" && i.input && !i.totalValue` não será mais atingida, mas convém limpar para clareza)
+- Manter retornando `"pecas"` para `peca_sacola` por enquanto (o fluxo sacola será implementado em fase futura)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/lib/purchases.ts` | `updatePurchase`: deletar apenas itens sem `catalog_part_id`; somar total dos itens de catálogo ao recalcular |
+| `src/components/purchases/NewPurchaseDialog.tsx` | Remover switch calculadora e campo valor para `peca_sacola` |
+| `src/lib/purchases.ts` | Limpar condição em `determineMaterialFlow` |
 
