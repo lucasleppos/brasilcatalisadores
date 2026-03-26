@@ -74,41 +74,27 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     })));
   };
 
-  const handleSearch = async () => {
-    if (!code.trim()) return;
-    setSearching(true);
-    setFoundPart(null);
-    setSearchDone(false);
-
-    const { data } = await supabase
-      .from("catalog_parts")
-      .select("id, code, reference")
-      .ilike("code", `%${code.trim()}%`)
-      .limit(1);
-
-    if (data && data.length > 0) {
-      setFoundPart(data[0]);
-    }
-    setSearchDone(true);
-    setSearching(false);
+  const handlePartSelect = (part: CatalogPart) => {
+    setSelectedPart(part);
+    setManualCode(part.code || part.reference);
   };
 
   const handleAdd = () => {
     const w = parseFloat(weight.replace(",", "."));
-    if (!code.trim()) { toast.error("Informe o código da peça"); return; }
+    const code = selectedPart ? (selectedPart.code || selectedPart.reference) : manualCode.trim();
+    if (!code) { toast.error("Informe o código da peça"); return; }
     if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
 
     setPieces(prev => [...prev, {
-      code: code.trim(),
-      catalogPartId: foundPart?.id || null,
-      catalogPartName: foundPart?.reference || null,
+      code,
+      catalogPartId: selectedPart?.id || null,
+      catalogPartName: selectedPart ? (selectedPart.reference || selectedPart.code) : null,
       weight: w,
     }]);
 
-    setCode("");
+    setSelectedPart(null);
+    setManualCode("");
     setWeight("");
-    setFoundPart(null);
-    setSearchDone(false);
   };
 
   const handleRemove = async (index: number) => {
