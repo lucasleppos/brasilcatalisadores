@@ -277,14 +277,29 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span className="text-muted-foreground">Total:</span>
             <span className="font-semibold">{pieces.length} peças | {fmtNum(totalWeight, 3)} kg</span>
           </div>
+
+          {/* Progress indicator */}
+          <div className="flex items-center gap-2">
+            <Progress value={declaredQty > 0 ? (pieces.length / declaredQty) * 100 : 0} className="h-2 flex-1" />
+            <span className={`text-xs font-semibold whitespace-nowrap ${isComplete ? "text-green-600" : "text-amber-600"}`}>
+              {pieces.length}/{declaredQty} peças
+            </span>
+          </div>
+          {!isComplete && pieces.length > 0 && (
+            <p className="text-xs text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Confira todas as {declaredQty} peças para encerrar
+            </p>
+          )}
+
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={handleSave} disabled={saving || pieces.length === 0}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
               Salvar e Continuar
             </Button>
-            <Button className="flex-1" onClick={handleFinish} disabled={saving || pieces.length === 0}>
+            <Button className="flex-1" onClick={handleFinish} disabled={saving || !isComplete}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-              Encerrar ({pieces.length})
+              Encerrar ({pieces.length}/{declaredQty})
             </Button>
           </div>
         </div>
