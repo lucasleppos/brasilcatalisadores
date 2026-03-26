@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search } from "lucide-react";
-import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getOriginalItemCount } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
@@ -177,7 +177,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
           <div className="text-right space-y-0.5">
             <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
-            <p className="text-xs text-muted-foreground">{purchase.items.reduce((sum, i) => sum + (i.quantity || 1), 0)} peças</p>
+            <p className="text-xs text-muted-foreground">{getOriginalItemCount(purchase)} peças</p>
             {purchase.materialFlow && (
               <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
                 {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}

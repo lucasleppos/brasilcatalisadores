@@ -9,7 +9,7 @@ import { Plus, Trash2, Package, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
-import { Purchase, addItemToPurchase, removeItemFromPurchase } from "@/lib/purchases";
+import { Purchase, addItemToPurchase, removeItemFromPurchase, getOriginalItems } from "@/lib/purchases";
 import { fmtBrl } from "@/lib/utils";
 
 interface PiecePricingPanelProps {
@@ -29,7 +29,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
 
-  const existingItems = purchase.items.filter(i => i.catalogPartId);
+  const existingItems = getOriginalItems(purchase).filter(i => i.catalogPartId);
   const totalQty = existingItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
 
   const handleSelectPart = (part: CatalogPart) => {
