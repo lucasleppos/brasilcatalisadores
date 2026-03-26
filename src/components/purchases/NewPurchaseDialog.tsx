@@ -486,15 +486,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               />
             </div>
 
-            {addType === "peca_sacola" && (
-              <div className="flex items-center gap-2">
-                <Switch checked={sacolaUseCalc} onCheckedChange={setSacolaUseCalc} />
-                <Label className="text-xs flex items-center gap-1">
-                  <Calculator className="h-3 w-3" />
-                  Usar calculadora (PPMs)
-                </Label>
-              </div>
-            )}
+
+
 
             {showSimpleFields && (
               <div className="grid grid-cols-2 gap-2">
