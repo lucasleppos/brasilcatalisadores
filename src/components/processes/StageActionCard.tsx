@@ -57,6 +57,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
+  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && purchase.items.some(i => i.itemType === "peca_sacola");
 
   const handleConfirm = async () => {
     setLoading(true);
