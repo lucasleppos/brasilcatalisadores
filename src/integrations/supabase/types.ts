@@ -311,6 +311,7 @@ export type Database = {
           pd_ppm: number
           pt_ppm: number
           purchase_id: string
+          purchase_item_id: string | null
           rh_ppm: number
           versao: number
         }
@@ -321,6 +322,7 @@ export type Database = {
           pd_ppm?: number
           pt_ppm?: number
           purchase_id: string
+          purchase_item_id?: string | null
           rh_ppm?: number
           versao?: number
         }
@@ -331,6 +333,7 @@ export type Database = {
           pd_ppm?: number
           pt_ppm?: number
           purchase_id?: string
+          purchase_item_id?: string | null
           rh_ppm?: number
           versao?: number
         }

@@ -1,0 +1,1 @@
+ALTER TABLE public.lab_results ADD COLUMN purchase_item_id uuid;
