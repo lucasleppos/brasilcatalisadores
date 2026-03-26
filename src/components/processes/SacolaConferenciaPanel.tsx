@@ -5,14 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum } from "@/lib/utils";
+import PartSearch from "@/components/catalog/PartSearch";
+import { CatalogPart } from "@/lib/catalog";
 
 interface ConferenciaPiece {
-  id?: string; // purchase_item id if already saved
+  id?: string;
   code: string;
   catalogPartId: string | null;
   catalogPartName: string | null;
@@ -28,12 +30,10 @@ interface SacolaConferenciaPanelProps {
 
 export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, onCompleted }: SacolaConferenciaPanelProps) {
   const [pieces, setPieces] = useState<ConferenciaPiece[]>([]);
-  const [code, setCode] = useState("");
   const [weight, setWeight] = useState("");
-  const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [foundPart, setFoundPart] = useState<{ id: string; reference: string; code: string } | null>(null);
-  const [searchDone, setSearchDone] = useState(false);
+  const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
+  const [manualCode, setManualCode] = useState("");
 
   // Load existing conferência items on open
   useEffect(() => {
