@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle } from "lucide-react";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import PurchaseSummary from "./PurchaseSummary";
 import StageChecklist from "./StageChecklist";
 import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
+import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -38,6 +39,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [weightReal, setWeightReal] = useState("");
   const [contestMotivo, setContestMotivo] = useState("");
   const [checklistReady, setChecklistReady] = useState(true);
+  const [conferenciaOpen, setConferenciaOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -55,6 +57,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
+  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && purchase.items.some(i => i.itemType === "peca_sacola");
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -343,6 +346,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </AlertDialogTrigger>
               {enrichedDialogContent("Confirmar aprovação?", "O pedido avançará para a próxima etapa.", handleConfirm, "Confirmar")}
             </AlertDialog>
+          </div>
+        ) : isSacolaConferencia ? (
+          /* Sacola: Iniciar Conferência button */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setConferenciaOpen(true)}>
+              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+            </Button>
+            <SacolaConferenciaPanel
+              purchase={purchase}
+              open={conferenciaOpen}
+              onOpenChange={setConferenciaOpen}
+              onCompleted={onCompleted}
+            />
           </div>
         ) : (
           /* Default: simple advance with checklist */

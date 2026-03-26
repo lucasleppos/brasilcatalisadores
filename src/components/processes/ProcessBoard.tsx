@@ -30,6 +30,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
   {
     label: "Trit. / Homog. / Amostr.",
     statuses: [
+      "Peças: Trituração e Amostragem",
       "Peças: Em Trituração",
       "Cerâmico: Em Trituração/Homogeneização",
       "Peças: Em Amostragem",

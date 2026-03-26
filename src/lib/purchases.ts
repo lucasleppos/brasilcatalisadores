@@ -18,6 +18,7 @@ const COMMON_STATUSES = [
 
 // Peças flow statuses
 const PECAS_STATUSES = [
+  "Peças: Trituração e Amostragem",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   "Peças: Demonstrativo Contestado",
@@ -102,6 +103,7 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Demonstrativo Contestado": ["admin", "super_admin"],
   "Peças: Aprovado - Aguardando Pagamento": ["admin", "super_admin"],
   "Peças: Pagamento Realizado": ["admin", "super_admin"],
+  "Peças: Trituração e Amostragem": ["operacional"],
   "Peças: Em Corte": ["operacional"],
   "Peças: Em Trituração": ["operacional"],
   "Peças: Em Amostragem": ["operacional"],
@@ -138,14 +140,12 @@ export const STAGE_ROLES: Record<string, string[]> = {
 
 export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
+  "Peças: Trituração e Amostragem",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   // "Peças: Demonstrativo Contestado" is a loop state, not in linear sequence
   "Peças: Aprovado - Aguardando Pagamento",
   "Peças: Pagamento Realizado",
-  "Peças: Em Corte",
-  "Peças: Em Trituração",
-  "Peças: Em Amostragem",
   // "Peças: Peso Divergente" is a special state, not in linear sequence
   "Peças: Alocado ao Bag",
   "Concluído",
@@ -192,7 +192,7 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // Bifurcation: after "Em Conferência", jump to the correct flow
   if (current === "Em Conferência") {
-    if (materialFlow === "pecas") return "Peças: Aguardando Demonstrativo";
+    if (materialFlow === "pecas") return "Peças: Trituração e Amostragem";
     if (materialFlow === "ceramico") return "Cerâmico: Em Separação";
   }
 

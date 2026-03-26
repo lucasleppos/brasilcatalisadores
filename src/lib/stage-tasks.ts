@@ -11,10 +11,14 @@ export interface TaskRequirement {
 }
 
 export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
-  // Conferência
+  // Conferência (cerâmico keeps photo+confirm; peça sacola uses SacolaConferenciaPanel)
   "Em Conferência": [
     { key: "photo_recebimento", type: "photo", label: "Foto do material recebido", required: true, multi: true },
     { key: "confirm_itens", type: "note", label: "Confirmar itens do pedido", required: true },
+  ],
+  // Peças: Trituração e Amostragem (unified stage)
+  "Peças: Trituração e Amostragem": [
+    { key: "confirm_trit_amostr", type: "note", label: "Confirmar trituração e amostragem concluídas", required: true },
   ],
   // Cerâmico: Separação
   "Cerâmico: Em Separação": [
