@@ -266,8 +266,25 @@ export interface Purchase {
   bulkWeight: number | null;
 }
 
+/** Filter out conference-generated items — returns only the original purchase items */
+export function getOriginalItems(purchase: Purchase): PurchaseQuoteItem[] {
+  return purchase.items.filter(i => i.category !== "conferencia");
+}
+
+/** Return only items generated during conference (peca_sacola individual pieces) */
+export function getConferenciaItems(purchase: Purchase): PurchaseQuoteItem[] {
+  return purchase.items.filter(i => i.category === "conferencia");
+}
+
+/** Sum quantities from original items only */
+export function getOriginalItemCount(purchase: Purchase): number {
+  return getOriginalItems(purchase).reduce((sum, i) => sum + (i.quantity || 1), 0);
+}
+
 function calcTotal(items: PurchaseQuoteItem[]): number {
-  return items.reduce((sum, q) => {
+  // Only sum original items (exclude conference-generated ones which have no value yet)
+  const original = items.filter(i => i.category !== "conferencia");
+  return original.reduce((sum, q) => {
     if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
       return sum + (q.totalValue || 0);
     }

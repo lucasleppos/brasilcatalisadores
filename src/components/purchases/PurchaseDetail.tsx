@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon } from "lucide-react";
-import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase } from "@/lib/purchases";
+import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getOriginalItemCount } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { loadEvidences, StageEvidence, loadLabAnalyses, LabAnalysis } from "@/lib/stage-tasks";
@@ -89,7 +89,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Itens</p>
-            <p>{purchase.items.length} item(ns)</p>
+            <p>{getOriginalItemCount(purchase)} item(ns)</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Data</p>
@@ -205,7 +205,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchase.items.map((q, i) => {
+            {getOriginalItems(purchase).map((q, i) => {
               const val = getItemValue(q);
               return (
                 <TableRow key={q.id}>

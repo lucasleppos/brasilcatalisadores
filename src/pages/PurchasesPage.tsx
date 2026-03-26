@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Package, Search, Trash2, Eye, Plus, Pencil, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Purchase, loadPurchases, updatePurchaseStatus, deletePurchase, getFlowStatuses, getStatusColor, ALL_STATUSES } from "@/lib/purchases";
+import { Purchase, loadPurchases, updatePurchaseStatus, deletePurchase, getFlowStatuses, getStatusColor, ALL_STATUSES, getOriginalItemCount } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
@@ -138,7 +138,7 @@ export default function PurchasesPage() {
                     </TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
-                    <TableCell className="text-sm">{p.items.length}</TableCell>
+                    <TableCell className="text-sm">{getOriginalItemCount(p)}</TableCell>
                     {!hideTotal && (
                       <TableCell className="text-sm text-right font-semibold">
                         {(() => {
