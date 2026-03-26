@@ -232,7 +232,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
       setItems(prev => [
         ...prev,
-        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight || undefined, totalValue: addValue || undefined, category },
+        { id: crypto.randomUUID(), itemType: "peca_sacola", quantity: addQty, weight: addWeight || undefined, category },
       ]);
     }
 
