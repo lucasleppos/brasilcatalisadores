@@ -219,10 +219,7 @@ export function canUserActOnStage(role: string | null, status: string): boolean 
 
 /** Determine material flow from items */
 export function determineMaterialFlow(items: PurchaseQuoteItem[]): MaterialFlow {
-  const hasCeramicFlow = items.some(i =>
-    i.itemType === "ceramico" ||
-    (i.itemType === "peca_sacola" && i.input && !i.totalValue)
-  );
+  const hasCeramicFlow = items.some(i => i.itemType === "ceramico");
   return hasCeramicFlow ? "ceramico" : "pecas";
 }
 

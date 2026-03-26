@@ -170,7 +170,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   };
 
   useEffect(() => {
-    if ((addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc)) && grossWeight > 0) {
+    if (addType === "ceramico" && grossWeight > 0) {
       runCalcPreview();
     } else {
       setCalcPreview(null);
@@ -178,7 +178,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   }, [grossWeightStr, tareStr, ptPpmStr, pdPpmStr, rhPpmStr, addType, sacolaUseCalc, supplierId]);
 
   const addItem = async () => {
-    const useCalc = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
+    const useCalc = addType === "ceramico";
     const category = addCategory.trim() || undefined;
 
     if (useCalc) {
@@ -225,7 +225,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         ...prev,
         { id: crypto.randomUUID(), itemType: "peca", quantity: addQty, totalValue: addValue || undefined, category },
       ]);
-    } else if (addType === "peca_sacola" && !sacolaUseCalc) {
+    } else if (addType === "peca_sacola") {
       if (addQty <= 0) {
         toast({ title: "Informe a quantidade", variant: "destructive" });
         return;
@@ -297,8 +297,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     onCreated();
   };
 
-  const showSimpleFields = addType === "peca" || (addType === "peca_sacola" && !sacolaUseCalc);
-  const showCalcFields = addType === "ceramico" || (addType === "peca_sacola" && sacolaUseCalc);
+  const showSimpleFields = addType === "peca" || addType === "peca_sacola";
+  const showCalcFields = addType === "ceramico";
 
   const getItemValueDisplay = (it: PendingItem) => {
     const val = it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0);
@@ -508,10 +508,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                     <Input type="text" inputMode="decimal" value={addWeightStr} onChange={e => setAddWeightStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="0,0000" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Valor total (R$)</Label>
-                  <Input type="text" inputMode="decimal" value={addValueStr} onChange={e => setAddValueStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
-                </div>
+                {addType === "peca" && (
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Valor total (R$)</Label>
+                    <Input type="text" inputMode="decimal" value={addValueStr} onChange={e => setAddValueStr(numFilter(e.target.value))} className="h-8 text-sm" placeholder="Opcional" />
+                  </div>
+                )}
               </div>
             )}
 
