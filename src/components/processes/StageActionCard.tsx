@@ -39,6 +39,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [weightReal, setWeightReal] = useState("");
   const [contestMotivo, setContestMotivo] = useState("");
   const [checklistReady, setChecklistReady] = useState(true);
+  const [conferenciaOpen, setConferenciaOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
