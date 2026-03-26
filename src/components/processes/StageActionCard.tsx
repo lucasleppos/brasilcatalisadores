@@ -363,6 +363,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onCompleted={onCompleted}
             />
           </div>
+        ) : isSacolaLab ? (
+          /* Sacola Lab: Iniciar Análise button */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setLabOpen(true)}>
+              <FlaskConical className="h-3 w-3 mr-1" /> Iniciar Análise
+            </Button>
+            <SacolaLabPanel
+              purchase={purchase}
+              open={labOpen}
+              onOpenChange={setLabOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
