@@ -130,6 +130,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       );
 
       toast.success("Conferência salva");
+      onOpenChange(false);
     } catch {
       toast.error("Erro ao salvar");
     } finally {
@@ -226,31 +227,25 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         <div className="space-y-3 rounded-md border p-3">
           <p className="text-xs font-medium text-muted-foreground">Adicionar Peça</p>
           <div className="space-y-1.5">
-            <Label className="text-xs">Código da peça</Label>
-            <div className="flex gap-2">
-              <Input
-                value={code}
-                onChange={e => { setCode(e.target.value); setSearchDone(false); setFoundPart(null); }}
-                placeholder="Ex: ABC-123"
-                className="h-8 text-sm flex-1"
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
-              />
-              <Button size="sm" variant="outline" className="h-8" onClick={handleSearch} disabled={searching || !code.trim()}>
-                {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-              </Button>
-            </div>
-            {searchDone && (
-              foundPart ? (
-                <p className="text-xs text-green-700 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> {foundPart.reference} ({foundPart.code})
-                </p>
-              ) : (
-                <p className="text-xs text-amber-600 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Código não encontrado no catálogo
-                </p>
-              )
+            <Label className="text-xs">Buscar peça no catálogo</Label>
+            <PartSearch onSelect={handlePartSelect} />
+            {selectedPart && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-green-600" /> {selectedPart.reference || selectedPart.code} — {selectedPart.brand} {selectedPart.vehicle}
+              </p>
             )}
           </div>
+          {!selectedPart && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ou código manual (se não encontrar)</Label>
+              <Input
+                value={manualCode}
+                onChange={e => setManualCode(e.target.value)}
+                placeholder="Ex: ABC-123"
+                className="h-8 text-sm"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs">Peso líquido (kg)</Label>
             <Input
@@ -261,7 +256,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               className="h-8 text-sm"
             />
           </div>
-          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!code.trim()}>
+          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!selectedPart && !manualCode.trim()}>
             <Plus className="h-3 w-3 mr-1" /> Adicionar Peça
           </Button>
         </div>
