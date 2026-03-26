@@ -138,8 +138,18 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
   };
 
+  const declaredQty = purchase.items
+    .filter(i => i.itemType === "peca_sacola")
+    .reduce((s, i) => s + (i.quantity || 1), 0);
+
+  const isComplete = pieces.length === declaredQty;
+
   const handleFinish = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    if (!isComplete) {
+      toast.error(`Faltam peças: ${pieces.length}/${declaredQty} conferidas`);
+      return;
+    }
     setSaving(true);
     try {
       // Save first
