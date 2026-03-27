@@ -821,6 +821,30 @@ export function getStatusColor(status: string): string {
   return "bg-muted text-muted-foreground border-border";
 }
 
+/** Batch update item pricing (for sacola pricing panel) */
+export async function batchUpdateItemPricing(
+  purchaseId: string,
+  updates: { itemId: string; totalValue: number; pricingSource: "catalogo" | "calculadora" }[]
+): Promise<void> {
+  // Update each item
+  for (const u of updates) {
+    await supabase
+      .from("purchase_items")
+      .update({ total_value: u.totalValue, pricing_source: u.pricingSource })
+      .eq("id", u.itemId);
+  }
+
+  // Recalculate purchase total from ALL items with values
+  const { data: allItems } = await supabase
+    .from("purchase_items")
+    .select("total_value, category")
+    .eq("purchase_id", purchaseId);
+
+  // For sacola purchases: conference items now have values, original sacola items don't
+  const newTotal = (allItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
+  await supabase.from("purchases").update({ total_brl: newTotal }).eq("id", purchaseId);
+}
+
 /** Check if a purchase is fully closed */
 export function isPurchaseClosed(purchase: Purchase): boolean {
   return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
