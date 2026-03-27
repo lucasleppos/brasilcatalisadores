@@ -1,0 +1,1 @@
+ALTER TABLE public.purchase_items ADD COLUMN pricing_source text;
