@@ -383,8 +383,25 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
-            {/* Piece Pricing Panel for "Aguardando Demonstrativo" */}
-            {isPiecePricing && (
+            {/* Sacola Pricing Panel for peca_sacola items */}
+            {isSacolaPricing && (
+              <div>
+                <Button size="sm" variant="outline" className="w-full justify-between h-10 mb-2" onClick={() => setSacolaPricingOpen(true)}>
+                  <span className="flex items-center gap-2">
+                    <Scale className="h-4 w-4" />
+                    Comparar e Precificar
+                  </span>
+                </Button>
+                <SacolaPricingPanel
+                  purchase={purchase}
+                  open={sacolaPricingOpen}
+                  onOpenChange={setSacolaPricingOpen}
+                  onCompleted={onCompleted}
+                />
+              </div>
+            )}
+            {/* Standard Piece Pricing Panel for regular peca items */}
+            {isPiecePricing && !isSacolaPricing && (
               <PiecePricingPanel purchase={purchase} onCompleted={onCompleted} />
             )}
 
