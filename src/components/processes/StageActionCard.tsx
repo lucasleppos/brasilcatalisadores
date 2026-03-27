@@ -15,6 +15,7 @@ import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
+import SacolaPricingPanel from "./SacolaPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [checklistReady, setChecklistReady] = useState(true);
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
+  const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -54,13 +56,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isPiecePricing = purchase.status === "Peças: Aguardando Demonstrativo";
+  const hasSacolaItems = purchase.items.some(i => i.itemType === "peca_sacola");
+  const isSacolaPricing = isPiecePricing && hasSacolaItems;
   const isWeighing = purchase.status === "Peças: Pesagem Realizada";
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
-  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && purchase.items.some(i => i.itemType === "peca_sacola");
-  const isSacolaLab = purchase.status === "Peças: Laboratório" && purchase.items.some(i => i.itemType === "peca_sacola");
+  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
+  const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
 
   const handleConfirm = async () => {
     setLoading(true);
