@@ -126,77 +126,217 @@ Deno.serve(async (req) => {
     y += 4;
 
     // --- Items Table ---
-    doc.setDrawColor(150);
-    doc.setFillColor(240, 240, 240);
+    // Separate items by pricing_source for sacola items
+    const catalogFixedItems = items.filter(i => i.pricing_source === 'catalogo');
+    const calcItems = items.filter(i => i.pricing_source === 'calculadora');
+    const regularItems = items.filter(i => !i.pricing_source);
 
-    const colWidths = [10, 40, 30, 30, contentWidth - 110];
-    const colX = [margin];
-    for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
+    const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
 
-    const headers = ["#", "Tipo", "Qtd/Peso", "Valor Unit.", "Valor Total"];
+    if (hasSacolaBlocks) {
+      // === Block 1: Fixed Price (Catálogo) ===
+      if (catalogFixedItems.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Peças — Preço Fixo (Catálogo)", margin, y);
+        y += 7;
 
-    // Header row
-    doc.rect(margin, y, contentWidth, 7, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    for (let i = 0; i < headers.length; i++) {
-      doc.text(headers[i], colX[i] + 2, y + 5);
+        // Table header
+        doc.setDrawColor(150);
+        doc.setFillColor(240, 240, 240);
+        const fixedCols = [10, 45, 30, contentWidth - 85];
+        const fixedX = [margin];
+        for (let i = 1; i < fixedCols.length; i++) fixedX.push(fixedX[i - 1] + fixedCols[i - 1]);
+        const fixedHeaders = ["#", "Peça", "Peso", "Valor"];
+
+        doc.rect(margin, y, contentWidth, 7, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        for (let i = 0; i < fixedHeaders.length; i++) {
+          doc.text(fixedHeaders[i], fixedX[i] + 2, y + 5);
+        }
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        for (let i = 0; i < catalogFixedItems.length; i++) {
+          const item = catalogFixedItems[i];
+          if (i % 2 === 0) {
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin, y, contentWidth, 6, "F");
+          }
+          const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+          const label = cp ? (cp.code || cp.reference) : "Manual";
+          const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
+          const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
+
+          doc.text(`${i + 1}`, fixedX[0] + 2, y + 4);
+          doc.text(label || "—", fixedX[1] + 2, y + 4);
+          doc.text(weight, fixedX[2] + 2, y + 4);
+          doc.text(val, fixedX[3] + 2, y + 4);
+          y += 6;
+
+          if (y > 270) { doc.addPage(); y = margin; }
+        }
+        y += 4;
+      }
+
+      // === Block 2: Calculated Price (Calculadora) ===
+      if (calcItems.length > 0) {
+        doc.setDrawColor(200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Peças — Preço Calculado (PPM Lab)", margin, y);
+        y += 7;
+
+        // Fetch lab results for these items
+        const calcItemIds = calcItems.map(c => c.id);
+        let labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
+        if (calcItemIds.length > 0) {
+          const { data: labRes } = await sb
+            .from("lab_results")
+            .select("purchase_item_id, pt_ppm, pd_ppm, rh_ppm")
+            .eq("purchase_id", purchaseId)
+            .in("purchase_item_id", calcItemIds);
+          (labRes || []).forEach((lr: any) => {
+            if (lr.purchase_item_id) {
+              labMap[lr.purchase_item_id] = { pt: Number(lr.pt_ppm), pd: Number(lr.pd_ppm), rh: Number(lr.rh_ppm) };
+            }
+          });
+        }
+
+        // Table header
+        doc.setDrawColor(150);
+        doc.setFillColor(240, 240, 240);
+        const calcCols = [10, 35, 25, 25, 25, 25, contentWidth - 145];
+        const calcX = [margin];
+        for (let i = 1; i < calcCols.length; i++) calcX.push(calcX[i - 1] + calcCols[i - 1]);
+        const calcHeaders = ["#", "Peça", "Peso", "Pt", "Pd", "Rh", "Valor"];
+
+        doc.rect(margin, y, contentWidth, 7, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        for (let i = 0; i < calcHeaders.length; i++) {
+          doc.text(calcHeaders[i], calcX[i] + 2, y + 5);
+        }
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        for (let i = 0; i < calcItems.length; i++) {
+          const item = calcItems[i];
+          if (i % 2 === 0) {
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin, y, contentWidth, 6, "F");
+          }
+          const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+          const label = cp ? (cp.code || cp.reference) : "Manual";
+          const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
+          const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
+          const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
+
+          doc.text(`${i + 1}`, calcX[0] + 2, y + 4);
+          doc.text(label || "—", calcX[1] + 2, y + 4);
+          doc.text(weight, calcX[2] + 2, y + 4);
+          doc.text(fmt(lab.pt, 0), calcX[3] + 2, y + 4);
+          doc.text(fmt(lab.pd, 0), calcX[4] + 2, y + 4);
+          doc.text(fmt(lab.rh, 0), calcX[5] + 2, y + 4);
+          doc.text(val, calcX[6] + 2, y + 4);
+          y += 6;
+
+          if (y > 270) { doc.addPage(); y = margin; }
+        }
+        y += 4;
+      }
     }
-    y += 7;
 
-    const typeLabels: Record<string, string> = {
-      peca: "Peça",
-      peca_sacola: "Peça em Sacola",
-      ceramico: "Cerâmico",
-    };
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const calcResult = item.calc_result as any;
-      const calcInput = item.calc_input as any;
-
-      let qtyWeight = "—";
-      if (item.item_type === "peca") {
-        qtyWeight = `${item.quantity || 0} pç`;
-      } else if (item.item_type === "peca_sacola" && !calcInput) {
-        qtyWeight = `${item.quantity || 0} pç`;
-        if (item.weight) qtyWeight += ` / ${fmt(Number(item.weight))} kg`;
-      } else if (calcInput) {
-        const net = (calcInput.grossWeight || 0) - (calcInput.tare || 0);
-        qtyWeight = `${fmt(net)} kg`;
-      } else if (item.weight) {
-        qtyWeight = `${fmt(Number(item.weight))} kg`;
+    // === Regular items (non-sacola or items without pricing_source) ===
+    if (regularItems.length > 0) {
+      if (hasSacolaBlocks) {
+        doc.setDrawColor(200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Demais Itens", margin, y);
+        y += 7;
       }
 
-      let unitVal = "—";
-      let totalVal = "—";
-      if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
-        const tv = Number(item.total_value) || 0;
-        const qty = item.quantity || 1;
-        unitVal = tv > 0 ? fmtBrl(tv / qty) : "—";
-        totalVal = tv > 0 ? fmtBrl(tv) : "Pendente";
-      } else if (calcResult) {
-        totalVal = calcResult.finalValueBrl ? fmtBrl(calcResult.finalValueBrl) : "Pendente";
-        unitVal = "—";
-      }
+      doc.setDrawColor(150);
+      doc.setFillColor(240, 240, 240);
 
-      // Alternating bg
-      if (i % 2 === 0) {
-        doc.setFillColor(250, 250, 250);
-        doc.rect(margin, y, contentWidth, 6, "F");
-      }
+      const colWidths = [10, 40, 30, 30, contentWidth - 110];
+      const colX = [margin];
+      for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-      doc.text(`${i + 1}`, colX[0] + 2, y + 4);
-      const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-      const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
-      doc.text(typeLabel, colX[1] + 2, y + 4);
-      doc.text(qtyWeight, colX[2] + 2, y + 4);
-      doc.text(unitVal, colX[3] + 2, y + 4);
-      doc.text(totalVal, colX[4] + 2, y + 4);
-      y += 6;
+      const headers = ["#", "Tipo", "Qtd/Peso", "Valor Unit.", "Valor Total"];
+
+      doc.rect(margin, y, contentWidth, 7, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      for (let i = 0; i < headers.length; i++) {
+        doc.text(headers[i], colX[i] + 2, y + 5);
+      }
+      y += 7;
+
+      const typeLabels: Record<string, string> = {
+        peca: "Peça",
+        peca_sacola: "Peça em Sacola",
+        ceramico: "Cerâmico",
+      };
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+
+      for (let i = 0; i < regularItems.length; i++) {
+        const item = regularItems[i];
+        const calcResult = item.calc_result as any;
+        const calcInput = item.calc_input as any;
+
+        let qtyWeight = "—";
+        if (item.item_type === "peca") {
+          qtyWeight = `${item.quantity || 0} pç`;
+        } else if (item.item_type === "peca_sacola" && !calcInput) {
+          qtyWeight = `${item.quantity || 0} pç`;
+          if (item.weight) qtyWeight += ` / ${fmt(Number(item.weight))} kg`;
+        } else if (calcInput) {
+          const net = (calcInput.grossWeight || 0) - (calcInput.tare || 0);
+          qtyWeight = `${fmt(net)} kg`;
+        } else if (item.weight) {
+          qtyWeight = `${fmt(Number(item.weight))} kg`;
+        }
+
+        let unitVal = "—";
+        let totalVal = "—";
+        if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
+          const tv = Number(item.total_value) || 0;
+          const qty = item.quantity || 1;
+          unitVal = tv > 0 ? fmtBrl(tv / qty) : "—";
+          totalVal = tv > 0 ? fmtBrl(tv) : "Pendente";
+        } else if (calcResult) {
+          totalVal = calcResult.finalValueBrl ? fmtBrl(calcResult.finalValueBrl) : "Pendente";
+          unitVal = "—";
+        }
+
+        if (i % 2 === 0) {
+          doc.setFillColor(250, 250, 250);
+          doc.rect(margin, y, contentWidth, 6, "F");
+        }
+
+        doc.text(`${i + 1}`, colX[0] + 2, y + 4);
+        const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+        const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
+        doc.text(typeLabel, colX[1] + 2, y + 4);
+        doc.text(qtyWeight, colX[2] + 2, y + 4);
+        doc.text(unitVal, colX[3] + 2, y + 4);
+        doc.text(totalVal, colX[4] + 2, y + 4);
+        y += 6;
+
+        if (y > 270) { doc.addPage(); y = margin; }
+      }
     }
 
     y += 4;

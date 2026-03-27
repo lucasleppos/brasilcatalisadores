@@ -416,6 +416,7 @@ export type Database = {
           created_at: string | null
           id: string
           item_type: string
+          pricing_source: string | null
           purchase_id: string
           quantity: number | null
           total_value: number | null
@@ -431,6 +432,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type: string
+          pricing_source?: string | null
           purchase_id: string
           quantity?: number | null
           total_value?: number | null
@@ -446,6 +448,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type?: string
+          pricing_source?: string | null
           purchase_id?: string
           quantity?: number | null
           total_value?: number | null
