@@ -66,6 +66,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
 
+  // Block approval/PDF stages if Boleto Syge is missing
+  const missingErp = !purchase.erpNumber?.trim();
+  const needsErp = isDemonstrative || isPiecePricing || isContested || purchase.status === "Cerâmico: Em Precificação";
+
   const handleConfirm = async () => {
     setLoading(true);
     try {
@@ -254,8 +258,14 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            {missingErp && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
+              </div>
+            )}
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
                 setLoading(true);
                 try {
                   let demos = await loadDemonstrativos(purchase.id);
@@ -271,7 +281,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               }}>
                 <FileDown className="h-3 w-3 mr-1" />PDF
               </Button>
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
                 setLoading(true);
                 try {
                   let demos = await loadDemonstrativos(purchase.id);
@@ -300,7 +310,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <div className="flex gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" className="flex-1" disabled={loading}>
+                  <Button size="sm" className="flex-1" disabled={loading || missingErp}>
                     <CheckCircle2 className="h-3 w-3 mr-1" />Aprovar
                   </Button>
                 </AlertDialogTrigger>
@@ -308,7 +318,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </AlertDialog>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="flex-1" disabled={loading}>
+                  <Button size="sm" variant="destructive" className="flex-1" disabled={loading || missingErp}>
                     <AlertTriangle className="h-3 w-3 mr-1" />Contestar
                   </Button>
                 </AlertDialogTrigger>
@@ -412,9 +422,16 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onChecklistChange={handleChecklistChange}
             />
 
+            {needsErp && missingErp && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
+              </div>
+            )}
+
             {canGeneratePdf && (
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                <Button size="sm" variant="outline" className="flex-1" disabled={loading || (needsErp && missingErp)} onClick={async () => {
                   setLoading(true);
                   try {
                     let demos = await loadDemonstrativos(purchase.id);
@@ -430,7 +447,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                 }}>
                   <FileDown className="h-3 w-3 mr-1" />PDF
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
+                <Button size="sm" variant="outline" className="flex-1" disabled={loading || (needsErp && missingErp)} onClick={async () => {
                   setLoading(true);
                   try {
                     let demos = await loadDemonstrativos(purchase.id);
@@ -459,7 +476,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="default" className="w-full" disabled={loading || !checklistReady}>
+                <Button size="sm" variant="default" className="w-full" disabled={loading || !checklistReady || (needsErp && missingErp)}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
                   Concluir {purchase.status}
                 </Button>
