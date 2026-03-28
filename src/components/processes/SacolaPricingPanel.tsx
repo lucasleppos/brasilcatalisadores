@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Scale, Loader2, CheckCircle2, Save, AlertTriangle, Search } from "lucide-react";
@@ -236,7 +235,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[95vh] flex flex-col p-0">
+      <DialogContent className="max-w-6xl h-[95vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Scale className="h-5 w-5" />
@@ -295,8 +294,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         </div>
 
         {/* Pieces list */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -420,7 +418,6 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
               })}
             </div>
           )}
-        </ScrollArea>
         </div>
 
         {/* Footer */}
