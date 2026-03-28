@@ -421,6 +421,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
             </div>
           )}
         </ScrollArea>
+        </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-border space-y-3">
