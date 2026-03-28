@@ -1,10 +1,20 @@
 
-# Fase 4 — Precificação Inteligente Peça em Sacola ✅ IMPLEMENTADO
 
-## O que foi feito
+# Limpar todas as compras para reiniciar testes
 
-1. **Migração SQL**: Coluna `pricing_source text` adicionada à tabela `purchase_items`
-2. **`SacolaPricingPanel.tsx`**: Dialog fullscreen com comparação catálogo vs lab, inputs manuais de valor, radio buttons, filtros/busca, scroll para 100+ peças
-3. **`StageActionCard.tsx`**: Condicional para exibir "Comparar e Precificar" para pedidos com `peca_sacola` na etapa "Aguardando Demonstrativo"
-4. **`purchases.ts`**: Helper `batchUpdateItemPricing()` para atualizar valores e `pricing_source` em lote
-5. **Edge function PDF**: Separação em dois blocos (Preço Fixo sem PPMs + Preço Calculado com PPMs Lab)
+Existem **9 compras** no banco. Para limpar completamente, preciso deletar dados de todas as tabelas relacionadas na ordem correta (dependências primeiro):
+
+## Tabelas a limpar (nesta ordem)
+
+1. `bag_items` — itens alocados em bags referenciando compras
+2. `lab_analyses` — análises laboratoriais
+3. `lab_results` — resultados de lab
+4. `demonstrativos` — demonstrativos gerados
+5. `stage_evidence` — evidências/fotos de etapas
+6. `purchase_items` — itens das compras
+7. `purchases` — as compras em si
+
+## Execução
+
+Um único script SQL com DELETEs em cascata para todas as tabelas acima. Os bags em si (tabela `bags`) serão mantidos, apenas os `bag_items` vinculados serão removidos.
+
