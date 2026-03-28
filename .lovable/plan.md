@@ -1,20 +1,17 @@
 
 
-# Limpar todas as compras para reiniciar testes
+# Fix: Scroll na lista de peças do SacolaPricingPanel
 
-Existem **9 compras** no banco. Para limpar completamente, preciso deletar dados de todas as tabelas relacionadas na ordem correta (dependências primeiro):
+## Problema
+O `ScrollArea` dentro do `DialogContent` não está rolando porque o layout flex não está propagando a restrição de altura corretamente para o viewport interno do Radix ScrollArea. Com 5 peças, a 5a fica cortada e inacessível.
 
-## Tabelas a limpar (nesta ordem)
+## Solução
+Envolver o `ScrollArea` em uma `div` com `overflow-hidden` e `flex-1 min-h-0`, e garantir que o ScrollArea tenha `h-full`. Isso força o container flex a calcular a altura disponível e o ScrollArea a respeitar esse limite.
 
-1. `bag_items` — itens alocados em bags referenciando compras
-2. `lab_analyses` — análises laboratoriais
-3. `lab_results` — resultados de lab
-4. `demonstrativos` — demonstrativos gerados
-5. `stage_evidence` — evidências/fotos de etapas
-6. `purchase_items` — itens das compras
-7. `purchases` — as compras em si
+## Arquivo alterado
+`src/components/processes/SacolaPricingPanel.tsx` — ajustar o wrapper do ScrollArea:
+- Adicionar uma div wrapper com `className="flex-1 min-h-0 overflow-hidden"` em volta do `ScrollArea`
+- O `ScrollArea` recebe `className="h-full"` em vez de `flex-1 min-h-0`
 
-## Execução
-
-Um único script SQL com DELETEs em cascata para todas as tabelas acima. Os bags em si (tabela `bags`) serão mantidos, apenas os `bag_items` vinculados serão removidos.
+Correção simples de CSS/layout, sem mudança de lógica.
 
