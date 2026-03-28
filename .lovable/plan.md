@@ -1,54 +1,29 @@
 
-## Correção proposta
 
-O problema não parece mais ser a ausência de `overflow`; pela sessão, a área interna já chega a ficar com `overflow-y: scroll`. O ponto frágil está no cálculo de altura dentro do `DialogContent`, que usa um layout herdado do componente base e pode deixar a lista “espremida” sem uma área útil estável para rolagem.
+# Fix: Demonstrativo PDF sem valor total + adicionar totais de peças/kg
 
-## O que vou ajustar
+## Problema
+O demonstrativo e criado automaticamente ao avançar para "Aguardando Demonstrativo", mas nesse momento o `total_brl` da compra ainda e 0 porque a precificação das peças em sacola acontece *depois*. O PDF usa `demo.valor_total` que foi gravado como 0.
 
-### 1. Tornar o dialog explicitamente vertical
-No `SacolaPricingPanel.tsx`, ajustar o `DialogContent` para funcionar como um container de coluna com altura controlada, em vez de depender do `grid` herdado do componente base.
+## Solução
 
-- manter `max-w-6xl`
-- usar uma altura mais previsível, como `h-[95vh]` ou equivalente
-- garantir `overflow-hidden` no dialog inteiro
+### 1. PDF: calcular valor total a partir dos itens (edge function)
+No `generate-demonstrativo-pdf/index.ts`, em vez de confiar apenas em `demo.valor_total`, calcular o total somando `total_value` de todos os `purchase_items` com `category = 'conferencia'`. Usar o maior entre o valor calculado e `demo.valor_total`.
 
-### 2. Substituir o `ScrollArea` por scroll nativo na lista
-Para este painel específico, a solução mais robusta é usar um container simples com:
+### 2. PDF: adicionar resumo de quantidades
+Antes da linha "VALOR TOTAL", adicionar uma seção de resumo com:
+- **Total de peças**: contagem dos itens de conferencia
+- **Peso total**: soma dos pesos dos itens
 
-- `flex-1`
-- `min-h-0`
-- `overflow-y-auto`
+### 3. Atualizar `valor_total` do demonstrativo ao gerar PDF
+Quando o PDF e gerado e o `demo.valor_total` e 0 mas os itens ja tem valores, atualizar o registro do demonstrativo com o valor correto.
 
-Isso evita conflito entre:
-- `DialogContent`
-- viewport interno do Radix `ScrollArea`
-- footer fixo do modal
+### 4. Corrigir criação do demonstrativo no StageActionCard
+Nos pontos onde `createDemonstrativo` e chamado manualmente (botão de gerar demonstrativo), recalcular o total a partir dos itens antes de criar.
 
-Estrutura planejada:
+## Arquivo alterado
+- `supabase/functions/generate-demonstrativo-pdf/index.ts` — calcular total dos itens, adicionar resumo de peças/kg, atualizar demo se necessario
 
-```text
-DialogContent (coluna, altura fixa)
-├─ Header
-├─ Filtros
-├─ Lista (flex-1 min-h-0 overflow-y-auto)
-└─ Footer
-```
+## Detalhe tecnico
+O PDF ja tem acesso a todos os `items` da compra. Basta somar `total_value` dos itens com `category = 'conferencia'` e usar esse valor. A seção de resumo sera inserida logo antes do "VALOR TOTAL".
 
-### 3. Preservar header e footer fixos
-A rolagem ficará apenas na lista das peças, mantendo:
-- topo com título/busca/filtros visível
-- rodapé com progresso e botões sempre acessível
-
-## Arquivo a alterar
-- `src/components/processes/SacolaPricingPanel.tsx`
-
-## Resultado esperado
-Com 5, 10 ou 100+ peças, o modal passa a rolar corretamente apenas na área central, permitindo visualizar todas as peças sem cortar a última linha.
-
-## Detalhe técnico
-Hoje o painel mistura:
-- `DialogContent` com classes base de `grid`
-- children em `flex`
-- `ScrollArea` com viewport próprio
-
-Esse tipo de composição costuma falhar em modais altos. Trocar para scroll nativo no miolo da tela reduz complexidade e tende a resolver de forma definitiva esse caso.
