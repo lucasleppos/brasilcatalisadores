@@ -60,6 +60,21 @@ Deno.serve(async (req) => {
     const latestLab = labRes.data?.[0] || null;
     const settings = settingsRes.data;
 
+    // Calculate real total from items (conference items or all items)
+    const conferenceItems = items.filter((i: any) => i.category === "conferencia");
+    const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
+    const calculatedTotal = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.total_value) || 0), 0);
+    const effectiveTotal = Math.max(calculatedTotal, Number(demo.valor_total) || 0);
+
+    // Sync demonstrativo if stored value is 0 but items have values
+    if ((Number(demo.valor_total) || 0) === 0 && calculatedTotal > 0) {
+      await sb.from("demonstrativos").update({ valor_total: calculatedTotal }).eq("id", demonstrativoId);
+    }
+
+    // Summary counts
+    const totalPecas = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.quantity) || 1), 0);
+    const totalWeightKg = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.weight) || 0), 0);
+
     // Fetch catalog part codes for items with catalog_part_id
     const catalogPartIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id))];
     let catalogPartsMap: Record<string, { code: string; reference: string }> = {};
@@ -420,11 +435,25 @@ Deno.serve(async (req) => {
       y += 6;
     }
 
+    // --- Resumo de Quantidades ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Resumo", margin, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Total de peças: ${totalPecas}`, margin, y);
+    doc.text(`Peso total: ${fmt(totalWeightKg)} kg`, pageWidth / 2, y);
+    y += 8;
+
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
     // --- Total ---
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("VALOR TOTAL:", margin, y);
-    doc.text(fmtBrl(Number(demo.valor_total)), pageWidth - margin, y, { align: "right" });
+    doc.text(fmtBrl(effectiveTotal), pageWidth - margin, y, { align: "right" });
     y += 10;
 
     // --- Footer ---
