@@ -421,6 +421,32 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onCompleted={onCompleted}
             />
           </div>
+        ) : isCeramicoConferencia ? (
+          /* Cerâmico: Iniciar Conferência */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoConferenciaOpen(true)}>
+              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+            </Button>
+            <CeramicoConferenciaPanel
+              purchase={purchase}
+              open={ceramicoConferenciaOpen}
+              onOpenChange={setCeramicoConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isCeramicoLab ? (
+          /* Cerâmico Lab: Iniciar Análise */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoLabOpen(true)}>
+              <FlaskConical className="h-3 w-3 mr-1" /> Iniciar Análise
+            </Button>
+            <CeramicoLabPanel
+              purchase={purchase}
+              open={ceramicoLabOpen}
+              onOpenChange={setCeramicoLabOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : (
           /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
