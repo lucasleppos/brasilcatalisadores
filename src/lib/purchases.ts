@@ -187,7 +187,11 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   // Skip payment stages for Peças: go directly from approval to bag allocation
   if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
 
-  // For ceramico, after "Aprovado" there's no single next — parallel sub-flows start
+  // Skip intermediate ceramic stages and parallel sub-flows
+  if (current === "Cerâmico: Em Trituração/Homogeneização") return "Cerâmico: Lab em Análise";
+  if (current === "Cerâmico: Lab em Análise") return "Cerâmico: Em Precificação";
+  if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Concluído";
+  // Keep legacy parallel support
   if (current === "Cerâmico: Aprovado") return null;
   if (current === "Concluído") return null;
   if (current === "Peças: Encerrado" || current === "Cerâmico: Encerrado") return "Concluído";
@@ -385,22 +389,17 @@ export async function createPurchase(data: {
   const totalBrl = calcTotal(data.items);
   const materialFlow = determineMaterialFlow(data.items);
   
-  // Peças skip initial stages — go directly to "Em Conferência"
+  // Both Peças and Cerâmico skip initial stages — go directly to "Em Conferência"
   let initialStatus: string;
   let statusHistory: { status: string; date: string }[];
   
-  if (materialFlow === "pecas") {
-    const now = new Date().toISOString();
-    initialStatus = "Em Conferência";
-    statusHistory = [
-      { status: "Aguardando Inclusão", date: now },
-      { status: "Aguardando Conferência", date: now },
-      { status: "Em Conferência", date: now },
-    ];
-  } else {
-    initialStatus = "Aguardando Inclusão";
-    statusHistory = [{ status: initialStatus, date: new Date().toISOString() }];
-  }
+  const now = new Date().toISOString();
+  initialStatus = "Em Conferência";
+  statusHistory = [
+    { status: "Aguardando Inclusão", date: now },
+    { status: "Aguardando Conferência", date: now },
+    { status: "Em Conferência", date: now },
+  ];
 
   const { data: row, error } = await supabase
     .from("purchases")

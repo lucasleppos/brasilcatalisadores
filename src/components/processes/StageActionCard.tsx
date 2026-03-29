@@ -16,6 +16,8 @@ import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
+import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
+import CeramicoLabPanel from "./CeramicoLabPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -44,6 +46,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
+  const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
+  const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -52,7 +56,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
 
-  const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
+  const isAnalysis = purchase.status === "Análise" || (purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow !== "ceramico");
   const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isPiecePricing = purchase.status === "Peças: Aguardando Demonstrativo";
@@ -65,6 +69,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
+  const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
+  const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
@@ -318,23 +324,25 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      {purchase.materialFlow === "pecas" ? "Aprovar e Enviar para Bag" : "Aprovar demonstrativo?"}
+                      {purchase.materialFlow === "pecas" ? "Aprovar e Enviar para Bag" : purchase.materialFlow === "ceramico" ? "Aprovar e Encerrar" : "Aprovar demonstrativo?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription className="sr-only">Confirmação de aprovação</AlertDialogDescription>
                   </AlertDialogHeader>
                   <PurchaseSummary purchase={purchase} showPdf={true} />
-                  {purchase.materialFlow === "pecas" && (
+                  {(purchase.materialFlow === "pecas" || purchase.materialFlow === "ceramico") && (
                     <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 flex items-start gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                       <p className="text-xs text-amber-700">
-                        Ao confirmar, este material será registrado para pagamento e enviado diretamente para alocação ao Bag.
+                        {purchase.materialFlow === "ceramico"
+                          ? "Ao confirmar, este material será registrado para pagamento e alocação ao Bag, encerrando o processo."
+                          : "Ao confirmar, este material será registrado para pagamento e enviado diretamente para alocação ao Bag."}
                       </p>
                     </div>
                   )}
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleApprove} disabled={loading}>
-                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : "Confirmar Aprovação"}
+                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : purchase.materialFlow === "ceramico" ? "Confirmar e Encerrar" : "Confirmar Aprovação"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -410,6 +418,32 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               purchase={purchase}
               open={labOpen}
               onOpenChange={setLabOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isCeramicoConferencia ? (
+          /* Cerâmico: Iniciar Conferência */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoConferenciaOpen(true)}>
+              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+            </Button>
+            <CeramicoConferenciaPanel
+              purchase={purchase}
+              open={ceramicoConferenciaOpen}
+              onOpenChange={setCeramicoConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isCeramicoLab ? (
+          /* Cerâmico Lab: Iniciar Análise */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoLabOpen(true)}>
+              <FlaskConical className="h-3 w-3 mr-1" /> Iniciar Análise
+            </Button>
+            <CeramicoLabPanel
+              purchase={purchase}
+              open={ceramicoLabOpen}
+              onOpenChange={setCeramicoLabOpen}
               onCompleted={onCompleted}
             />
           </div>

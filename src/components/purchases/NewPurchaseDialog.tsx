@@ -246,10 +246,49 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     return s + (i.totalValue || 0);
   }, 0);
 
+  // For ceramico, we don't need items — only bulkWeight + photos
+  const isCeramicoMode = addType === "ceramico";
+
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
-    if (!supplier || items.length === 0) return;
+    if (!supplier) return;
     if (!isEditing && photos.length === 0) return;
+
+    // For ceramico: no items needed, just bulk weight
+    if (isCeramicoMode && !isEditing) {
+      if (bulkWeight <= 0) {
+        toast({ title: "Informe o peso total recebido", variant: "destructive" });
+        return;
+      }
+      const newPurchase = await createPurchase({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        buyer: supplier.buyer || "",
+        items: [{ id: crypto.randomUUID(), itemType: "ceramico" as PurchaseItemType, quantity: 1 }],
+        notes,
+        erpNumber,
+        bulkWeight,
+      });
+
+      if (newPurchase) {
+        for (const url of photos) {
+          await addEvidence({
+            purchaseId: newPurchase.id,
+            stage: "Recebimento",
+            taskKey: "photo_recebimento_compra",
+            dataType: "photo",
+            fileUrl: url,
+          });
+        }
+      }
+
+      toast({ title: "Compra criada com sucesso!" });
+      onOpenChange(false);
+      onCreated();
+      return;
+    }
+
+    if (items.length === 0) return;
 
     const purchaseItems: PurchaseQuoteItem[] = items.map(i => ({
       id: i.id,
@@ -278,7 +317,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       });
 
       if (newPurchase) {
-        // Save photos as stage evidence
         for (const url of photos) {
           await addEvidence({
             purchaseId: newPurchase.id,
@@ -298,7 +336,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   };
 
   const showSimpleFields = addType === "peca" || addType === "peca_sacola";
-  const showCalcFields = addType === "ceramico";
+  const showCalcFields = addType === "ceramico" && isEditing; // Only show calc fields for ceramico in edit mode
 
   const getItemValueDisplay = (it: PendingItem) => {
     const val = it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0);
@@ -383,11 +421,24 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             </div>
           )}
 
-          {/* Material a Classificar */}
+          {/* Material type selector */}
+          <div className="space-y-1">
+            <Label className="text-xs">Tipo de Material</Label>
+            <Select value={addType} onValueChange={(v) => { setAddType(v as PurchaseItemType); resetAddFields(); }}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="peca">Peça</SelectItem>
+                <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
+                <SelectItem value="ceramico">Cerâmico</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Bulk weight — shown for ceramico or when explicitly used */}
           <div className="space-y-2 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold flex items-center gap-1">
               <Package className="h-3 w-3" />
-              Material a Classificar (opcional)
+              {isCeramicoMode ? "Peso total recebido (kg) *" : "Material a Classificar (opcional)"}
             </Label>
             <div className="space-y-1">
               <Label className="text-[10px]">Peso total recebido (kg)</Label>
@@ -400,7 +451,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 placeholder="0,0000"
               />
             </div>
-            {bulkWeight > 0 && (
+            {bulkWeight > 0 && !isCeramicoMode && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]">
                   <span className="text-muted-foreground">Classificado: {fmtNum(totalClassified, 4)} kg</span>
@@ -425,18 +476,10 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             )}
           </div>
 
-          {/* Add item */}
+          {/* Add item — hidden for ceramico (items added during conference) */}
+          {!isCeramicoMode && (
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
-
-            <Select value={addType} onValueChange={(v) => { setAddType(v as PurchaseItemType); resetAddFields(); }}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="peca">Peça</SelectItem>
-                <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
-                <SelectItem value="ceramico">Cerâmico</SelectItem>
-              </SelectContent>
-            </Select>
 
             {/* Catalog search for peça type */}
             {addType === "peca" && (
@@ -565,6 +608,14 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <Plus className="mr-1 h-3 w-3" />Adicionar
             </Button>
           </div>
+          )}
+
+          {/* Ceramico info message */}
+          {isCeramicoMode && !isEditing && (
+            <div className="rounded-md bg-muted/30 border p-3 text-xs text-muted-foreground">
+              <p>Para cerâmico, os lotes (categoria, peso e tara) serão registrados na etapa de <strong>Conferência</strong> após a criação da compra.</p>
+            </div>
+          )}
 
           {/* Items list */}
           {items.length > 0 && (
@@ -620,7 +671,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || items.length === 0 || (!isEditing && photos.length === 0)}>
+          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && items.length === 0) || (isCeramicoMode && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
             <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
           </Button>
         </DialogFooter>
