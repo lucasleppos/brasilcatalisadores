@@ -191,7 +191,7 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   // Skip intermediate ceramic stages and parallel sub-flows
   if (current === "Cerâmico: Em Trituração/Homogeneização") return "Cerâmico: Lab em Análise";
   if (current === "Cerâmico: Lab em Análise") return "Cerâmico: Em Precificação";
-  if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Concluído";
+  if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Cerâmico: Aprovado";
   // Keep legacy parallel support
   if (current === "Cerâmico: Aprovado") return null;
   if (current === "Concluído") return null;
