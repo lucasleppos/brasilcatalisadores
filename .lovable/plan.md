@@ -1,28 +1,44 @@
 
 
-# Trava: Exigir "Boleto Syge" preenchido antes de Aprovar/Gerar Demonstrativo
+# Encurtar processo de Pagamento — Confirmação direta para Bag
 
-## Problema
-Atualmente é possível aprovar um demonstrativo e gerar o PDF mesmo quando o campo "Boleto Syge" (`erpNumber`) está vazio. Isso não deveria ser permitido.
+## O que muda
+Após a aprovação do demonstrativo no fluxo de Peças, em vez de passar por **duas etapas** ("Aprovado - Aguardando Pagamento" → "Pagamento Realizado"), o sistema exibirá uma **tela de confirmação simples** perguntando se o material deve ser enviado para pagamento, e então avançará direto para "Alocado ao Bag".
 
-## Solução
+## Modelo da tela de confirmação
 
-### Arquivo: `src/components/processes/StageActionCard.tsx`
-
-1. **Criar flag de bloqueio**: Adicionar uma variável `missingErp` que verifica se `purchase.erpNumber` está vazio/em branco.
-
-2. **Bloquear ações na etapa de Aprovação (`isDemonstrative`)**: Desabilitar os botões "PDF", "WhatsApp", "Aprovar" e "Contestar" quando `missingErp` for true.
-
-3. **Exibir aviso visual**: Quando `missingErp`, mostrar um alerta em vermelho acima dos botões indicando que o campo "Boleto Syge" precisa ser preenchido antes de continuar.
-
-4. **Aplicar a mesma trava na etapa de Precificação (`isPiecePricing`)**: Bloquear a geração do demonstrativo e avanço se o campo estiver vazio.
-
-### Detalhe técnico
-```typescript
-const missingErp = !purchase.erpNumber?.trim();
+```text
+┌──────────────────────────────────────────┐
+│  ✅ Demonstrativo Aprovado               │
+│                                          │
+│  Fornecedor: [nome]                      │
+│  Pedido: [número]                        │
+│  Valor Total: R$ X.XXX,XX               │
+│                                          │
+│  ⚠ Ao confirmar, este material será      │
+│  registrado para pagamento e enviado     │
+│  diretamente para alocação ao Bag.       │
+│                                          │
+│  ┌────────────┐  ┌───────────────────┐   │
+│  │  Cancelar  │  │ Confirmar e Alocar│   │
+│  └────────────┘  └───────────────────┘   │
+└──────────────────────────────────────────┘
 ```
-- Nos botões relevantes: adicionar `disabled={loading || missingErp}`
-- Mensagem de aviso: `"Preencha o campo 'Boleto Syge' na compra antes de prosseguir."`
 
-Nenhuma alteração de banco de dados necessária — apenas validação no frontend.
+## Alterações técnicas
+
+### 1. `src/lib/purchases.ts` — Pular etapas de pagamento
+- Na função `getNextStatus`, quando o status atual for `"Peças: Gerar Boleto de Aprovação"`, retornar diretamente `"Peças: Alocado ao Bag"` em vez de `"Peças: Aprovado - Aguardando Pagamento"`.
+- Manter os status no array `PECAS_FLOW` para compatibilidade com compras antigas.
+
+### 2. `src/components/processes/StageActionCard.tsx` — Tela de confirmação
+- No bloco `isDemonstrative` (aprovação), alterar o dialog de "Aprovar" para incluir a mensagem de confirmação de envio para pagamento + alocação ao bag (apenas para fluxo de peças).
+- O dialog mostrará: resumo da compra, valor total, e o aviso de que o material será registrado para pagamento e seguirá direto para o bag.
+
+### 3. `src/components/processes/ProcessBoard.tsx` — Ajustar agrupamento
+- Remover ou ajustar o grupo "Pagamento" no board para não exibir coluna vazia (manter para compras legadas que ainda estejam nesses status).
+
+## Resultado
+Fluxo atual: Aprovação → Aguardando Pagamento → Pagamento Realizado → Alocado ao Bag (3 cliques)
+Fluxo novo: Aprovação → Confirmação única → Alocado ao Bag (1 clique)
 
