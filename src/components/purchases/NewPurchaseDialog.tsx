@@ -246,10 +246,49 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     return s + (i.totalValue || 0);
   }, 0);
 
+  // For ceramico, we don't need items — only bulkWeight + photos
+  const isCeramicoMode = addType === "ceramico";
+
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
-    if (!supplier || items.length === 0) return;
+    if (!supplier) return;
     if (!isEditing && photos.length === 0) return;
+
+    // For ceramico: no items needed, just bulk weight
+    if (isCeramicoMode && !isEditing) {
+      if (bulkWeight <= 0) {
+        toast({ title: "Informe o peso total recebido", variant: "destructive" });
+        return;
+      }
+      const newPurchase = await createPurchase({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        buyer: supplier.buyer || "",
+        items: [{ id: crypto.randomUUID(), itemType: "ceramico" as PurchaseItemType, quantity: 1 }],
+        notes,
+        erpNumber,
+        bulkWeight,
+      });
+
+      if (newPurchase) {
+        for (const url of photos) {
+          await addEvidence({
+            purchaseId: newPurchase.id,
+            stage: "Recebimento",
+            taskKey: "photo_recebimento_compra",
+            dataType: "photo",
+            fileUrl: url,
+          });
+        }
+      }
+
+      toast({ title: "Compra criada com sucesso!" });
+      onOpenChange(false);
+      onCreated();
+      return;
+    }
+
+    if (items.length === 0) return;
 
     const purchaseItems: PurchaseQuoteItem[] = items.map(i => ({
       id: i.id,
@@ -278,7 +317,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       });
 
       if (newPurchase) {
-        // Save photos as stage evidence
         for (const url of photos) {
           await addEvidence({
             purchaseId: newPurchase.id,
@@ -298,7 +336,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   };
 
   const showSimpleFields = addType === "peca" || addType === "peca_sacola";
-  const showCalcFields = addType === "ceramico";
+  const showCalcFields = addType === "ceramico" && isEditing; // Only show calc fields for ceramico in edit mode
 
   const getItemValueDisplay = (it: PendingItem) => {
     const val = it.calcResult ? it.calcResult.finalValueBrl : (it.totalValue || 0);
