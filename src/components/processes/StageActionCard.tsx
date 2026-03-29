@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -43,6 +45,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [notes, setNotes] = useState("");
   const [weightReal, setWeightReal] = useState("");
   const [contestMotivo, setContestMotivo] = useState("");
+  const [contestDialogOpen, setContestDialogOpen] = useState(false);
+  const [contestStep, setContestStep] = useState<"motivo" | "destino">("motivo");
   const [checklistReady, setChecklistReady] = useState(true);
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
@@ -114,12 +118,60 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
-  const handleContest = async () => {
+  const handleContestSubmit = async () => {
     if (!contestMotivo.trim()) return;
     setLoading(true);
     try {
-      await contestDemonstrativo(purchase.id, contestMotivo.trim());
+      const demos = await loadDemonstrativos(purchase.id);
+      const latest = demos[demos.length - 1];
+      if (!latest) {
+        toast.error("Nenhum demonstrativo encontrado");
+        return;
+      }
+      await contestDemonstrativo(latest.id, contestMotivo.trim());
+      setContestStep("destino");
+    } catch {
+      toast.error("Erro ao contestar demonstrativo");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContestDestination = async (dest: "analise" | "conferencia") => {
+    setLoading(true);
+    try {
+      let newStatus = "Em Conferência";
+      if (dest === "analise") {
+        if (purchase.materialFlow === "ceramico") {
+          newStatus = "Cerâmico: Lab em Análise";
+        } else if (hasSacolaItems) {
+          newStatus = "Peças: Laboratório";
+        } else {
+          newStatus = "Peças: Trituração e Amostragem";
+        }
+      }
+
+      const historyEntry = {
+        status: newStatus,
+        date: new Date().toISOString(),
+        note: `Contestado: ${contestMotivo.trim()} → Devolvido para ${dest === "analise" ? "Análise" : "Conferência"}`,
+      };
+
+      await supabase
+        .from("purchases")
+        .update({
+          status: newStatus,
+          status_history: [...(purchase.statusHistory || []).map(h => ({ status: h.status, date: h.date, note: (h as any).note })), historyEntry],
+        })
+        .eq("id", purchase.id);
+
+      toast.success(`Processo devolvido para ${dest === "analise" ? "Análise" : "Conferência"}`);
+      setContestDialogOpen(false);
+      setContestStep("motivo");
+      setContestMotivo("");
       onCompleted();
+    } catch {
+      toast.error("Erro ao devolver processo");
     } finally {
       setLoading(false);
     }
@@ -350,23 +402,74 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="flex-1" disabled={loading || missingErp}>
-                    <AlertTriangle className="h-3 w-3 mr-1" />Contestar
-                  </Button>
-                </AlertDialogTrigger>
-                {enrichedDialogContent(
-                  "Contestar demonstrativo?",
-                  purchase.materialFlow === "ceramico"
-                    ? "O pedido voltará para Trituração/Homogeneização para nova análise."
-                    : "O pedido voltará para Aguardando Demonstrativo.",
-                  handleContest,
-                  "Contestar",
-                  "destructive",
-                  <Textarea placeholder="Motivo da contestação" value={contestMotivo} onChange={(e) => setContestMotivo(e.target.value)} className="text-sm" />
-                )}
-              </AlertDialog>
+              <Button size="sm" variant="destructive" className="flex-1" disabled={loading || missingErp} onClick={() => { setContestStep("motivo"); setContestMotivo(""); setContestDialogOpen(true); }}>
+                <AlertTriangle className="h-3 w-3 mr-1" />Contestar
+              </Button>
+              <Dialog open={contestDialogOpen} onOpenChange={(open) => { if (!open) { setContestDialogOpen(false); setContestStep("motivo"); setContestMotivo(""); } }}>
+                <DialogContent className="max-w-md">
+                  {contestStep === "motivo" ? (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                          Contestar demonstrativo
+                        </DialogTitle>
+                        <DialogDescription>Informe o motivo da contestação para devolver o processo.</DialogDescription>
+                      </DialogHeader>
+                      <PurchaseSummary purchase={purchase} showPdf={isDemonstrative} />
+                      <Textarea placeholder="Motivo da contestação..." value={contestMotivo} onChange={(e) => setContestMotivo(e.target.value)} className="text-sm min-h-[80px]" />
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setContestDialogOpen(false)}>Cancelar</Button>
+                        <Button variant="destructive" disabled={loading || !contestMotivo.trim()} onClick={handleContestSubmit}>
+                          {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Contestar
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Undo2 className="h-5 w-5 text-amber-600" />
+                          Para onde devolver o processo?
+                        </DialogTitle>
+                        <DialogDescription>Escolha a etapa para onde o processo será devolvido.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <button
+                          className="w-full text-left rounded-lg border border-border p-4 hover:bg-accent/50 hover:border-primary/40 transition-colors space-y-1"
+                          disabled={loading}
+                          onClick={() => handleContestDestination("analise")}
+                        >
+                          <div className="flex items-center gap-2">
+                            <FlaskConical className="h-5 w-5 text-blue-600" />
+                            <span className="font-medium text-sm">Voltar para Análise</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground pl-7">
+                            Reabrirá a etapa de laboratório para registrar novos resultados de análise.
+                          </p>
+                        </button>
+                        <button
+                          className="w-full text-left rounded-lg border border-border p-4 hover:bg-accent/50 hover:border-primary/40 transition-colors space-y-1"
+                          disabled={loading}
+                          onClick={() => handleContestDestination("conferencia")}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Package className="h-5 w-5 text-orange-600" />
+                            <span className="font-medium text-sm">Voltar para Conferência</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground pl-7">
+                            Reabrirá a conferência para verificar pesos ou materiais faltantes.
+                          </p>
+                        </button>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="outline" onClick={() => { setContestDialogOpen(false); setContestStep("motivo"); }}>Cancelar</Button>
+                      </div>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         ) : isWeighing ? (
