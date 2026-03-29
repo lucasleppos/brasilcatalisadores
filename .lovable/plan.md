@@ -1,60 +1,31 @@
 
 
-# Plano: Contestação com escolha de destino
+# Plano: Corrigir avanço cerâmico para ativar fase paralela (Bags + Pagamento)
 
 ## Problema
-O botão "Contestar" não funciona (passa `purchase.id` em vez do ID do demonstrativo) e não oferece opção de escolher para onde devolver o processo.
+
+Na linha 194 de `src/lib/purchases.ts`, a função `getNextStatus` mapeia:
+
+```
+"Cerâmico: Gerar Boleto de Aprovação" → "Concluído"
+```
+
+Isso pula completamente a fase paralela. O correto é avançar para `"Cerâmico: Aprovado"`, que na linha 487 já inicializa os sub-fluxos `fin_status = "Aguardando Pagamento"` e `op_status = "Alocando Bag"`.
+
+Com isso, o `ProcessBoard` detectará `isInParallelPhase(p) === true` e exibirá a compra nas abas "Pagamento" e "Bags / Exportação".
 
 ## Solução
 
-### 1. Corrigir `handleContest` — usar ID correto do demonstrativo
-Importar `loadDemonstrativos` e buscar o último demonstrativo da compra para obter o `id` correto.
+Alterar uma única linha em `src/lib/purchases.ts`:
 
-### 2. Adicionar diálogo de escolha de destino após contestação
+```
+// Antes (linha 194):
+if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Concluído";
 
-Substituir o AlertDialog atual de contestação por um Dialog com duas etapas:
-- **Etapa 1**: Campo de motivo da contestação (textarea) + botão "Contestar"
-- **Etapa 2**: Após confirmar, exibir opções de destino com cards clicáveis:
-
-```text
-┌──────────────────────────────────────────┐
-│  ⚠️ Para onde devolver o processo?        │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ 🔬 Voltar para Análise             │  │
-│  │ Reabrirá a etapa de laboratório    │  │
-│  │ para registrar novos resultados    │  │
-│  └────────────────────────────────────┘  │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │ 📦 Voltar para Conferência         │  │
-│  │ Reabrirá a conferência para        │  │
-│  │ verificar pesos ou materiais       │  │
-│  └────────────────────────────────────┘  │
-│                                          │
-│  [Cancelar]                              │
-└──────────────────────────────────────────┘
+// Depois:
+if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Cerâmico: Aprovado";
 ```
 
-### 3. Lógica de destino por fluxo
-
-Ao clicar em uma opção, atualizar o status da compra:
-
-| Fluxo | Destino "Análise" | Destino "Conferência" |
-|---|---|---|
-| Cerâmico | `Cerâmico: Lab em Análise` | `Em Conferência` |
-| Peças (sacola) | `Peças: Laboratório` | `Em Conferência` |
-| Peças (normal) | `Peças: Trituração e Amostragem` | `Em Conferência` |
-
-Também registrar entrada no `status_history` com o motivo da contestação.
-
-### 4. Implementação
-
-Criar um estado `contestStep` ("motivo" | "destino") no componente. Ao confirmar o motivo, chama `contestDemonstrativo(latest.id, motivo)` e avança para step "destino". Ao escolher o destino, atualiza o status da compra via `supabase.from("purchases").update(...)` e chama `onCompleted()`.
-
-## Arquivos editados
-
-| Arquivo | Acao |
-|---|---|
-| `src/components/processes/StageActionCard.tsx` | Refatorar bloco de contestação: corrigir ID, adicionar diálogo com 2 etapas (motivo + destino) |
+## Arquivo editado
+- `src/lib/purchases.ts` — linha 194
 
