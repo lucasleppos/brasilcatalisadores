@@ -324,23 +324,25 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      {purchase.materialFlow === "pecas" ? "Aprovar e Enviar para Bag" : "Aprovar demonstrativo?"}
+                      {purchase.materialFlow === "pecas" ? "Aprovar e Enviar para Bag" : purchase.materialFlow === "ceramico" ? "Aprovar e Encerrar" : "Aprovar demonstrativo?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription className="sr-only">Confirmação de aprovação</AlertDialogDescription>
                   </AlertDialogHeader>
                   <PurchaseSummary purchase={purchase} showPdf={true} />
-                  {purchase.materialFlow === "pecas" && (
+                  {(purchase.materialFlow === "pecas" || purchase.materialFlow === "ceramico") && (
                     <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 flex items-start gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                       <p className="text-xs text-amber-700">
-                        Ao confirmar, este material será registrado para pagamento e enviado diretamente para alocação ao Bag.
+                        {purchase.materialFlow === "ceramico"
+                          ? "Ao confirmar, este material será registrado para pagamento e alocação ao Bag, encerrando o processo."
+                          : "Ao confirmar, este material será registrado para pagamento e enviado diretamente para alocação ao Bag."}
                       </p>
                     </div>
                   )}
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleApprove} disabled={loading}>
-                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : "Confirmar Aprovação"}
+                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : purchase.materialFlow === "ceramico" ? "Confirmar e Encerrar" : "Confirmar Aprovação"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
