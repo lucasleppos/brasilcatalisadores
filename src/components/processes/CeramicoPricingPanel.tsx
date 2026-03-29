@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Calculator, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, batchUpdateItemPricing } from "@/lib/purchases";
+import { Purchase, batchUpdateItemPricing, advanceStage } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings, Settings } from "@/lib/settings";
 import { toast } from "sonner";
@@ -215,6 +215,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         .from("purchases")
         .update({ total_brl: totalValue })
         .eq("id", purchase.id);
+
+      // Advance to next stage automatically
+      await advanceStage(purchase.id, purchase.status);
 
       toast.success("Precificação cerâmica confirmada");
       onOpenChange(false);
