@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon } from "lucide-react";
-import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getOriginalItemCount } from "@/lib/purchases";
+import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getItemLabel } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { loadEvidences, StageEvidence, loadLabAnalyses, LabAnalysis } from "@/lib/stage-tasks";

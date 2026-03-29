@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FileDown, MessageCircle, Loader2, ArrowRight } from "lucide-react";
-import { Purchase, getNextStatus, getStatusColor, getOriginalItemCount } from "@/lib/purchases";
+import { Purchase, getNextStatus, getStatusColor, getItemLabel } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import { useState } from "react";

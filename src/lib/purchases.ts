@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
+import { fmtNum } from "./utils";
 
 // ===== Material Flow Types =====
 export type MaterialFlow = "pecas" | "ceramico";
