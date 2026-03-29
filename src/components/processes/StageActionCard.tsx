@@ -56,7 +56,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
 
-  const isAnalysis = purchase.status === "Análise" || purchase.status === "Cerâmico: Lab em Análise";
+  const isAnalysis = purchase.status === "Análise" || (purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow !== "ceramico");
   const isDemonstrative = purchase.status.includes("Gerar Boleto de Aprovação");
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isPiecePricing = purchase.status === "Peças: Aguardando Demonstrativo";
