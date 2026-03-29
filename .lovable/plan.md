@@ -1,16 +1,60 @@
 
 
-# Plano: Avançar automaticamente após precificação cerâmica
+# Plano: Contestação com escolha de destino
 
 ## Problema
-Após confirmar a precificação dos lotes cerâmicos no `CeramicoPricingPanel`, o status permanece em "Cerâmico: Em Precificação". O painel salva os valores mas **não avança o status** para "Cerâmico: Gerar Boleto de Aprovação", onde ficam os botões de PDF e WhatsApp.
-
-## Causa raiz
-No `handleConfirm` do `CeramicoPricingPanel` (linha 219), após salvar os dados, ele chama `onCompleted()` que apenas recarrega os dados — mas não chama `advanceStage()` para mover para a próxima etapa.
+O botão "Contestar" não funciona (passa `purchase.id` em vez do ID do demonstrativo) e não oferece opção de escolher para onde devolver o processo.
 
 ## Solução
-Adicionar a chamada `advanceStage(purchase.id, purchase.status)` no `handleConfirm` do `CeramicoPricingPanel`, logo após salvar os valores e antes de fechar o dialog. Isso fará o status avançar automaticamente para "Cerâmico: Gerar Boleto de Aprovação", onde o operador terá acesso aos botões de gerar PDF e enviar via WhatsApp.
 
-## Arquivo editado
-- `src/components/processes/CeramicoPricingPanel.tsx` — importar `advanceStage` de `@/lib/purchases` e chamá-lo após salvar a precificação
+### 1. Corrigir `handleContest` — usar ID correto do demonstrativo
+Importar `loadDemonstrativos` e buscar o último demonstrativo da compra para obter o `id` correto.
+
+### 2. Adicionar diálogo de escolha de destino após contestação
+
+Substituir o AlertDialog atual de contestação por um Dialog com duas etapas:
+- **Etapa 1**: Campo de motivo da contestação (textarea) + botão "Contestar"
+- **Etapa 2**: Após confirmar, exibir opções de destino com cards clicáveis:
+
+```text
+┌──────────────────────────────────────────┐
+│  ⚠️ Para onde devolver o processo?        │
+│                                          │
+│  ┌────────────────────────────────────┐  │
+│  │ 🔬 Voltar para Análise             │  │
+│  │ Reabrirá a etapa de laboratório    │  │
+│  │ para registrar novos resultados    │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  ┌────────────────────────────────────┐  │
+│  │ 📦 Voltar para Conferência         │  │
+│  │ Reabrirá a conferência para        │  │
+│  │ verificar pesos ou materiais       │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  [Cancelar]                              │
+└──────────────────────────────────────────┘
+```
+
+### 3. Lógica de destino por fluxo
+
+Ao clicar em uma opção, atualizar o status da compra:
+
+| Fluxo | Destino "Análise" | Destino "Conferência" |
+|---|---|---|
+| Cerâmico | `Cerâmico: Lab em Análise` | `Em Conferência` |
+| Peças (sacola) | `Peças: Laboratório` | `Em Conferência` |
+| Peças (normal) | `Peças: Trituração e Amostragem` | `Em Conferência` |
+
+Também registrar entrada no `status_history` com o motivo da contestação.
+
+### 4. Implementação
+
+Criar um estado `contestStep` ("motivo" | "destino") no componente. Ao confirmar o motivo, chama `contestDemonstrativo(latest.id, motivo)` e avança para step "destino". Ao escolher o destino, atualiza o status da compra via `supabase.from("purchases").update(...)` e chama `onCompleted()`.
+
+## Arquivos editados
+
+| Arquivo | Acao |
+|---|---|
+| `src/components/processes/StageActionCard.tsx` | Refatorar bloco de contestação: corrigir ID, adicionar diálogo com 2 etapas (motivo + destino) |
 
