@@ -87,8 +87,8 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
         <div className="text-muted-foreground">Valor</div>
         <div className="font-semibold">{purchase.totalBrl > 0 ? fmtBrl(purchase.totalBrl) : "Pendente"}</div>
 
-        <div className="text-muted-foreground">Itens</div>
-        <div>{getOriginalItemCount(purchase)} {getOriginalItemCount(purchase) === 1 ? "item" : "itens"}</div>
+        <div className="text-muted-foreground">{purchase.materialFlow === "ceramico" ? "Peso" : "Itens"}</div>
+        <div>{getItemLabel(purchase)}</div>
 
         <div className="text-muted-foreground">Tempo na etapa</div>
         <div>{timeInStage}</div>

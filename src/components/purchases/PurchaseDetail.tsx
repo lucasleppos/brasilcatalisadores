@@ -88,8 +88,8 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <p className={purchase.erpNumber ? "font-mono" : "text-red-500"}>{purchase.erpNumber || "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Itens</p>
-            <p>{getOriginalItemCount(purchase)} item(ns)</p>
+            <p className="text-xs text-muted-foreground">{purchase.materialFlow === "ceramico" ? "Peso" : "Itens"}</p>
+            <p>{getItemLabel(purchase)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Data</p>

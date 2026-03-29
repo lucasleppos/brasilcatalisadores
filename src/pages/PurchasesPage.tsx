@@ -116,7 +116,7 @@ export default function PurchasesPage() {
                 <SortableTableHead column="erpNumber" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Boleto Syge</SortableTableHead>
                 <SortableTableHead column="supplierName" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Fornecedor</SortableTableHead>
                 <SortableTableHead column="buyer" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Comprador</SortableTableHead>
-                <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Itens</SortableTableHead>
+                <SortableTableHead column="itemCount" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Qtd/Peso</SortableTableHead>
                 {!hideTotal && <SortableTableHead column="totalBrl" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Total</SortableTableHead>}
                 <SortableTableHead column="status" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Status</SortableTableHead>
                 <TableHead className="text-xs w-28" />
@@ -138,7 +138,7 @@ export default function PurchasesPage() {
                     </TableCell>
                     <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
-                    <TableCell className="text-sm">{getOriginalItemCount(p)}</TableCell>
+                    <TableCell className="text-sm">{getItemLabel(p)}</TableCell>
                     {!hideTotal && (
                       <TableCell className="text-sm text-right font-semibold">
                         {(() => {

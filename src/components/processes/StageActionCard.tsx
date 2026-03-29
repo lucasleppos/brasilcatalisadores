@@ -191,7 +191,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
           <div className="text-right space-y-0.5">
             <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
-            <p className="text-xs text-muted-foreground">{getOriginalItemCount(purchase)} peças</p>
+            <p className="text-xs text-muted-foreground">{getItemLabel(purchase)}</p>
             {purchase.materialFlow && (
               <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
                 {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}
