@@ -476,7 +476,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             )}
           </div>
 
-          {/* Add item */}
+          {/* Add item — hidden for ceramico (items added during conference) */}
+          {!isCeramicoMode && (
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
 
