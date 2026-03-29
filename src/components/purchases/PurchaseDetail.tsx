@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon } from "lucide-react";
-import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getOriginalItemCount } from "@/lib/purchases";
+import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getItemLabel } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { loadEvidences, StageEvidence, loadLabAnalyses, LabAnalysis } from "@/lib/stage-tasks";
@@ -88,8 +88,8 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <p className={purchase.erpNumber ? "font-mono" : "text-red-500"}>{purchase.erpNumber || "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Itens</p>
-            <p>{getOriginalItemCount(purchase)} item(ns)</p>
+            <p className="text-xs text-muted-foreground">{purchase.materialFlow === "ceramico" ? "Peso" : "Itens"}</p>
+            <p>{getItemLabel(purchase)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Data</p>

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FileDown, MessageCircle, Loader2, ArrowRight } from "lucide-react";
-import { Purchase, getNextStatus, getStatusColor, getOriginalItemCount } from "@/lib/purchases";
+import { Purchase, getNextStatus, getStatusColor, getItemLabel } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -87,8 +87,8 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
         <div className="text-muted-foreground">Valor</div>
         <div className="font-semibold">{purchase.totalBrl > 0 ? fmtBrl(purchase.totalBrl) : "Pendente"}</div>
 
-        <div className="text-muted-foreground">Itens</div>
-        <div>{getOriginalItemCount(purchase)} {getOriginalItemCount(purchase) === 1 ? "item" : "itens"}</div>
+        <div className="text-muted-foreground">{purchase.materialFlow === "ceramico" ? "Peso" : "Itens"}</div>
+        <div>{getItemLabel(purchase)}</div>
 
         <div className="text-muted-foreground">Tempo na etapa</div>
         <div>{timeInStage}</div>

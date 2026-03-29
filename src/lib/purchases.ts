@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
+import { fmtNum } from "./utils";
 
 // ===== Material Flow Types =====
 export type MaterialFlow = "pecas" | "ceramico";
@@ -286,6 +287,20 @@ export function getConferenciaItems(purchase: Purchase): PurchaseQuoteItem[] {
 /** Sum quantities from original items only */
 export function getOriginalItemCount(purchase: Purchase): number {
   return getOriginalItems(purchase).reduce((sum, i) => sum + (i.quantity || 1), 0);
+}
+
+/** Returns a human-readable label: weight for cerâmico, count for peças */
+export function getItemLabel(purchase: Purchase): string {
+  if (purchase.materialFlow === "ceramico") {
+    const confItems = getConferenciaItems(purchase);
+    if (confItems.length > 0) {
+      const totalWeight = confItems.reduce((s, i) => s + (i.weight || 0), 0);
+      return `${fmtNum(totalWeight, 3)} kg`;
+    }
+    return purchase.bulkWeight ? `${fmtNum(purchase.bulkWeight, 3)} kg` : "—";
+  }
+  const count = getOriginalItemCount(purchase);
+  return `${count} ${count === 1 ? "peça" : "peças"}`;
 }
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
