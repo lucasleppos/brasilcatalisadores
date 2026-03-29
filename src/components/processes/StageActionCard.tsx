@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search } from "lucide-react";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator } from "lucide-react";
 import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoLabPanel from "./CeramicoLabPanel";
+import CeramicoPricingPanel from "./CeramicoPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -48,6 +49,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
+  const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -71,6 +73,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
+  const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
@@ -447,8 +450,20 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onCompleted={onCompleted}
             />
           </div>
+        ) : isCeramicoPricing ? (
+          /* Cerâmico Pricing: Precificação por lote */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoPricingOpen(true)}>
+              <Calculator className="h-3 w-3 mr-1" /> Precificar Lotes
+            </Button>
+            <CeramicoPricingPanel
+              purchase={purchase}
+              open={ceramicoPricingOpen}
+              onOpenChange={setCeramicoPricingOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : (
-          /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
             {/* Sacola Pricing Panel for peca_sacola items */}
             {isSacolaPricing && (
