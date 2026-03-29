@@ -16,6 +16,8 @@ import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
+import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
+import CeramicoLabPanel from "./CeramicoLabPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
@@ -44,6 +46,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
+  const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
+  const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -65,6 +69,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
+  const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
+  const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
