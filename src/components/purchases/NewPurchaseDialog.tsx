@@ -617,6 +617,14 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <Plus className="mr-1 h-3 w-3" />Adicionar
             </Button>
           </div>
+          )}
+
+          {/* Ceramico info message */}
+          {isCeramicoMode && !isEditing && (
+            <div className="rounded-md bg-muted/30 border p-3 text-xs text-muted-foreground">
+              <p>Para cerâmico, os lotes (categoria, peso e tara) serão registrados na etapa de <strong>Conferência</strong> após a criação da compra.</p>
+            </div>
+          )}
 
           {/* Items list */}
           {items.length > 0 && (
