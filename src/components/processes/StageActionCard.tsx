@@ -18,6 +18,7 @@ import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoLabPanel from "./CeramicoLabPanel";
+import CeramicoPricingPanel from "./CeramicoPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
 
