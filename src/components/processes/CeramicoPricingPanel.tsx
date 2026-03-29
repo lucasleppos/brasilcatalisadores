@@ -216,6 +216,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         .update({ total_brl: totalValue })
         .eq("id", purchase.id);
 
+      // Advance to next stage automatically
+      await advanceStage(purchase.id, purchase.status);
+
       toast.success("Precificação cerâmica confirmada");
       onOpenChange(false);
       onCompleted();
