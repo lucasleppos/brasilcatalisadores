@@ -184,6 +184,9 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   if (current === "Cerâmico: Demonstrativo Contestado") return "Cerâmico: Em Trituração/Homogeneização";
   if (current === "Peças: Peso Divergente") return "Peças: Alocado ao Bag";
 
+  // Skip payment stages for Peças: go directly from approval to bag allocation
+  if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
+
   // For ceramico, after "Aprovado" there's no single next — parallel sub-flows start
   if (current === "Cerâmico: Aprovado") return null;
   if (current === "Concluído") return null;
