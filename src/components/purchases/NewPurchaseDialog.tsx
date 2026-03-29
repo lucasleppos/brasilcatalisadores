@@ -481,15 +481,6 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
 
-            <Select value={addType} onValueChange={(v) => { setAddType(v as PurchaseItemType); resetAddFields(); }}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="peca">Peça</SelectItem>
-                <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
-                <SelectItem value="ceramico">Cerâmico</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Catalog search for peça type */}
             {addType === "peca" && (
               <div className="space-y-1">
@@ -680,7 +671,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || items.length === 0 || (!isEditing && photos.length === 0)}>
+          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && items.length === 0) || (isCeramicoMode && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
             <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
           </Button>
         </DialogFooter>
