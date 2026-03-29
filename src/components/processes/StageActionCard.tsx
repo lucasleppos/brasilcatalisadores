@@ -73,6 +73,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
+  const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
