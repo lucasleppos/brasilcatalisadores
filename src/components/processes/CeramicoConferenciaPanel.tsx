@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -266,14 +266,18 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           <p className="text-xs font-medium text-muted-foreground">Adicionar Lote</p>
           <div className="space-y-1.5">
             <Label className="text-xs">Categoria (Grupo) *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar categoria" /></SelectTrigger>
-              <SelectContent>
-                {CERAMICO_CATEGORIES.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              list="ceramico-categories"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              placeholder="Selecionar ou digitar categoria"
+              className="h-8 text-sm"
+            />
+            <datalist id="ceramico-categories">
+              {CERAMICO_CATEGORIES.map(c => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
