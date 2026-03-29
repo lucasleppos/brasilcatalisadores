@@ -450,8 +450,20 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onCompleted={onCompleted}
             />
           </div>
+        ) : isCeramicoPricing ? (
+          /* Cerâmico Pricing: Precificação por lote */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoPricingOpen(true)}>
+              <Calculator className="h-3 w-3 mr-1" /> Precificar Lotes
+            </Button>
+            <CeramicoPricingPanel
+              purchase={purchase}
+              open={ceramicoPricingOpen}
+              onOpenChange={setCeramicoPricingOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : (
-          /* Default: simple advance with checklist */
           <div className="space-y-2 pt-1 border-t border-border/40">
             {/* Sacola Pricing Panel for peca_sacola items */}
             {isSacolaPricing && (
