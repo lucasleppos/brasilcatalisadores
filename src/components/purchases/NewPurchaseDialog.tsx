@@ -421,11 +421,24 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             </div>
           )}
 
-          {/* Material a Classificar */}
+          {/* Material type selector */}
+          <div className="space-y-1">
+            <Label className="text-xs">Tipo de Material</Label>
+            <Select value={addType} onValueChange={(v) => { setAddType(v as PurchaseItemType); resetAddFields(); }}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="peca">Peça</SelectItem>
+                <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
+                <SelectItem value="ceramico">Cerâmico</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Bulk weight — shown for ceramico or when explicitly used */}
           <div className="space-y-2 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold flex items-center gap-1">
               <Package className="h-3 w-3" />
-              Material a Classificar (opcional)
+              {isCeramicoMode ? "Peso total recebido (kg) *" : "Material a Classificar (opcional)"}
             </Label>
             <div className="space-y-1">
               <Label className="text-[10px]">Peso total recebido (kg)</Label>
@@ -438,7 +451,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 placeholder="0,0000"
               />
             </div>
-            {bulkWeight > 0 && (
+            {bulkWeight > 0 && !isCeramicoMode && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]">
                   <span className="text-muted-foreground">Classificado: {fmtNum(totalClassified, 4)} kg</span>
