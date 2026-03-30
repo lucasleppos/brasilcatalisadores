@@ -42,20 +42,30 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
   }, [open]);
 
   const loadAvailableMaterials = async () => {
-    const { data: purchases } = await supabase
+    // Query 1: purchases by direct status
+    const { data: directPurchases } = await supabase
       .from("purchases")
       .select("id, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
-    if (!purchases) return;
+    // Query 2: ceramic purchases in parallel phase
+    const { data: ceramicPurchases } = await supabase
+      .from("purchases")
+      .select("id, supplier_name, total_brl, location")
+      .eq("location", "matriz")
+      .eq("status", "Cerâmico: Aprovado")
+      .eq("op_status", "Alocando Bag");
+
+    const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])];
+    if (purchases.length === 0) { setMaterials([]); return; }
 
     const purchaseIds = purchases.map(p => p.id);
-    if (purchaseIds.length === 0) { setMaterials([]); return; }
 
     const { data: items } = await supabase
       .from("purchase_items")
       .select("*")
+      .eq("category", "conferencia")
       .in("purchase_id", purchaseIds);
 
     const { data: allocated } = await supabase
