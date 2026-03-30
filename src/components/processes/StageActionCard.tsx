@@ -222,8 +222,45 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       setLoading(false);
     }
   };
+  const handleAdminMove = async () => {
+    if (!adminTargetStatus) return;
+    setLoading(true);
+    try {
+      const { data: current } = await supabase.from("purchases").select("status_history").eq("id", purchase.id).single();
+      const history = [...((current?.status_history as any[]) || []), {
+        status: adminTargetStatus,
+        date: new Date().toISOString(),
+        note: `Movido manualmente pelo admin${adminMoveNote ? `: ${adminMoveNote}` : ""}`,
+      }];
 
-  // Reusable enriched dialog content
+      const updateData: any = { status: adminTargetStatus, status_history: history };
+
+      // Initialize parallel sub-flows if moving to "Cerâmico: Aprovado"
+      if (adminTargetStatus === "Cerâmico: Aprovado") {
+        updateData.fin_status = "Aguardando Pagamento";
+        updateData.op_status = "Alocando Bag";
+      }
+
+      // Allow overriding parallel sub-statuses
+      if (adminTargetFinStatus) updateData.fin_status = adminTargetFinStatus;
+      if (adminTargetOpStatus) updateData.op_status = adminTargetOpStatus;
+
+      await supabase.from("purchases").update(updateData).eq("id", purchase.id);
+      toast.success(`Etapa alterada para: ${adminTargetStatus}`);
+      setAdminMoveOpen(false);
+      setAdminTargetStatus("");
+      setAdminTargetFinStatus("");
+      setAdminTargetOpStatus("");
+      setAdminMoveNote("");
+      onCompleted();
+    } catch {
+      toast.error("Erro ao alterar etapa");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const enrichedDialogContent = (title: string, description: string, onAction: () => void, actionLabel: string, variant?: "destructive", extraContent?: React.ReactNode) => (
     <AlertDialogContent className="max-w-md">
       <AlertDialogHeader>
