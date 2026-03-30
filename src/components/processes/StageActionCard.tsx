@@ -302,6 +302,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </Badge>
             )}
           </div>
+          {isSuperAdmin && (
+            <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="Alterar Etapa (Admin)" onClick={() => { setAdminTargetStatus(purchase.status); setAdminMoveOpen(true); }}>
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
 
         {/* Value */}
@@ -710,6 +715,79 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
         )}
       </CardContent>
+
+      {/* Admin Manual Stage Move Dialog */}
+      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetFinStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="h-5 w-5 text-amber-600" />
+              Alterar Etapa Manualmente
+            </DialogTitle>
+            <DialogDescription>Mover esta compra para outra etapa do fluxo. Esta ação será registrada no histórico.</DialogDescription>
+          </DialogHeader>
+          <PurchaseSummary purchase={purchase} />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Status Principal</label>
+              <Select value={adminTargetStatus} onValueChange={setAdminTargetStatus}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getFlowStatuses(purchase.materialFlow as any).map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Parallel sub-status selectors for cerâmico */}
+            {(adminTargetStatus === "Cerâmico: Aprovado" || isInParallelPhase(purchase)) && purchase.materialFlow === "ceramico" && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">💰 Financeiro</label>
+                  <Select value={adminTargetFinStatus} onValueChange={setAdminTargetFinStatus}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Manter atual" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CER_FIN_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">📦 Operacional</label>
+                  <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Manter atual" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CER_OP_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Observação (opcional)</label>
+              <Textarea placeholder="Motivo da alteração..." value={adminMoveNote} onChange={(e) => setAdminMoveNote(e.target.value)} className="text-sm min-h-[60px]" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdminMoveOpen(false)}>Cancelar</Button>
+            <Button disabled={loading || !adminTargetStatus} onClick={handleAdminMove}>
+              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Confirmar Movimentação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
