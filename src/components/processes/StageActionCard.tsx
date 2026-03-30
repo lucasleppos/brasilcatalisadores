@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
@@ -23,6 +24,7 @@ import CeramicoLabPanel from "./CeramicoLabPanel";
 import CeramicoPricingPanel from "./CeramicoPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StageActionCardProps {
   purchase: Purchase;
@@ -38,6 +40,7 @@ function timeSince(dateStr: string) {
 }
 
 export default function StageActionCard({ purchase, onCompleted }: StageActionCardProps) {
+  const { role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [ptPpm, setPtPpm] = useState("");
   const [pdPpm, setPdPpm] = useState("");
@@ -54,6 +57,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
+
+  // Admin manual stage move
+  const [adminMoveOpen, setAdminMoveOpen] = useState(false);
+  const [adminTargetStatus, setAdminTargetStatus] = useState("");
+  const [adminTargetFinStatus, setAdminTargetFinStatus] = useState("");
+  const [adminTargetOpStatus, setAdminTargetOpStatus] = useState("");
+  const [adminMoveNote, setAdminMoveNote] = useState("");
+
+  const isSuperAdmin = role === "super_admin";
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
@@ -210,8 +222,45 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       setLoading(false);
     }
   };
+  const handleAdminMove = async () => {
+    if (!adminTargetStatus) return;
+    setLoading(true);
+    try {
+      const { data: current } = await supabase.from("purchases").select("status_history").eq("id", purchase.id).single();
+      const history = [...((current?.status_history as any[]) || []), {
+        status: adminTargetStatus,
+        date: new Date().toISOString(),
+        note: `Movido manualmente pelo admin${adminMoveNote ? `: ${adminMoveNote}` : ""}`,
+      }];
 
-  // Reusable enriched dialog content
+      const updateData: any = { status: adminTargetStatus, status_history: history };
+
+      // Initialize parallel sub-flows if moving to "Cerâmico: Aprovado"
+      if (adminTargetStatus === "Cerâmico: Aprovado") {
+        updateData.fin_status = "Aguardando Pagamento";
+        updateData.op_status = "Alocando Bag";
+      }
+
+      // Allow overriding parallel sub-statuses
+      if (adminTargetFinStatus) updateData.fin_status = adminTargetFinStatus;
+      if (adminTargetOpStatus) updateData.op_status = adminTargetOpStatus;
+
+      await supabase.from("purchases").update(updateData).eq("id", purchase.id);
+      toast.success(`Etapa alterada para: ${adminTargetStatus}`);
+      setAdminMoveOpen(false);
+      setAdminTargetStatus("");
+      setAdminTargetFinStatus("");
+      setAdminTargetOpStatus("");
+      setAdminMoveNote("");
+      onCompleted();
+    } catch {
+      toast.error("Erro ao alterar etapa");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const enrichedDialogContent = (title: string, description: string, onAction: () => void, actionLabel: string, variant?: "destructive", extraContent?: React.ReactNode) => (
     <AlertDialogContent className="max-w-md">
       <AlertDialogHeader>
@@ -253,6 +302,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </Badge>
             )}
           </div>
+          {isSuperAdmin && (
+            <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="Alterar Etapa (Admin)" onClick={() => { setAdminTargetStatus(purchase.status); setAdminMoveOpen(true); }}>
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
 
         {/* Value */}
@@ -661,6 +715,79 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </div>
         )}
       </CardContent>
+
+      {/* Admin Manual Stage Move Dialog */}
+      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetFinStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="h-5 w-5 text-amber-600" />
+              Alterar Etapa Manualmente
+            </DialogTitle>
+            <DialogDescription>Mover esta compra para outra etapa do fluxo. Esta ação será registrada no histórico.</DialogDescription>
+          </DialogHeader>
+          <PurchaseSummary purchase={purchase} />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Status Principal</label>
+              <Select value={adminTargetStatus} onValueChange={setAdminTargetStatus}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getFlowStatuses(purchase.materialFlow as any).map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Parallel sub-status selectors for cerâmico */}
+            {(adminTargetStatus === "Cerâmico: Aprovado" || isInParallelPhase(purchase)) && purchase.materialFlow === "ceramico" && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">💰 Financeiro</label>
+                  <Select value={adminTargetFinStatus} onValueChange={setAdminTargetFinStatus}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Manter atual" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CER_FIN_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">📦 Operacional</label>
+                  <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Manter atual" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CER_OP_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Observação (opcional)</label>
+              <Textarea placeholder="Motivo da alteração..." value={adminMoveNote} onChange={(e) => setAdminMoveNote(e.target.value)} className="text-sm min-h-[60px]" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdminMoveOpen(false)}>Cancelar</Button>
+            <Button disabled={loading || !adminTargetStatus} onClick={handleAdminMove}>
+              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Confirmar Movimentação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
