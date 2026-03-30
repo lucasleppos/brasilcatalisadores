@@ -40,6 +40,7 @@ function timeSince(dateStr: string) {
 }
 
 export default function StageActionCard({ purchase, onCompleted }: StageActionCardProps) {
+  const { role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [ptPpm, setPtPpm] = useState("");
   const [pdPpm, setPdPpm] = useState("");
@@ -56,6 +57,15 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
+
+  // Admin manual stage move
+  const [adminMoveOpen, setAdminMoveOpen] = useState(false);
+  const [adminTargetStatus, setAdminTargetStatus] = useState("");
+  const [adminTargetFinStatus, setAdminTargetFinStatus] = useState("");
+  const [adminTargetOpStatus, setAdminTargetOpStatus] = useState("");
+  const [adminMoveNote, setAdminMoveNote] = useState("");
+
+  const isSuperAdmin = role === "super_admin";
 
   const handleChecklistChange = useCallback((canAdvance: boolean) => {
     setChecklistReady(canAdvance);
