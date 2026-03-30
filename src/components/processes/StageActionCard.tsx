@@ -451,7 +451,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleApprove} disabled={loading}>
-                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : purchase.materialFlow === "ceramico" ? "Confirmar e Encerrar" : "Confirmar Aprovação"}
+                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : purchase.materialFlow === "ceramico" ? "Confirmar e Alocar ao Bag" : "Confirmar Aprovação"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
