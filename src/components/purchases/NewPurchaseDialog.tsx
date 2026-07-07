@@ -438,10 +438,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           <div className="space-y-2 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold flex items-center gap-1">
               <Package className="h-3 w-3" />
-              {isCeramicoMode ? "Peso total recebido (kg) *" : "Material a Classificar (opcional)"}
+              {isCeramicoMode ? "Peso Bruto Total Recebido (kg) *" : "Material a Classificar (opcional)"}
             </Label>
             <div className="space-y-1">
-              <Label className="text-[10px]">Peso total recebido (kg)</Label>
+              <Label className="text-[10px]">
+                {isCeramicoMode ? "Peso bruto total (desconto de tara e embalagens nas próximas etapas)" : "Peso total recebido (kg)"}
+              </Label>
               <Input
                 type="text"
                 inputMode="decimal"

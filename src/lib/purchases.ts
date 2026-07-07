@@ -36,7 +36,6 @@ const PECAS_STATUSES = [
 
 // Cerâmico flow statuses
 const CERAMICO_STATUSES = [
-  "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
   "Cerâmico: Amostra Enviada ao Lab",
   "Cerâmico: Lab em Análise",
@@ -114,7 +113,6 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Alocado ao Bag": ["admin", "super_admin"],
   "Concluído": [],
   // Cerâmico
-  "Cerâmico: Em Separação": ["operacional"],
   "Cerâmico: Em Trituração/Homogeneização": ["operacional"],
   "Cerâmico: Amostra Enviada ao Lab": ["operacional"],
   "Cerâmico: Lab em Análise": ["laboratorio"],
@@ -157,7 +155,6 @@ export const PECAS_FLOW: string[] = [
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
-  "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
   "Cerâmico: Amostra Enviada ao Lab",
   "Cerâmico: Lab em Análise",
@@ -204,7 +201,7 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   // Bifurcation: after "Em Conferência", jump to the correct flow
   if (current === "Em Conferência") {
     if (materialFlow === "pecas") return "Peças: Trituração e Amostragem";
-    if (materialFlow === "ceramico") return "Cerâmico: Em Separação";
+    if (materialFlow === "ceramico") return "Cerâmico: Em Trituração/Homogeneização";
   }
 
   return flow[idx + 1];
