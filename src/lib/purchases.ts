@@ -201,7 +201,7 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   // Bifurcation: after "Em Conferência", jump to the correct flow
   if (current === "Em Conferência") {
     if (materialFlow === "pecas") return "Peças: Trituração e Amostragem";
-    if (materialFlow === "ceramico") return "Cerâmico: Em Separação";
+    if (materialFlow === "ceramico") return "Cerâmico: Em Trituração/Homogeneização";
   }
 
   return flow[idx + 1];
