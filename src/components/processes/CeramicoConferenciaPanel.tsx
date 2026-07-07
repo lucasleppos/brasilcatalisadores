@@ -169,22 +169,17 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     for (let i = 0; i < inserted.length; i++) {
       const id = inserted[i].id;
       const code = buildLabelCode(purchase.purchaseNumber, purchase.date, i + 1);
-      const rows = [
+      const rows: any[] = [
         { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `lote_cat_${id}`, data_type: "text", value_text: lotes[i].category },
         { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `label_${id}`, data_type: "text", value_text: code },
       ];
       if (lotes[i].photoUrl) {
         rows.push({
           purchase_id: purchase.id, stage: "conferencia_ceramico",
-          task_key: `photo_lote_${id}`, data_type: "photo", value_text: lotes[i].photoUrl,
-        } as any);
-        // Actually persist as file_url
+          task_key: `photo_lote_${id}`, data_type: "photo", file_url: lotes[i].photoUrl,
+        });
       }
-      await supabase.from("stage_evidence").insert(rows.map(r =>
-        r.task_key.startsWith("photo_lote_")
-          ? { purchase_id: r.purchase_id, stage: r.stage, task_key: r.task_key, data_type: "photo", file_url: lotes[i].photoUrl }
-          : r
-      ));
+      await supabase.from("stage_evidence").insert(rows);
       saved.push({ ...lotes[i], id, labelCode: code });
     }
     setLotes(saved);
