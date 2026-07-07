@@ -155,7 +155,6 @@ export const PECAS_FLOW: string[] = [
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
-  "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
   "Cerâmico: Amostra Enviada ao Lab",
   "Cerâmico: Lab em Análise",
