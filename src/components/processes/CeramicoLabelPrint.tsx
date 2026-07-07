@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react";
+import { buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
+import { fmtNum } from "@/lib/utils";
+
+export interface LabelData {
+  code: string;
+  buyer: string;
+  supplierName: string;
+  group: string;
+  weightNet: number;
+  tare: number;
+}
+
+interface Props {
+  labels: LabelData[];
+}
+
+/**
+ * Thermal label sheet — 100 x 50 mm, 1 label per page.
+ * Uses @page rules and @media print to strip browser chrome for direct thermal printing.
+ * Render in a hidden container and call window.print() from the caller.
+ */
+export default function CeramicoLabelPrint({ labels }: Props) {
+  const [qrs, setQrs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      const entries = await Promise.all(
+        labels.map(async (l) => [l.code, await generateQRCodeDataUrl(buildLabelUrl(l.code), 260)] as const),
+      );
+      setQrs(Object.fromEntries(entries));
+    })();
+  }, [labels]);
+
+  return (
+    <div className="ceramico-label-print">
+      <style>{`
+        @media print {
+          @page { size: 100mm 50mm; margin: 0; }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          body * { visibility: hidden !important; }
+          .ceramico-label-print, .ceramico-label-print * { visibility: visible !important; }
+          .ceramico-label-print { position: absolute; left: 0; top: 0; width: 100mm; }
+          .ceramico-label { page-break-after: always; break-after: page; }
+          .ceramico-label:last-child { page-break-after: auto; break-after: auto; }
+        }
+        .ceramico-label {
+          width: 100mm;
+          height: 50mm;
+          box-sizing: border-box;
+          padding: 2.5mm 3mm;
+          color: #000;
+          background: #fff;
+          font-family: Arial, Helvetica, sans-serif;
+          display: grid;
+          grid-template-columns: 1fr 32mm;
+          gap: 2mm;
+          align-items: stretch;
+        }
+        .ceramico-label .info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+        .ceramico-label .lote {
+          font-size: 15pt; font-weight: 900; letter-spacing: 0.2px;
+          line-height: 1.05; border-bottom: 0.4mm solid #000; padding-bottom: 1mm; margin-bottom: 1mm;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ceramico-label .row { font-size: 10.5pt; font-weight: 700; line-height: 1.25; margin: 0.3mm 0; }
+        .ceramico-label .row .lbl { font-weight: 700; }
+        .ceramico-label .row .val { font-weight: 800; }
+        .ceramico-label .weights { display: flex; gap: 3mm; font-size: 11pt; font-weight: 800; }
+        .ceramico-label .qr { display: flex; align-items: center; justify-content: center; }
+        .ceramico-label .qr img { width: 30mm; height: 30mm; }
+      `}</style>
+
+      {labels.map((l) => (
+        <div key={l.code} className="ceramico-label">
+          <div className="info">
+            <div className="lote">LOTE: {l.code}</div>
+            <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
+            <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
+            <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
+            <div className="weights">
+              <span>Peso Líq.: {fmtNum(l.weightNet, 3)} kg</span>
+              <span>Tara: {fmtNum(l.tare, 3)} kg</span>
+            </div>
+          </div>
+          <div className="qr">
+            {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
