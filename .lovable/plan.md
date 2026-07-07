@@ -1,51 +1,108 @@
 
+# Reestruturação do Fluxo Cerâmico — Etapas 1 a 3
 
-# Plano: Corrigir duplicatas e PPMs na aba "Alocar Material"
+Escopo desta iteração: **Compra → Conferência** (com etiquetas térmicas de rastreio) e remoção da etapa **Cerâmico: Em Separação**. Demais etapas permanecem inalteradas nesta rodada.
 
-## Problemas Identificados
+---
 
-### 1. Itens duplicados
-A query carrega **todos** os `purchase_items` sem filtrar pelo campo `category`. Os dados mostram que uma compra como `e543f457` tem 1 item original (`category = null`, quantity=5) e 5 itens de conferência (`category = 'conferencia'`). Todos os 6 aparecem na lista. A solução é mostrar **apenas itens de conferência** (que possuem dados reais de peso, valor e PPM).
+## Etapa 1 — Compra (Criação)
 
-### 2. PPMs zerados
-Os itens originais (`category = null`) não possuem `calc_input`, logo PPMs ficam 0. Os itens de conferência possuem `calc_input` com os valores reais de Pt, Pd, Rh. Ao filtrar para conferência, o problema se resolve automaticamente.
+- Renomear o campo de peso do cerâmico em `NewPurchaseDialog` para **"Peso Bruto Total Recebido (kg)"**.
+- No detalhe da compra e no card do processo, exibir o **saldo pendente de conferência** = `bulk_weight − Σ(peso líquido + tara)` conferidos.
+- Foto obrigatória na criação permanece igual.
 
-### 3. Compras cerâmicas na fase paralela não aparecem
-A query filtra por `status IN ("Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag")` mas compras cerâmicas na fase paralela ficam com `status = "Cerâmico: Aprovado"` e `op_status = "Alocando Bag"`. Elas nunca aparecem como disponíveis.
+Sem alteração de schema.
 
-## Solução
+---
 
-### Arquivo: `src/components/bags/AllocationPanel.tsx`
+## Etapa 2 — Conferência do Cerâmico
 
-1. **Filtrar itens de conferência**: Adicionar `.eq("category", "conferencia")` na query de `purchase_items`, ou filtrar no client-side com `item.category === 'conferencia'`
-2. **Incluir compras cerâmicas em fase paralela**: Fazer uma segunda query para `purchases` com `status = "Cerâmico: Aprovado"` e `op_status = "Alocando Bag"`, e juntar os resultados
-3. PPMs já são lidos corretamente de `calc_input` -- ficam corretos ao filtrar conferência
+Arquivo principal: `src/components/processes/CeramicoConferenciaPanel.tsx`.
 
-### Arquivo: `src/components/bags/AllocateMaterialDialog.tsx`
+### 2.1. Foto obrigatória por grupo/lote
+- Cada lote adicionado exige **1 foto** antes de salvar.
+- Upload para bucket `stage-photos` (já existente). Registro em `stage_evidence` com `task_key = photo_lote_<purchase_item_id>`, `stage = "conferencia_ceramico"`.
+- Remover a exigência genérica `photo_recebimento` do stage "Em Conferência" quando `materialFlow === "ceramico"` (foto passa a ser por lote). Ajuste em `src/lib/stage-tasks.ts`.
 
-Mesmas correções:
-1. Filtrar apenas itens de conferência
-2. Incluir compras cerâmicas na fase paralela
+### 2.2. Peso líquido + Tara descontados do bruto
+- Saldo em tempo real com destaque visual.
+- **Validação de encerramento:** tolerância de **2%** — `|bulk_weight − Σ(líquido+tara)| ≤ 2% × bulk_weight`. Fora disso, bloqueia "Encerrar".
+- Persistência mantida (peso líquido em `weight`, tara em `weight_loss`).
 
-## Detalhes Técnicos
+### 2.3. Etiquetas térmicas de rastreio
 
-A query de purchases passa de:
+**Código do lote:**
 ```
-.in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"])
+LOT-<AAMMDD>-<Nº compra sem barras/espaços>-<seq 2 díg>
 ```
-Para incluir também:
-```
-OR (status = "Cerâmico: Aprovado" AND op_status = "Alocando Bag")
+Ex.: compra `29/03/2026 - 03`, lote 1 → `LOT-260329-03-01`.
+
+**Formato físico:** etiqueta térmica **100 × 50 mm**, 1 por página (rolo térmico). CSS `@page { size: 100mm 50mm; margin: 2mm }` + `@media print` para eliminar cabeçalho do navegador.
+
+**Layout (fontes grandes para leitura rápida no chão de fábrica):**
+
+```text
+┌────────────────────────────────────────────────┐
+│ LOTE: LOT-260329-03-01              ┌────────┐ │
+│                                     │        │ │
+│ Comprador: João Silva               │  QR    │ │
+│ Fornecedor: Fornecedor XYZ Ltda     │  Code  │ │
+│ Grupo: Grupo 03                     │ 30×30  │ │
+│ Peso Líq.: 12,345 kg  Tara: 0,850kg │  mm    │ │
+│                                     └────────┘ │
+└────────────────────────────────────────────────┘
 ```
 
-E os itens são filtrados com:
-```
-if (item.category !== 'conferencia') return;
-```
+Especificações de tipografia:
+- **LOTE**: 18pt bold, destaque no topo em largura total.
+- **Comprador / Fornecedor / Grupo / Pesos**: 12–13pt bold, alto contraste (preto puro), espaçamento generoso.
+- QR Code ~30×30 mm à direita, aponta para `/#/processos?lote=LOT-...` (leitura futura).
+- Sem logo/marca no topo (removido conforme solicitado).
 
-## Arquivos a editar
+**Componentes/arquivos novos:**
+- `src/lib/labels.ts` — `buildLabelCode(purchase, seq)` + helper que gera QR SVG via lib `qrcode`.
+- `src/components/processes/CeramicoLabelPrint.tsx` — componente de impressão de 1 etiqueta térmica, com estilos `@page`/`@media print` dedicados.
+- No painel de conferência:
+  - Botão **"Imprimir etiqueta"** em cada card de lote (individual, reimpressão avulsa).
+  - Botão **"Imprimir todas as etiquetas"** no rodapé (loop imprimindo uma por página).
+- Persistência do código: `stage_evidence` com `task_key = label_<purchase_item_id>`, `value_text = LOT-...` (sem alteração de schema).
+
+Fonte dos dados exibidos:
+- `Comprador` → `purchases.buyer`
+- `Fornecedor` → `purchases.supplier_name`
+- `Grupo` → categoria do lote (Grupo 01…, Especial, Extra)
+- `Peso Líq. / Tara` → `weight` / `weight_loss` do item
+
+---
+
+## Etapa 3 — Remover "Cerâmico: Em Separação"
+
 | Arquivo | Alteração |
 |---|---|
-| `src/components/bags/AllocationPanel.tsx` | Filtrar conferência + incluir cerâmicos paralelos |
-| `src/components/bags/AllocateMaterialDialog.tsx` | Mesma correção |
+| `src/lib/purchases.ts` | Remover `"Cerâmico: Em Separação"` de `CERAMICO_STATUSES`, `CERAMICO_FLOW`, `STAGE_ROLES`. Em `getNextStatus`, após `"Em Conferência"` com fluxo cerâmico → `"Cerâmico: Em Trituração/Homogeneização"`. |
+| `src/lib/stage-tasks.ts` | Remover entrada `"Cerâmico: Em Separação"` de `STAGE_REQUIREMENTS`. |
+| `src/components/processes/ProcessBoard.tsx` / `ProcessFilters.tsx` | Retirar coluna/filtro de Separação, se listada. |
+| Migração de dados | `UPDATE purchases SET status='Cerâmico: Em Trituração/Homogeneização' WHERE status='Cerâmico: Em Separação'`, com append no `status_history`. |
 
+Status legado continua aceito pelo tipo `PurchaseStatus = string` — histórico não quebra.
+
+---
+
+## Dependências
+
+- Adicionar pacote **`qrcode`** (`bun add qrcode` + `@types/qrcode`) — geração de QR SVG client-side.
+
+---
+
+## Resumo dos arquivos afetados
+
+| Arquivo | Ação |
+|---|---|
+| `src/components/purchases/NewPurchaseDialog.tsx` | Renomear rótulo do peso do cerâmico |
+| `src/components/processes/CeramicoConferenciaPanel.tsx` | Foto por lote, saldo em tempo real, tolerância 2%, botões de impressão |
+| `src/components/processes/CeramicoLabelPrint.tsx` *(novo)* | Layout da etiqueta térmica 100×50 mm |
+| `src/lib/labels.ts` *(novo)* | Código do lote + QR |
+| `src/lib/purchases.ts` | Remover status "Cerâmico: Em Separação" do fluxo |
+| `src/lib/stage-tasks.ts` | Remover requisitos de Separação e da foto genérica de recebimento (cerâmico) |
+| `src/components/processes/ProcessBoard.tsx` / `ProcessFilters.tsx` | Ajustes de UI |
+| Migração de dados | Mover compras ativas de Separação → Trituração/Homogeneização |
