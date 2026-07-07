@@ -20,10 +20,7 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
   "Peças: Trituração e Amostragem": [
     { key: "confirm_trit_amostr", type: "note", label: "Confirmar trituração e amostragem concluídas", required: true },
   ],
-  // Cerâmico: Separação
-  "Cerâmico: Em Separação": [
-    { key: "photo_separacao", type: "photo", label: "Foto do material separado", required: true },
-  ],
+  // Cerâmico: Separação foi removido do fluxo (a separação acontece durante a Conferência)
   // Peças: Corte
   "Peças: Em Corte": [
     { key: "photo_pos_corte", type: "photo", label: "Foto pós-corte", required: true },
