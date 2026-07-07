@@ -36,7 +36,6 @@ const PECAS_STATUSES = [
 
 // Cerâmico flow statuses
 const CERAMICO_STATUSES = [
-  "Cerâmico: Em Separação",
   "Cerâmico: Em Trituração/Homogeneização",
   "Cerâmico: Amostra Enviada ao Lab",
   "Cerâmico: Lab em Análise",
