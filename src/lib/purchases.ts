@@ -113,7 +113,6 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Alocado ao Bag": ["admin", "super_admin"],
   "Concluído": [],
   // Cerâmico
-  "Cerâmico: Em Separação": ["operacional"],
   "Cerâmico: Em Trituração/Homogeneização": ["operacional"],
   "Cerâmico: Amostra Enviada ao Lab": ["operacional"],
   "Cerâmico: Lab em Análise": ["laboratorio"],
