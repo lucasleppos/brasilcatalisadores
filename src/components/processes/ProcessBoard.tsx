@@ -25,7 +25,7 @@ interface ProcessGroup {
 const PROCESS_GROUPS: ProcessGroup[] = [
   { label: "Inclusão", statuses: ["Aguardando Inclusão"] },
   { label: "Conferência", statuses: ["Aguardando Conferência", "Em Conferência"] },
-  { label: "Separação", statuses: ["Cerâmico: Em Separação"] },
+  
   { label: "Corte", statuses: ["Peças: Em Corte"] },
   {
     label: "Trit. / Homog. / Amostr.",
