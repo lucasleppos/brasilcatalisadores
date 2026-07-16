@@ -709,7 +709,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       </CardContent>
 
       {/* Admin Manual Stage Move Dialog */}
-      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetFinStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
+      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
