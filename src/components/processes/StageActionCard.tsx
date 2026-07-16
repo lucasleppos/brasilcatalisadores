@@ -256,16 +256,6 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
-  const handleOpAdvance = async () => {
-    if (!purchase.opStatus) return;
-    setLoading(true);
-    try {
-      await advanceOpStatus(purchase.id, purchase.opStatus);
-      onCompleted();
-    } finally {
-      setLoading(false);
-    }
-  };
   const handleAdminMove = async () => {
     if (!adminTargetStatus) return;
     setLoading(true);
