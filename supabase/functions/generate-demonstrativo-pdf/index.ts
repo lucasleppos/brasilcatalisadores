@@ -313,44 +313,62 @@ Deno.serve(async (req) => {
         const calcResult = item.calc_result as any;
         const calcInput = item.calc_input as any;
 
-        let qtyWeight = "—";
-        if (item.item_type === "peca") {
-          qtyWeight = `${item.quantity || 0} pç`;
+        const bruto = Number(calcInput?.grossWeight) || Number(item.weight) || 0;
+        const tara = Number(calcInput?.tare) || Number(item.weight_loss) || 0;
+        const liquido = Math.max(0, bruto - tara);
+
+        let qtyWeightLines: string[] = ["—"];
+        if (isCeramico) {
+          qtyWeightLines = [
+            `Bruto: ${fmt(bruto, 4)} kg`,
+            `Tara: ${fmt(tara, 4)} kg`,
+            `Líquido: ${fmt(liquido, 4)} kg`,
+          ];
+        } else if (item.item_type === "peca") {
+          qtyWeightLines = [`${item.quantity || 0} pç`];
         } else if (item.item_type === "peca_sacola" && !calcInput) {
-          qtyWeight = `${item.quantity || 0} pç`;
-          if (item.weight) qtyWeight += ` / ${fmt(Number(item.weight))} kg`;
+          let s = `${item.quantity || 0} pç`;
+          if (item.weight) s += ` / ${fmt(Number(item.weight))} kg`;
+          qtyWeightLines = [s];
         } else if (calcInput) {
-          const net = (calcInput.grossWeight || 0) - (calcInput.tare || 0);
-          qtyWeight = `${fmt(net)} kg`;
+          qtyWeightLines = [`${fmt(liquido)} kg`];
         } else if (item.weight) {
-          qtyWeight = `${fmt(Number(item.weight))} kg`;
+          qtyWeightLines = [`${fmt(Number(item.weight))} kg`];
         }
 
         let unitVal = "—";
         let totalVal = "—";
-        if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
-          const tv = Number(item.total_value) || 0;
+        const tv = Number(item.total_value) || 0;
+        if (isCeramico) {
+          const totalNum = tv > 0 ? tv : Number(calcResult?.finalValueBrl) || 0;
+          totalVal = totalNum > 0 ? fmtBrl(totalNum) : "Pendente";
+          if (totalNum > 0 && liquido > 0) {
+            unitVal = `${fmtBrl(totalNum / liquido)}/kg`;
+          }
+        } else if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
           const qty = item.quantity || 1;
           unitVal = tv > 0 ? fmtBrl(tv / qty) : "—";
           totalVal = tv > 0 ? fmtBrl(tv) : "Pendente";
         } else if (calcResult) {
           totalVal = calcResult.finalValueBrl ? fmtBrl(calcResult.finalValueBrl) : "Pendente";
-          unitVal = "—";
         }
 
+        const rowHeight = isCeramico ? 14 : 6;
         if (i % 2 === 0) {
           doc.setFillColor(250, 250, 250);
-          doc.rect(margin, y, contentWidth, 6, "F");
+          doc.rect(margin, y, contentWidth, rowHeight, "F");
         }
 
         doc.text(`${i + 1}`, colX[0] + 2, y + 4);
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
         const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
         doc.text(typeLabel, colX[1] + 2, y + 4);
-        doc.text(qtyWeight, colX[2] + 2, y + 4);
+        for (let li = 0; li < qtyWeightLines.length; li++) {
+          doc.text(qtyWeightLines[li], colX[2] + 2, y + 4 + li * 4);
+        }
         doc.text(unitVal, colX[3] + 2, y + 4);
         doc.text(totalVal, colX[4] + 2, y + 4);
-        y += 6;
+        y += rowHeight;
 
         if (y > 270) { doc.addPage(); y = margin; }
       }
