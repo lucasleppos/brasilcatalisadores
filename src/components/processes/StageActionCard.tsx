@@ -696,12 +696,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onChecklistChange={handleChecklistChange}
             />
 
-            {needsErp && missingErp && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
-              </div>
-            )}
+            {needsErp && missingErp && ErpInlineInput}
 
             {canGeneratePdf && (
               <div className="flex gap-2">
