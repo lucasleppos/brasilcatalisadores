@@ -48,17 +48,12 @@ const CERAMICO_STATUSES = [
   "Concluído",
 ] as const;
 
-// Cerâmico parallel sub-statuses
-export const CER_FIN_STATUSES = [
-  "Aguardando Pagamento",
-  "Pagamento Realizado",
-  "Encerrado ERP",
-] as const;
+// Cerâmico operational sub-status (legado: fin_status deixou de ser usado)
+export const CER_FIN_STATUSES = [] as const;
 
 export const CER_OP_STATUSES = [
   "Alocando Bag",
   "Bag Alocado",
-  "Enviado Exportação",
 ] as const;
 
 // Legacy statuses (for backward compatibility)
