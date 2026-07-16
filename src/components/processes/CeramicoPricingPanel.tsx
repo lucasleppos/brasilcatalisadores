@@ -73,16 +73,19 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         return;
       }
 
-      // Build lab PPM map by purchase_item_id
-      const labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
+      // Build lab PPM map by purchase_item_id — average across all analyses (up to 3)
+      const labAgg: Record<string, { pt: number; pd: number; rh: number; n: number }> = {};
       (labResults || []).forEach(lr => {
-        if (lr.purchase_item_id) {
-          labMap[lr.purchase_item_id] = {
-            pt: Number(lr.pt_ppm) || 0,
-            pd: Number(lr.pd_ppm) || 0,
-            rh: Number(lr.rh_ppm) || 0,
-          };
-        }
+        if (!lr.purchase_item_id) return;
+        const agg = labAgg[lr.purchase_item_id] ||= { pt: 0, pd: 0, rh: 0, n: 0 };
+        agg.pt += Number(lr.pt_ppm) || 0;
+        agg.pd += Number(lr.pd_ppm) || 0;
+        agg.rh += Number(lr.rh_ppm) || 0;
+        agg.n += 1;
+      });
+      const labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
+      Object.entries(labAgg).forEach(([itemId, a]) => {
+        if (a.n > 0) labMap[itemId] = { pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
       });
 
       // Calculate for each lot
