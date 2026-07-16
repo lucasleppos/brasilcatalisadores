@@ -13,8 +13,10 @@ import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
-import { buildLabelCode } from "@/lib/labels";
+import { buildLabelCode, buildLabelCodeDisplay } from "@/lib/labels";
 import CeramicoLabelPrint, { LabelData } from "./CeramicoLabelPrint";
+
+const LABEL_COPIES_PER_GROUP = 3;
 
 const CERAMICO_CATEGORIES = [
   "Grupo 01", "Grupo 02", "Grupo 03", "Grupo 04", "Grupo 05",
@@ -28,7 +30,6 @@ interface CeramicoLote {
   id?: string;
   category: string;
   weightNet: number;
-  tare: number;
   photoUrl: string;
   labelCode?: string;
 }
