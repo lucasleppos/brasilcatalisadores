@@ -56,6 +56,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
+  const [ceramicoTrituracaoOpen, setCeramicoTrituracaoOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
 
