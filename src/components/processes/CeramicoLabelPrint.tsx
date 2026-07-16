@@ -53,15 +53,15 @@ export default function CeramicoLabelPrint({ labels }: Props) {
           background: #fff;
           font-family: Arial, Helvetica, sans-serif;
           display: grid;
-          grid-template-columns: 1fr 32mm;
-          gap: 2mm;
+          grid-template-columns: minmax(0, 1fr) 30mm;
+          gap: 2.5mm;
           align-items: stretch;
         }
-        .ceramico-label .info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+        .ceramico-label .info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; overflow: hidden; }
         .ceramico-label .lote {
-          font-size: 15pt; font-weight: 900; letter-spacing: 0.2px;
+          font-size: 13pt; font-weight: 900; letter-spacing: 0.1px;
           line-height: 1.05; border-bottom: 0.4mm solid #000; padding-bottom: 1mm; margin-bottom: 1mm;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          white-space: nowrap; overflow: hidden; text-overflow: clip;
         }
         .ceramico-label .row { font-size: 10.5pt; font-weight: 700; line-height: 1.25; margin: 0.3mm 0; }
         .ceramico-label .row .lbl { font-weight: 700; }
@@ -74,7 +74,7 @@ export default function CeramicoLabelPrint({ labels }: Props) {
       {labels.map((l) => (
         <div key={l.code} className="ceramico-label">
           <div className="info">
-            <div className="lote">LOTE: {l.code}</div>
+            <div className="lote">{l.code}</div>
             <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
             <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
             <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
