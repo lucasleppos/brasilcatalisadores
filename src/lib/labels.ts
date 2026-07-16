@@ -17,6 +17,17 @@ export function buildLabelCode(purchaseNumber: string, purchaseDateIso: string, 
   return `LOT-${yy}${mm}${dd}-${suffix}-${seqStr}`;
 }
 
+/** Display code shown on the printed label (without per-group sequence). */
+export function buildLabelCodeDisplay(purchaseNumber: string, purchaseDateIso: string): string {
+  const d = new Date(purchaseDateIso);
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const match = purchaseNumber.match(/-\s*(\d+)\s*$/);
+  const suffix = match ? match[1].padStart(2, "0") : purchaseNumber.replace(/\D+/g, "").slice(-4) || "00";
+  return `LOT-${yy}${mm}${dd}-${suffix}`;
+}
+
 /** Returns a data-URL PNG for the given code. Suitable for embedding in <img>. */
 export async function generateQRCodeDataUrl(text: string, sizePx = 220): Promise<string> {
   return QRCode.toDataURL(text, {
