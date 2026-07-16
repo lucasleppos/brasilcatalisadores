@@ -597,6 +597,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onCompleted={onCompleted}
             />
           </div>
+        ) : isCeramicoTrituracao ? (
+          /* Cerâmico: Trituração/Homogeneização/Amostragem — TARA + foto por grupo */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoTrituracaoOpen(true)}>
+              <Scale className="h-3 w-3 mr-1" /> Iniciar Trituração/Homogeneização
+            </Button>
+            <CeramicoTrituracaoPanel
+              purchase={purchase}
+              open={ceramicoTrituracaoOpen}
+              onOpenChange={setCeramicoTrituracaoOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
         ) : isCeramicoLab ? (
           /* Cerâmico Lab: Iniciar Análise */
           <div className="space-y-2 pt-1 border-t border-border/40">
