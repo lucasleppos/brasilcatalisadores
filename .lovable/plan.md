@@ -1,25 +1,30 @@
-Objetivo: ajustar a etiqueta térmica do cerâmico para mostrar "Peso Bruto" no lugar de "Peso Líq.", já que a tara ainda não é informada nessa etapa.
+# Ajustar terminologia da conferência de cerâmico para Peso Bruto
 
-Etapa 1 — Prévia visual
-- Gerar uma imagem estática da etiqueta 100 x 50 mm com dados de exemplo (código LOT-260707-01, comprador Marcos, fornecedora Cleusa de Fátima, Grupo 01, 8.000 kg) e o texto "Peso Bruto" em destaque.
-- Apresentar a prévia antes de aplicar a mudança no código.
+## Contexto
+A etiqueta térmica já foi alterada para exibir **"Peso Bruto"** (tara não é informada nesta etapa). Agora é preciso alinhar os textos da tela de conferência para a mesma terminologia.
 
-Etapa 2 — Ajuste no layout da etiqueta
-Arquivo: `src/components/processes/CeramicoLabelPrint.tsx`
-- Trocar o texto exibido de `Peso Líq.` para `Peso Bruto`.
-- Manter o QR code apontando para o código único interno (`l.code`).
-- Manter o cabeçalho somente com o código base (sem sequência 01/02/03).
+## Modificações
 
-Etapa 3 — Alinhamento semântico (opcional, se fizer sentido)
-Arquivos: `src/components/processes/CeramicoLabelPrint.tsx` e `src/components/processes/CeramicoConferenciaPanel.tsx`
-- Renomear a propriedade `weightNet` para `weightGross` no tipo `LabelData` e nos pontos onde ela é preenchida, para refletir que o peso conferido é bruto nesta etapa.
-- Se preferir manter o nome interno, apenas o texto visual será alterado.
+### 1. Textos da interface de conferência (`CeramicoConferenciaPanel.tsx`)
+- **Campo de entrada**: "Peso Líquido (kg)" → **"Peso Bruto (kg)"**
+- **Lista de lotes**: "Peso Líq.:" → **"Peso Bruto:"**
+- **Resumo**: "Total Líquido Conferido:" → **"Total Bruto Conferido:"**
+- **Mensagem de validação**: "Informe o peso líquido" → **"Informe o peso bruto"**
 
-Etapa 4 — Verificação
-- Rodar `tsgo` para garantir que tipos e referências estejam consistentes.
+### 2. Alinhamento semântico do estado interno
+- Renomear `weightNet` → `weightGross` no tipo `CeramicoLote`
+- Renomear `weightNetStr` → `weightGrossStr` no estado
+- Atualizar todas as referências internas (`totalNet` → `totalGross`, etc.) para refletir que o valor capturado é bruto nesta etapa
+- O cálculo do saldo continua: `Peso Bruto Recebido - Σ Pesos Brutos dos Grupos`
 
-Arquivos envolvidos:
-- `src/components/processes/CeramicoLabelPrint.tsx`
-- `src/components/processes/CeramicoConferenciaPanel.tsx` (se renomearmos a propriedade)
+### 3. Persistência
+- O campo continua sendo salvo em `purchase_items.weight` (o banco não possui coluna `weight_gross`, e o conceito de bruto/líquido é da etapa de negócio)
+- `weight_loss` permanece `0` conforme já implementado
 
-Observação: a conferência continua sem campo de tara e o saldo permanece `Peso Bruto Recebido - ΣPesos Brutos dos Grupos`.
+### 4. Verificação
+- Executar `tsgo` para garantir que a renomeação não quebrou tipos
+- Gerar prévia visual da etiqueta atualizada (já com "Peso Bruto") e, se possível, capturar screenshot do painel de conferência para validar os novos textos
+
+## Arquivos
+- `src/components/processes/CeramicoConferenciaPanel.tsx`
+- `src/components/processes/CeramicoLabelPrint.tsx` (revisão, sem alteração de texto)
