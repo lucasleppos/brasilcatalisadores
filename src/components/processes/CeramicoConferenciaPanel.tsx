@@ -360,11 +360,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Peso Líquido (kg) *</Label>
+              <Label className="text-xs">Peso Bruto (kg) *</Label>
               <Input
                 inputMode="decimal"
-                value={weightNetStr}
-                onChange={e => setWeightNetStr(e.target.value.replace(/[^0-9.,]/g, ""))}
+                value={weightGrossStr}
+                onChange={e => setWeightGrossStr(e.target.value.replace(/[^0-9.,]/g, ""))}
                 placeholder="0,000"
                 className="h-8 text-sm"
               />
