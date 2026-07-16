@@ -373,6 +373,52 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         )}
       </section>
 
+      {/* Section 1b: Already allocated (still visible until bag closes) */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold">Materiais Alocados</h2>
+          <Badge variant="secondary">{allocatedMaterials.length}</Badge>
+        </div>
+        {allocatedMaterials.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground border rounded-md">
+            <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Nenhum material alocado no momento.</p>
+          </div>
+        ) : (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fornecedor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Peso (kg)</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
+                  <TableHead>Bag</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allocatedMaterials.map((m) => (
+                  <TableRow key={m.purchaseItemId}>
+                    <TableCell className="font-medium">{m.supplierName}</TableCell>
+                    <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
+                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="bg-emerald-100 text-emerald-800">
+                        {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
       {/* Section 2: In-process materials */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
