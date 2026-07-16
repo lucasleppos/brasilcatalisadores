@@ -117,13 +117,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     if (!category) { toast.error("Selecione a categoria"); return; }
     const w = parseFloat(weightNetStr.replace(",", "."));
     if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
-    const t = parseFloat(tareStr.replace(",", ".")) || 0;
     if (!photoUrl) { toast.error("Adicione a foto do lote"); return; }
 
-    setLotes(prev => [...prev, { category, weightNet: w, tare: t, photoUrl }]);
+    setLotes(prev => [...prev, { category, weightNet: w, photoUrl }]);
     setCategory("");
     setWeightNetStr("");
-    setTareStr("");
     setPhotoUrl("");
   };
 
@@ -160,7 +158,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
         category: "conferencia",
         quantity: 1,
         weight: l.weightNet,
-        weight_loss: l.tare,
+        weight_loss: 0,
       }))
     ).select("id");
 
@@ -201,15 +199,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   };
 
   const declaredWeight = purchase.bulkWeight || 0;
-  const totalConferido = useMemo(
-    () => lotes.reduce((s, l) => s + l.weightNet + l.tare, 0),
-    [lotes],
-  );
   const totalNet = useMemo(() => lotes.reduce((s, l) => s + l.weightNet, 0), [lotes]);
-  const balance = declaredWeight - totalConferido;
+  const balance = declaredWeight - totalNet;
   const tolerance = declaredWeight * TOLERANCE_PCT;
   const withinTolerance = declaredWeight > 0 ? Math.abs(balance) <= tolerance : true;
-  const progress = declaredWeight > 0 ? Math.min((totalConferido / declaredWeight) * 100, 100) : 0;
+  const progress = declaredWeight > 0 ? Math.min((totalNet / declaredWeight) * 100, 100) : 0;
 
   const handleFinish = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
@@ -240,6 +234,9 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     }, 300);
   };
 
+  const expandCopies = (base: LabelData): LabelData[] =>
+    Array.from({ length: LABEL_COPIES_PER_GROUP }, () => ({ ...base }));
+
   const handlePrintOne = async (index: number) => {
     let l = lotes[index];
     if (!l.labelCode || !l.id) {
@@ -247,14 +244,15 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       if (!saved) { toast.error("Salve os lotes primeiro"); return; }
       l = saved[index];
     }
-    openPrint([{
+    const displayCode = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    openPrint(expandCopies({
       code: l.labelCode!,
+      displayCode,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
       weightNet: l.weightNet,
-      tare: l.tare,
-    }]);
+    }));
   };
 
   const handlePrintAll = async () => {
@@ -265,14 +263,16 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       if (!saved) { toast.error("Erro ao salvar"); return; }
       src = saved;
     }
-    openPrint(src.map(l => ({
+    const displayCode = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const all = src.flatMap(l => expandCopies({
       code: l.labelCode!,
+      displayCode,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
       weightNet: l.weightNet,
-      tare: l.tare,
-    })));
+    }));
+    openPrint(all);
   };
 
   return (
@@ -317,7 +317,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                       <div className="space-y-0.5 min-w-0">
                         <p className="text-sm font-semibold truncate">#{i + 1} — {l.category}</p>
                         <p className="text-xs text-muted-foreground">
-                          Líq: {fmtNum(l.weightNet, 3)} kg | Tara: {fmtNum(l.tare, 3)} kg
+                          Peso Líq.: {fmtNum(l.weightNet, 3)} kg
                         </p>
                         {l.labelCode && (
                           <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
@@ -360,27 +360,15 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                 ))}
               </datalist>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Peso Líquido (kg) *</Label>
-                <Input
-                  inputMode="decimal"
-                  value={weightNetStr}
-                  onChange={e => setWeightNetStr(e.target.value.replace(/[^0-9.,]/g, ""))}
-                  placeholder="0,000"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Tara (kg)</Label>
-                <Input
-                  inputMode="decimal"
-                  value={tareStr}
-                  onChange={e => setTareStr(e.target.value.replace(/[^0-9.,]/g, ""))}
-                  placeholder="0,000"
-                  className="h-8 text-sm"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Peso Líquido (kg) *</Label>
+              <Input
+                inputMode="decimal"
+                value={weightNetStr}
+                onChange={e => setWeightNetStr(e.target.value.replace(/[^0-9.,]/g, ""))}
+                placeholder="0,000"
+                className="h-8 text-sm"
+              />
             </div>
 
             {/* Photo */}
