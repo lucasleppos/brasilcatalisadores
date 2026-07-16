@@ -60,6 +60,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [ceramicoTrituracaoOpen, setCeramicoTrituracaoOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
+  const [viewDemoOpen, setViewDemoOpen] = useState(false);
 
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
