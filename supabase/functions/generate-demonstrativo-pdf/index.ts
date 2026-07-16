@@ -103,12 +103,8 @@ Deno.serve(async (req) => {
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("DEMONSTRATIVO DE VALORES", pageWidth / 2, y, { align: "center" });
-    y += 8;
+    y += 6;
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Versão ${demo.versao}`, pageWidth / 2, y, { align: "center" });
-    y += 10;
 
     // --- Divider ---
     doc.setDrawColor(200);
