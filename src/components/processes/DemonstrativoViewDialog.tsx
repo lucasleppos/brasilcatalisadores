@@ -66,7 +66,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
           supabase.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchase.id),
         ]);
 
-        const rawItems: RawItem[] = (itemsRes.data as any[]) || [];
+        const rawItemsAll: RawItem[] = (itemsRes.data as any[]) || [];
+        const isPlaceholder = (i: RawItem) =>
+          !i.category && !i.pricing_source && !i.catalog_part_id &&
+          !i.calc_input && !i.calc_result &&
+          !(Number(i.weight) > 0) && !(Number(i.weight_loss) > 0) && !(Number(i.total_value) > 0);
+        const rawItems: RawItem[] = rawItemsAll.filter(i => !isPlaceholder(i));
         const rawLab: LabRow[] = (labRes.data as any[]) || [];
 
         const partIds = [...new Set(rawItems.filter(i => i.catalog_part_id).map(i => i.catalog_part_id as string))];
