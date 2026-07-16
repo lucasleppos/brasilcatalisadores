@@ -433,10 +433,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </>
             )}
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={() => setViewDemoOpen(true)}>
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={() => setViewDemoOpen(true)}>
                 <Eye className="h-3 w-3 mr-1" />Visualizar
               </Button>
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
                 setLoading(true);
                 try {
                   let demos = await loadDemonstrativos(purchase.id);
@@ -488,7 +488,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button size="sm" variant="destructive" className="flex-1" disabled={loading || missingErp} onClick={() => { setContestStep("motivo"); setContestMotivo(""); setContestDialogOpen(true); }}>
+              <Button size="sm" variant="destructive" className="flex-1" disabled={loading} onClick={() => { setContestStep("motivo"); setContestMotivo(""); setContestDialogOpen(true); }}>
                 <AlertTriangle className="h-3 w-3 mr-1" />Contestar
               </Button>
               <Dialog open={contestDialogOpen} onOpenChange={(open) => { if (!open) { setContestDialogOpen(false); setContestStep("motivo"); setContestMotivo(""); } }}>
