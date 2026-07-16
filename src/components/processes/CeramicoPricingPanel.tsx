@@ -48,7 +48,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         loadSettings(),
         supabase
           .from("purchase_items")
-          .select("id, weight, category, total_value, calc_input, calc_result")
+          .select("id, weight, weight_loss, category, total_value, calc_input, calc_result")
           .eq("purchase_id", purchase.id)
           .eq("category", "conferencia"),
         supabase
