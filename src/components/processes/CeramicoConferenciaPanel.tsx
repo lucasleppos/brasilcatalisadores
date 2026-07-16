@@ -29,7 +29,7 @@ const TOLERANCE_PCT = 0.02; // 2%
 interface CeramicoLote {
   id?: string;
   category: string;
-  weightNet: number;
+  weightGross: number;
   photoUrl: string;
   labelCode?: string;
 }
@@ -44,7 +44,7 @@ interface CeramicoConferenciaPanelProps {
 export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoConferenciaPanelProps) {
   const [lotes, setLotes] = useState<CeramicoLote[]>([]);
   const [category, setCategory] = useState("");
-  const [weightNetStr, setWeightNetStr] = useState("");
+  const [weightGrossStr, setWeightGrossStr] = useState("");
   
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -93,8 +93,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     setLotes(data.map(d => ({
       id: d.id,
       category: catMap[d.id] || "",
-      weightNet: Number(d.weight) || 0,
-      tare: Number(d.weight_loss) || 0,
+      weightGross: Number(d.weight) || 0,
       photoUrl: photoMap[d.id] || "",
       labelCode: labelMap[d.id] || undefined,
     })));
@@ -115,13 +114,13 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
 
   const handleAdd = () => {
     if (!category) { toast.error("Selecione a categoria"); return; }
-    const w = parseFloat(weightNetStr.replace(",", "."));
-    if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
+    const w = parseFloat(weightGrossStr.replace(",", "."));
+    if (isNaN(w) || w <= 0) { toast.error("Informe o peso bruto"); return; }
     if (!photoUrl) { toast.error("Adicione a foto do lote"); return; }
 
-    setLotes(prev => [...prev, { category, weightNet: w, photoUrl }]);
+    setLotes(prev => [...prev, { category, weightGross: w, photoUrl }]);
     setCategory("");
-    setWeightNetStr("");
+    setWeightGrossStr("");
     setPhotoUrl("");
   };
 
@@ -157,7 +156,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
         item_type: "ceramico" as const,
         category: "conferencia",
         quantity: 1,
-        weight: l.weightNet,
+        weight: l.weightGross,
         weight_loss: 0,
       }))
     ).select("id");
@@ -199,11 +198,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   };
 
   const declaredWeight = purchase.bulkWeight || 0;
-  const totalNet = useMemo(() => lotes.reduce((s, l) => s + l.weightNet, 0), [lotes]);
-  const balance = declaredWeight - totalNet;
+  const totalGross = useMemo(() => lotes.reduce((s, l) => s + l.weightGross, 0), [lotes]);
+  const balance = declaredWeight - totalGross;
   const tolerance = declaredWeight * TOLERANCE_PCT;
   const withinTolerance = declaredWeight > 0 ? Math.abs(balance) <= tolerance : true;
-  const progress = declaredWeight > 0 ? Math.min((totalNet / declaredWeight) * 100, 100) : 0;
+  const progress = declaredWeight > 0 ? Math.min((totalGross / declaredWeight) * 100, 100) : 0;
 
   const handleFinish = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
@@ -251,7 +250,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightGross: l.weightNet,
+      weightGross: l.weightGross,
     }));
   };
 
@@ -270,7 +269,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightGross: l.weightNet,
+      weightGross: l.weightGross,
     }));
     openPrint(all);
   };
@@ -317,7 +316,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                       <div className="space-y-0.5 min-w-0">
                         <p className="text-sm font-semibold truncate">#{i + 1} — {l.category}</p>
                         <p className="text-xs text-muted-foreground">
-                          Peso Líq.: {fmtNum(l.weightNet, 3)} kg
+                          Peso Bruto: {fmtNum(l.weightGross, 3)} kg
                         </p>
                         {l.labelCode && (
                           <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
@@ -361,11 +360,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Peso Líquido (kg) *</Label>
+              <Label className="text-xs">Peso Bruto (kg) *</Label>
               <Input
                 inputMode="decimal"
-                value={weightNetStr}
-                onChange={e => setWeightNetStr(e.target.value.replace(/[^0-9.,]/g, ""))}
+                value={weightGrossStr}
+                onChange={e => setWeightGrossStr(e.target.value.replace(/[^0-9.,]/g, ""))}
                 placeholder="0,000"
                 className="h-8 text-sm"
               />
@@ -412,8 +411,8 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           {/* Summary + Actions */}
           <div className="space-y-3 pt-2 border-t border-border/40">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Líquido Conferido:</span>
-              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalNet, 3)} kg</span>
+              <span className="text-muted-foreground">Total Bruto Conferido:</span>
+              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalGross, 3)} kg</span>
             </div>
 
             {declaredWeight > 0 && (
@@ -421,7 +420,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                 <div className="flex items-center gap-2">
                   <Progress value={progress} className="h-2 flex-1" />
                   <span className={`text-xs font-semibold whitespace-nowrap ${withinTolerance && lotes.length > 0 ? "text-green-600" : "text-amber-600"}`}>
-                    {fmtNum(totalNet, 1)}/{fmtNum(declaredWeight, 1)} kg
+                    {fmtNum(totalGross, 1)}/{fmtNum(declaredWeight, 1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px]">
