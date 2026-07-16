@@ -495,7 +495,9 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas}`, margin, y);
-    doc.text(`Peso total: ${fmt(totalWeightKg)} kg`, pageWidth / 2, y);
+    y += 5;
+    doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
+    doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);
     y += 8;
 
     doc.line(margin, y, pageWidth - margin, y);
