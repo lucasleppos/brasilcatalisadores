@@ -251,7 +251,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightNet: l.weightNet,
+      weightGross: l.weightNet,
     }));
   };
 
@@ -270,7 +270,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightNet: l.weightNet,
+      weightGross: l.weightNet,
     }));
     openPrint(all);
   };
