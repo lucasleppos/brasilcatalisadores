@@ -366,7 +366,10 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                 <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
                 {isCeramico ? totalGrupos : totalPecas}
               </div>
-              <div><span className="font-semibold">Peso total:</span> {fmtNum(totalWeightKg, 4)} kg</div>
+              <div className="space-y-0.5">
+                <div><span className="font-semibold">Peso bruto total:</span> {fmtNum(totalBrutoKg, 4)} kg</div>
+                <div><span className="font-semibold">Peso líquido total:</span> {fmtNum(totalLiquidoKg, 4)} kg</div>
+              </div>
             </div>
 
             <div className="border-t pt-3 flex items-center justify-between">
