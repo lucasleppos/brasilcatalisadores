@@ -316,7 +316,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                       <div className="space-y-0.5 min-w-0">
                         <p className="text-sm font-semibold truncate">#{i + 1} — {l.category}</p>
                         <p className="text-xs text-muted-foreground">
-                          Peso Líq.: {fmtNum(l.weightNet, 3)} kg
+                          Peso Bruto: {fmtNum(l.weightGross, 3)} kg
                         </p>
                         {l.labelCode && (
                           <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
@@ -411,8 +411,8 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           {/* Summary + Actions */}
           <div className="space-y-3 pt-2 border-t border-border/40">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Líquido Conferido:</span>
-              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalNet, 3)} kg</span>
+              <span className="text-muted-foreground">Total Bruto Conferido:</span>
+              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalGross, 3)} kg</span>
             </div>
 
             {declaredWeight > 0 && (
@@ -420,7 +420,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                 <div className="flex items-center gap-2">
                   <Progress value={progress} className="h-2 flex-1" />
                   <span className={`text-xs font-semibold whitespace-nowrap ${withinTolerance && lotes.length > 0 ? "text-green-600" : "text-amber-600"}`}>
-                    {fmtNum(totalNet, 1)}/{fmtNum(declaredWeight, 1)} kg
+                    {fmtNum(totalGross, 1)}/{fmtNum(declaredWeight, 1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px]">
