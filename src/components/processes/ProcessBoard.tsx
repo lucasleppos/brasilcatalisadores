@@ -62,15 +62,6 @@ const PROCESS_GROUPS: ProcessGroup[] = [
       "Cerâmico: Demonstrativo Contestado",
     ],
   },
-  {
-    label: "Bags",
-    statuses: ["Peças: Alocado ao Bag"],
-    parallelMatch: "op",
-  },
-  {
-    label: "Concluídos",
-    statuses: ["Concluído", "Peças: Encerrado", "Cerâmico: Encerrado"],
-  },
 ];
 
 /** Check if a user role can see a group (has permission on at least one status in the group) */
@@ -135,18 +126,8 @@ export default function ProcessBoard() {
     visibleGroups.forEach((g) => { map[g.label] = []; });
 
     filtered.forEach((p) => {
-      // Fase pós-aprovação do Cerâmico → aparece na coluna Bags até ser 'Bag Alocado'
-      if (isInParallelPhase(p)) {
-        const bagGroup = visibleGroups.find((g) => g.parallelMatch === "op");
-        if (bagGroup && p.opStatus && p.opStatus !== "Bag Alocado") {
-          map[bagGroup.label]?.push(p);
-        }
-        // Concluído automático quando terminou de alocar
-        if (p.opStatus === "Bag Alocado") {
-          if (map["Concluídos"]) map["Concluídos"].push(p);
-        }
-        return;
-      }
+      // Fase pós-aprovação do Cerâmico → tratada nos módulos Bags e Concluídos
+      if (isInParallelPhase(p)) return;
 
       // Normal: find group by status match
       for (const g of visibleGroups) {
@@ -161,9 +142,7 @@ export default function ProcessBoard() {
   }, [filtered, visibleGroups]);
 
   const pendingCount = useMemo(() =>
-    visibleGroups
-      .filter((g) => g.label !== "Concluídos")
-      .reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
+    visibleGroups.reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
   , [visibleGroups, tasksByGroup]);
 
   const defaultTab = useMemo(() =>
