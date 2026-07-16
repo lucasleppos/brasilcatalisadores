@@ -364,34 +364,21 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         {/* Parallel sub-flows (cerâmico) */}
         {isParallel ? (
           <div className="space-y-2 pt-1 border-t border-border/40">
-            <p className="text-xs font-medium text-muted-foreground">Sub-fluxos paralelos</p>
-            <div className="grid grid-cols-2 gap-2">
-              {/* Financial */}
-              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
-                <p className="text-[10px] font-semibold text-muted-foreground">💰 Financeiro</p>
-                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.finStatus || "")}`}>
-                  {purchase.finStatus}
-                </Badge>
-                {purchase.finStatus !== "Encerrado ERP" && (
-                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleFinAdvance}>
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-                    Avançar
-                  </Button>
-                )}
-              </div>
-              {/* Operational */}
-              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
-                <p className="text-[10px] font-semibold text-muted-foreground">📦 Operacional</p>
-                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.opStatus || "")}`}>
-                  {purchase.opStatus}
-                </Badge>
-                {purchase.opStatus !== "Enviado Exportação" && (
-                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleOpAdvance}>
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-                    Avançar
-                  </Button>
-                )}
-              </div>
+            <p className="text-xs font-medium text-muted-foreground">Alocação em Bag</p>
+            <div className="space-y-1 p-2 rounded-md border bg-muted/30">
+              <p className="text-[10px] font-semibold text-muted-foreground">📦 Operacional</p>
+              <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.opStatus || "")}`}>
+                {purchase.opStatus}
+              </Badge>
+              <p className="text-[10px] text-muted-foreground">
+                Material enviado ao módulo Bags. Após a alocação de todos os grupos, o processo será encerrado automaticamente.
+              </p>
+              {purchase.opStatus !== "Bag Alocado" && (
+                <Button size="sm" variant="outline" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleOpAdvance}>
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
+                  Marcar como Bag Alocado
+                </Button>
+              )}
             </div>
           </div>
         ) : isAnalysis ? (
