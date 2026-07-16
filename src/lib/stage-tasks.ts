@@ -31,11 +31,8 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
     { key: "weight_pos_trituracao", type: "weight", label: "Peso pós-trituração (kg)", required: true },
     { key: "photo_amostra", type: "photo", label: "Foto da amostra preparada", required: true },
   ],
-  // Cerâmico: Trituração/Homogeneização
-  "Cerâmico: Em Trituração/Homogeneização": [
-    { key: "weight_pos_trituracao", type: "weight", label: "Peso pós-trituração (kg)", required: true },
-    { key: "photo_amostra", type: "photo", label: "Foto da amostra preparada", required: true },
-  ],
+  // Cerâmico: Trituração/Homogeneização/Amostragem — handled by CeramicoTrituracaoPanel (TARA + foto por grupo)
+  "Cerâmico: Em Trituração/Homogeneização": [],
   // Lab analysis — handled by TripleAnalysisForm, not generic checklist
   "Cerâmico: Lab em Análise": [
     { key: "analysis_1", type: "analysis", label: "Análise 1 (Pt/Pd/Rh)", required: true },
