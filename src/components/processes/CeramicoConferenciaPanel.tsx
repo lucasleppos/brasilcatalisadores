@@ -156,7 +156,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
         item_type: "ceramico" as const,
         category: "conferencia",
         quantity: 1,
-        weight: l.weightNet,
+        weight: l.weightGross,
         weight_loss: 0,
       }))
     ).select("id");
@@ -198,11 +198,11 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   };
 
   const declaredWeight = purchase.bulkWeight || 0;
-  const totalNet = useMemo(() => lotes.reduce((s, l) => s + l.weightNet, 0), [lotes]);
-  const balance = declaredWeight - totalNet;
+  const totalGross = useMemo(() => lotes.reduce((s, l) => s + l.weightGross, 0), [lotes]);
+  const balance = declaredWeight - totalGross;
   const tolerance = declaredWeight * TOLERANCE_PCT;
   const withinTolerance = declaredWeight > 0 ? Math.abs(balance) <= tolerance : true;
-  const progress = declaredWeight > 0 ? Math.min((totalNet / declaredWeight) * 100, 100) : 0;
+  const progress = declaredWeight > 0 ? Math.min((totalGross / declaredWeight) * 100, 100) : 0;
 
   const handleFinish = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
@@ -250,7 +250,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightGross: l.weightNet,
+      weightGross: l.weightGross,
     }));
   };
 
@@ -269,7 +269,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
       group: l.category,
-      weightGross: l.weightNet,
+      weightGross: l.weightGross,
     }));
     openPrint(all);
   };
