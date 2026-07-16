@@ -12,6 +12,7 @@ import PurchasesPage from "@/pages/PurchasesPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
+import CompletedPage from "@/pages/CompletedPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import ReportsPage from "@/pages/ReportsPage";
 import LoginPage from "@/pages/LoginPage";
