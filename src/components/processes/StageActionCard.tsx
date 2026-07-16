@@ -112,6 +112,44 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
+  const handleSaveErp = async () => {
+    const val = erpInput.trim();
+    if (!val) return;
+    setSavingErp(true);
+    try {
+      const ok = await updatePurchaseErp(purchase.id, val);
+      if (ok) {
+        toast.success("Boleto Syge salvo");
+        setErpInput("");
+        onCompleted();
+      } else {
+        toast.error("Erro ao salvar Boleto Syge");
+      }
+    } finally {
+      setSavingErp(false);
+    }
+  };
+
+  const ErpInlineInput = (
+    <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+        <p className="text-xs text-destructive font-medium">Informe o Boleto Syge (ERP) para prosseguir</p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={erpInput}
+          onChange={(e) => setErpInput(e.target.value)}
+          placeholder="Número do Boleto Syge"
+          className="h-8 text-xs"
+        />
+        <Button size="sm" className="h-8 text-xs" disabled={!erpInput.trim() || savingErp} onClick={handleSaveErp}>
+          {savingErp ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
+
   const handleAnalysis = async () => {
     const pt = parseFloat(ptPpm.replace(",", "."));
     const pd = parseFloat(pdPpm.replace(",", "."));
