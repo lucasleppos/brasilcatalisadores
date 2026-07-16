@@ -845,9 +845,9 @@ export function isPurchaseClosed(purchase: Purchase): boolean {
   return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
 }
 
-/** Check if cerâmico is in parallel phase */
+/** Check if cerâmico is in parallel phase (aprovado + em alocação de bag) */
 export function isInParallelPhase(purchase: Purchase): boolean {
-  return purchase.status === "Cerâmico: Aprovado" && purchase.finStatus != null && purchase.opStatus != null;
+  return purchase.status === "Cerâmico: Aprovado" && purchase.opStatus != null;
 }
 
 /** Update the Boleto Syge / ERP number on a purchase */
