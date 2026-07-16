@@ -33,12 +33,11 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey);
 
     // Fetch all data in parallel
-    const [purchaseRes, demoRes, itemsRes, labRes, settingsRes] = await Promise.all([
+    const [purchaseRes, demoRes, itemsRes, allLabRes] = await Promise.all([
       sb.from("purchases").select("*").eq("id", purchaseId).single(),
       sb.from("demonstrativos").select("*").eq("id", demonstrativoId).single(),
       sb.from("purchase_items").select("*").eq("purchase_id", purchaseId),
-      sb.from("lab_results").select("*").eq("purchase_id", purchaseId).order("versao", { ascending: false }).limit(1),
-      sb.from("settings").select("*").limit(1).single(),
+      sb.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchaseId),
     ]);
 
     if (purchaseRes.error || !purchaseRes.data) {
@@ -57,8 +56,11 @@ Deno.serve(async (req) => {
     const purchase = purchaseRes.data;
     const demo = demoRes.data;
     const items = itemsRes.data || [];
-    const latestLab = labRes.data?.[0] || null;
-    const settings = settingsRes.data;
+    const allLabRows: any[] = allLabRes.data || [];
+    const generalLabRows = allLabRows.filter(l => !l.purchase_item_id);
+    const latestLab = generalLabRows.length > 0
+      ? generalLabRows.reduce((a, b) => (Number(b.versao) > Number(a.versao) ? b : a))
+      : null;
 
     // Calculate real total from items (conference items or all items)
     const conferenceItems = items.filter((i: any) => i.category === "conferencia");
@@ -311,44 +313,62 @@ Deno.serve(async (req) => {
         const calcResult = item.calc_result as any;
         const calcInput = item.calc_input as any;
 
-        let qtyWeight = "—";
-        if (item.item_type === "peca") {
-          qtyWeight = `${item.quantity || 0} pç`;
+        const bruto = Number(calcInput?.grossWeight) || Number(item.weight) || 0;
+        const tara = Number(calcInput?.tare) || Number(item.weight_loss) || 0;
+        const liquido = Math.max(0, bruto - tara);
+
+        let qtyWeightLines: string[] = ["—"];
+        if (isCeramico) {
+          qtyWeightLines = [
+            `Bruto: ${fmt(bruto, 4)} kg`,
+            `Tara: ${fmt(tara, 4)} kg`,
+            `Líquido: ${fmt(liquido, 4)} kg`,
+          ];
+        } else if (item.item_type === "peca") {
+          qtyWeightLines = [`${item.quantity || 0} pç`];
         } else if (item.item_type === "peca_sacola" && !calcInput) {
-          qtyWeight = `${item.quantity || 0} pç`;
-          if (item.weight) qtyWeight += ` / ${fmt(Number(item.weight))} kg`;
+          let s = `${item.quantity || 0} pç`;
+          if (item.weight) s += ` / ${fmt(Number(item.weight))} kg`;
+          qtyWeightLines = [s];
         } else if (calcInput) {
-          const net = (calcInput.grossWeight || 0) - (calcInput.tare || 0);
-          qtyWeight = `${fmt(net)} kg`;
+          qtyWeightLines = [`${fmt(liquido)} kg`];
         } else if (item.weight) {
-          qtyWeight = `${fmt(Number(item.weight))} kg`;
+          qtyWeightLines = [`${fmt(Number(item.weight))} kg`];
         }
 
         let unitVal = "—";
         let totalVal = "—";
-        if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
-          const tv = Number(item.total_value) || 0;
+        const tv = Number(item.total_value) || 0;
+        if (isCeramico) {
+          const totalNum = tv > 0 ? tv : Number(calcResult?.finalValueBrl) || 0;
+          totalVal = totalNum > 0 ? fmtBrl(totalNum) : "Pendente";
+          if (totalNum > 0 && liquido > 0) {
+            unitVal = `${fmtBrl(totalNum / liquido)}/kg`;
+          }
+        } else if (item.item_type === "peca" || (item.item_type === "peca_sacola" && !calcResult)) {
           const qty = item.quantity || 1;
           unitVal = tv > 0 ? fmtBrl(tv / qty) : "—";
           totalVal = tv > 0 ? fmtBrl(tv) : "Pendente";
         } else if (calcResult) {
           totalVal = calcResult.finalValueBrl ? fmtBrl(calcResult.finalValueBrl) : "Pendente";
-          unitVal = "—";
         }
 
+        const rowHeight = isCeramico ? 14 : 6;
         if (i % 2 === 0) {
           doc.setFillColor(250, 250, 250);
-          doc.rect(margin, y, contentWidth, 6, "F");
+          doc.rect(margin, y, contentWidth, rowHeight, "F");
         }
 
         doc.text(`${i + 1}`, colX[0] + 2, y + 4);
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
         const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
         doc.text(typeLabel, colX[1] + 2, y + 4);
-        doc.text(qtyWeight, colX[2] + 2, y + 4);
+        for (let li = 0; li < qtyWeightLines.length; li++) {
+          doc.text(qtyWeightLines[li], colX[2] + 2, y + 4 + li * 4);
+        }
         doc.text(unitVal, colX[3] + 2, y + 4);
         doc.text(totalVal, colX[4] + 2, y + 4);
-        y += 6;
+        y += rowHeight;
 
         if (y > 270) { doc.addPage(); y = margin; }
       }
@@ -358,54 +378,82 @@ Deno.serve(async (req) => {
     doc.line(margin, y, pageWidth - margin, y);
     y += 6;
 
-    // --- Lab Results (cerâmico) ---
-    if (isCeramico && latestLab) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("Análise Laboratorial", margin, y);
-      y += 7;
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-
-      const labInfo = [
-        { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm))} ppm` },
-        { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm))} ppm` },
-        { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm))} ppm` },
-        { label: "Versão análise:", value: `v${latestLab.versao}` },
-      ];
-
-      for (const info of labInfo) {
-        doc.setFont("helvetica", "bold");
-        doc.text(info.label, margin, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(info.value, margin + 35, y);
-        y += 5;
+    // --- Lab Results (cerâmico) — per group ---
+    if (isCeramico) {
+      // Build per-item lab averages
+      const labAgg: Record<string, { pt: number; pd: number; rh: number; n: number; maxV: number }> = {};
+      for (const lr of allLabRows) {
+        if (!lr.purchase_item_id) continue;
+        const a = labAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0, maxV: 0 };
+        a.pt += Number(lr.pt_ppm) || 0;
+        a.pd += Number(lr.pd_ppm) || 0;
+        a.rh += Number(lr.rh_ppm) || 0;
+        a.n += 1;
+        a.maxV = Math.max(a.maxV, Number(lr.versao) || 0);
+        labAgg[lr.purchase_item_id] = a;
       }
-      y += 4;
+      const groupLabItems = itemsForTotal.filter((it: any) => labAgg[it.id]);
 
-      // Settings/pricing info
-      if (settings) {
+      if (groupLabItems.length > 0 || latestLab) {
         doc.setFont("helvetica", "bold");
-        doc.text("Cotações utilizadas:", margin, y);
-        y += 5;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(11);
+        doc.text("Análise Laboratorial", margin, y);
+        y += 7;
 
-        const pricingInfo = [
-          `Pt: USD ${fmt(Number(settings.pt_price))} | Pd: USD ${fmt(Number(settings.pd_price))} | Rh: USD ${fmt(Number(settings.rh_price))}`,
-          `Câmbio: ${fmtBrl(Number(settings.usd_to_brl))}`,
-        ];
+        if (groupLabItems.length > 0) {
+          const labCols = [contentWidth - 100, 25, 25, 25, 25];
+          const labX = [margin];
+          for (let i = 1; i < labCols.length; i++) labX.push(labX[i - 1] + labCols[i - 1]);
+          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)", "Versão"];
 
-        for (const line of pricingInfo) {
-          doc.text(line, margin, y);
-          y += 4;
+          doc.setFillColor(240, 240, 240);
+          doc.rect(margin, y, contentWidth, 7, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          for (let i = 0; i < labHeaders.length; i++) {
+            doc.text(labHeaders[i], labX[i] + 2, y + 5);
+          }
+          y += 7;
+
+          doc.setFont("helvetica", "normal");
+          for (let i = 0; i < groupLabItems.length; i++) {
+            const it = groupLabItems[i];
+            const a = labAgg[it.id];
+            const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
+            const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+            if (i % 2 === 0) {
+              doc.setFillColor(250, 250, 250);
+              doc.rect(margin, y, contentWidth, 6, "F");
+            }
+            doc.text(label || "—", labX[0] + 2, y + 4);
+            doc.text(fmt(a.pt / a.n), labX[1] + 2, y + 4);
+            doc.text(fmt(a.pd / a.n), labX[2] + 2, y + 4);
+            doc.text(fmt(a.rh / a.n), labX[3] + 2, y + 4);
+            doc.text(`v${a.maxV}`, labX[4] + 2, y + 4);
+            y += 6;
+            if (y > 270) { doc.addPage(); y = margin; }
+          }
+        } else if (latestLab) {
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          const labInfo = [
+            { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm))} ppm` },
+            { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm))} ppm` },
+            { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm))} ppm` },
+            { label: "Versão análise:", value: `v${latestLab.versao}` },
+          ];
+          for (const info of labInfo) {
+            doc.setFont("helvetica", "bold");
+            doc.text(info.label, margin, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(info.value, margin + 35, y);
+            y += 5;
+          }
         }
         y += 4;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
       }
-
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
     }
 
     // --- Weight info ---
@@ -442,7 +490,7 @@ Deno.serve(async (req) => {
     y += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Total de peças: ${totalPecas}`, margin, y);
+    doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas}`, margin, y);
     doc.text(`Peso total: ${fmt(totalWeightKg)} kg`, pageWidth / 2, y);
     y += 8;
 
