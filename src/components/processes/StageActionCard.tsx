@@ -20,6 +20,7 @@ import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
+import CeramicoTrituracaoPanel from "./CeramicoTrituracaoPanel";
 import CeramicoLabPanel from "./CeramicoLabPanel";
 import CeramicoPricingPanel from "./CeramicoPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
@@ -55,6 +56,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
+  const [ceramicoTrituracaoOpen, setCeramicoTrituracaoOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
 
@@ -88,6 +90,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
+  const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
   const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
 
@@ -591,6 +594,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               purchase={purchase}
               open={ceramicoConferenciaOpen}
               onOpenChange={setCeramicoConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isCeramicoTrituracao ? (
+          /* Cerâmico: Trituração/Homogeneização/Amostragem — TARA + foto por grupo */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setCeramicoTrituracaoOpen(true)}>
+              <Scale className="h-3 w-3 mr-1" /> Iniciar Trituração/Homogeneização
+            </Button>
+            <CeramicoTrituracaoPanel
+              purchase={purchase}
+              open={ceramicoTrituracaoOpen}
+              onOpenChange={setCeramicoTrituracaoOpen}
               onCompleted={onCompleted}
             />
           </div>
