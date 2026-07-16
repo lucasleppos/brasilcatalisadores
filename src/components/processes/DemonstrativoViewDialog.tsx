@@ -97,7 +97,8 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const effectiveTotal = Math.max(calculatedTotal, Number(demo?.valorTotal) || 0);
   const totalPecas = itemsForTotal.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
   const totalGrupos = itemsForTotal.length;
-  const totalWeightKg = itemsForTotal.reduce((acc, i) => acc + (Number(i.weight) || 0), 0);
+  const totalBrutoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).bruto, 0);
+  const totalLiquidoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).liquido, 0);
 
   const catalogFixedItems = items.filter(i => i.pricing_source === "catalogo");
   const calcItems = items.filter(i => i.pricing_source === "calculadora");
@@ -365,7 +366,10 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                 <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
                 {isCeramico ? totalGrupos : totalPecas}
               </div>
-              <div><span className="font-semibold">Peso total:</span> {fmtNum(totalWeightKg, 4)} kg</div>
+              <div className="space-y-0.5">
+                <div><span className="font-semibold">Peso bruto total:</span> {fmtNum(totalBrutoKg, 4)} kg</div>
+                <div><span className="font-semibold">Peso líquido total:</span> {fmtNum(totalLiquidoKg, 4)} kg</div>
+              </div>
             </div>
 
             <div className="border-t pt-3 flex items-center justify-between">

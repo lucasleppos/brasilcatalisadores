@@ -1,17 +1,19 @@
-## Ajustes finais no PDF do Demonstrativo
+## Alinhar Dialog do Demonstrativo com o PDF
 
-Apenas em `supabase/functions/generate-demonstrativo-pdf/index.ts`:
+Ajustar `src/components/processes/DemonstrativoViewDialog.tsx` para exibir os mesmos totais de peso que o PDF já mostra.
 
-1. **Remover "Versão N" do cabeçalho** — apagar as linhas que imprimem `Versão ${demo.versao}` logo abaixo do título "DEMONSTRATIVO DE VALORES".
+### Mudança
+No bloco "Resumo" (grid com Total de grupos/peças e Peso total), substituir a linha única `Peso total: X kg` por duas linhas:
+- `Peso bruto total: X kg` — soma de `weights(i).bruto` de `itemsForTotal`
+- `Peso líquido total: Y kg` — soma de `weights(i).liquido` de `itemsForTotal`
 
-2. **Resumo (rodapé)** — substituir a linha única "Peso total: X kg" por duas informações:
-   - `Peso bruto total: X kg` (soma de `grossWeight`/`weight` de `itemsForTotal`)
-   - `Peso líquido total: Y kg` (soma de `grossWeight - tare` de `itemsForTotal`)
-   
-   Manter no fluxo Peças o comportamento equivalente (bruto = líquido quando não há tara, ou apenas mostrar "Peso total" simples). Para simplicidade, aplicar as duas linhas em ambos os fluxos usando os mesmos cálculos.
+Reutilizar a função `weights()` já existente no componente (mesmo cálculo usado nas linhas por grupo, garantindo paridade com o PDF).
+
+Ajustar o grid para acomodar as duas linhas (ex.: manter `grid-cols-2`, colocando as duas linhas de peso empilhadas na coluna direita).
 
 ### Fora de escopo
-- Sem mudanças no dialog de visualização, cálculos, ou demais seções.
+- PDF (já atualizado).
+- Demais seções do dialog.
 
 ### Arquivo alterado
-- `supabase/functions/generate-demonstrativo-pdf/index.ts`
+- `src/components/processes/DemonstrativoViewDialog.tsx`
