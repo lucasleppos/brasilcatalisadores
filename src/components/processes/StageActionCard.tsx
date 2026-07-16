@@ -385,6 +385,9 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </div>
             )}
             <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={() => setViewDemoOpen(true)}>
+                <Eye className="h-3 w-3 mr-1" />Visualizar
+              </Button>
               <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
                 setLoading(true);
                 try {
@@ -401,31 +404,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               }}>
                 <FileDown className="h-3 w-3 mr-1" />PDF
               </Button>
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
-                setLoading(true);
-                try {
-                  let demos = await loadDemonstrativos(purchase.id);
-                  if (demos.length === 0) {
-                    await createDemonstrativo(purchase.id, purchase.totalBrl);
-                    demos = await loadDemonstrativos(purchase.id);
-                  }
-                  const latest = demos[demos.length - 1];
-                  if (!latest) { toast.error("Nenhum demonstrativo encontrado"); return; }
-                  const url = await generateDemonstrativoPdf(purchase.id, latest.id);
-                  const blob = await fetch(url).then(r => r.blob());
-                  const file = new File([blob], "demonstrativo.pdf", { type: "application/pdf" });
-                  if (navigator.share && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: `Demonstrativo ${purchase.purchaseNumber}` });
-                  } else {
-                    const msg = encodeURIComponent(`Demonstrativo de valores - Pedido ${purchase.purchaseNumber}`);
-                    window.open(`https://wa.me/?text=${msg}`, "_blank");
-                    toast.info("PDF gerado. Anexe o arquivo baixado na conversa do WhatsApp.");
-                     const safeName = (s: string) => (s || "").replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_"); const fname = `${safeName(purchase.erpNumber)}_${safeName(purchase.purchaseNumber)}_${safeName(purchase.supplierName)}.pdf`; const a = document.createElement("a"); a.href = url; a.download = fname; a.click();
-                  }
-                } catch { toast.error("Erro ao compartilhar"); } finally { setLoading(false); }
-              }}>
-                <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
-              </Button>
+              {/* WhatsApp temporariamente desativado */}
             </div>
             <div className="flex gap-2">
               <AlertDialog>
