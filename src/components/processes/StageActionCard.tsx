@@ -418,11 +418,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
-            {missingErp && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
-              </div>
+            {missingErp && ErpInlineInput}
+            {purchase.materialFlow === "ceramico" && (
+              <>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => setCeramicoPricingOpen(true)}>
+                  <Calculator className="h-3 w-3 mr-1" /> Ver Precificação dos Lotes
+                </Button>
+                <CeramicoPricingPanel
+                  purchase={purchase}
+                  open={ceramicoPricingOpen}
+                  onOpenChange={setCeramicoPricingOpen}
+                  onCompleted={onCompleted}
+                />
+              </>
             )}
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={() => setViewDemoOpen(true)}>
