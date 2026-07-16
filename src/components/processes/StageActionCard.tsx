@@ -734,35 +734,20 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </Select>
             </div>
 
-            {/* Parallel sub-status selectors for cerâmico */}
+            {/* Sub-status operacional (cerâmico) */}
             {(adminTargetStatus === "Cerâmico: Aprovado" || isInParallelPhase(purchase)) && purchase.materialFlow === "ceramico" && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">💰 Financeiro</label>
-                  <Select value={adminTargetFinStatus} onValueChange={setAdminTargetFinStatus}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Manter atual" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CER_FIN_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">📦 Operacional</label>
-                  <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Manter atual" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CER_OP_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">📦 Operacional (Bags)</label>
+                <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Manter atual" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CER_OP_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
