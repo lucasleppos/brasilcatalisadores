@@ -348,18 +348,18 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       {groupAvgRows.map((r, i) => (
                         <tr key={r.key} className={i % 2 === 0 ? "bg-muted/30" : ""}>
                           <td className="p-1">{r.label}</td>
-                          <td className="p-1">{fmtNum(r.pt, 2)}</td>
-                          <td className="p-1">{fmtNum(r.pd, 2)}</td>
-                          <td className="p-1">{fmtNum(r.rh, 2)}</td>
+                          <td className="p-1">{fmtNum(r.pt, 0)}</td>
+                          <td className="p-1">{fmtNum(r.pd, 0)}</td>
+                          <td className="p-1">{fmtNum(r.rh, 0)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 ) : generalAvg && (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div><span className="font-semibold">Pt:</span> {fmtNum(generalAvg.pt, 2)} ppm</div>
-                    <div><span className="font-semibold">Pd:</span> {fmtNum(generalAvg.pd, 2)} ppm</div>
-                    <div><span className="font-semibold">Rh:</span> {fmtNum(generalAvg.rh, 2)} ppm</div>
+                    <div><span className="font-semibold">Pt:</span> {fmtNum(generalAvg.pt, 0)} ppm</div>
+                    <div><span className="font-semibold">Pd:</span> {fmtNum(generalAvg.pd, 0)} ppm</div>
+                    <div><span className="font-semibold">Rh:</span> {fmtNum(generalAvg.rh, 0)} ppm</div>
                     <div><span className="font-semibold">Versão:</span> v{generalLatestVersao}</div>
                   </div>
                 )}

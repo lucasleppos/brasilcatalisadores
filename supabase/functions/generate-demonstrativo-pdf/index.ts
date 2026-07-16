@@ -448,9 +448,9 @@ Deno.serve(async (req) => {
               doc.rect(margin, y, contentWidth, 6, "F");
             }
             doc.text(r.label, labX[0] + 2, y + 4);
-            doc.text(fmt(r.pt), labX[1] + 2, y + 4);
-            doc.text(fmt(r.pd), labX[2] + 2, y + 4);
-            doc.text(fmt(r.rh), labX[3] + 2, y + 4);
+            doc.text(fmt(r.pt, 0), labX[1] + 2, y + 4);
+            doc.text(fmt(r.pd, 0), labX[2] + 2, y + 4);
+            doc.text(fmt(r.rh, 0), labX[3] + 2, y + 4);
             y += 6;
             if (y > 270) { doc.addPage(); y = margin; }
           }
@@ -458,9 +458,9 @@ Deno.serve(async (req) => {
           doc.setFontSize(9);
           doc.setFont("helvetica", "normal");
           const labInfo = [
-            { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm))} ppm` },
-            { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm))} ppm` },
-            { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm))} ppm` },
+            { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm), 0)} ppm` },
+            { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm), 0)} ppm` },
+            { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm), 0)} ppm` },
             { label: "Versão análise:", value: `v${latestLab.versao}` },
           ];
           for (const info of labInfo) {
