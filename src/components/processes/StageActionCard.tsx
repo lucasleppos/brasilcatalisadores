@@ -433,10 +433,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </>
             )}
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={() => setViewDemoOpen(true)}>
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={() => setViewDemoOpen(true)}>
                 <Eye className="h-3 w-3 mr-1" />Visualizar
               </Button>
-              <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={async () => {
+              <Button size="sm" variant="outline" className="flex-1" disabled={loading} onClick={async () => {
                 setLoading(true);
                 try {
                   let demos = await loadDemonstrativos(purchase.id);
