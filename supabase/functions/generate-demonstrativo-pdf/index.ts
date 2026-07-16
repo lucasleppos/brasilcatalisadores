@@ -33,12 +33,11 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey);
 
     // Fetch all data in parallel
-    const [purchaseRes, demoRes, itemsRes, labRes, settingsRes] = await Promise.all([
+    const [purchaseRes, demoRes, itemsRes, allLabRes] = await Promise.all([
       sb.from("purchases").select("*").eq("id", purchaseId).single(),
       sb.from("demonstrativos").select("*").eq("id", demonstrativoId).single(),
       sb.from("purchase_items").select("*").eq("purchase_id", purchaseId),
-      sb.from("lab_results").select("*").eq("purchase_id", purchaseId).order("versao", { ascending: false }).limit(1),
-      sb.from("settings").select("*").limit(1).single(),
+      sb.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchaseId),
     ]);
 
     if (purchaseRes.error || !purchaseRes.data) {
@@ -57,8 +56,11 @@ Deno.serve(async (req) => {
     const purchase = purchaseRes.data;
     const demo = demoRes.data;
     const items = itemsRes.data || [];
-    const latestLab = labRes.data?.[0] || null;
-    const settings = settingsRes.data;
+    const allLabRows: any[] = allLabRes.data || [];
+    const generalLabRows = allLabRows.filter(l => !l.purchase_item_id);
+    const latestLab = generalLabRows.length > 0
+      ? generalLabRows.reduce((a, b) => (Number(b.versao) > Number(a.versao) ? b : a))
+      : null;
 
     // Calculate real total from items (conference items or all items)
     const conferenceItems = items.filter((i: any) => i.category === "conferencia");
