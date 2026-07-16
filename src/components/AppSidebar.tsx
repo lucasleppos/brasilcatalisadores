@@ -38,6 +38,7 @@ const menuItems: MenuItem[] = [
 { title: "Fornecedores", url: "/fornecedores", icon: Users, module: "fornecedores" },
 { title: "Processos", url: "/processos", icon: Activity, module: "processos" },
 { title: "Bags", url: "/bags", icon: ShoppingBag, module: "bags" },
+{ title: "Concluídos", url: "/concluidos", icon: CheckCircle2, module: "concluidos" },
 { title: "Relatórios", url: "/relatorios", icon: BarChart3, module: "relatorios" },
 { title: "Calculadora", url: "/calculadora", icon: Calculator, module: "calculadora" },
 { title: "Catálogo", url: "/catalogo", icon: BookOpen, module: "catalogo" },
