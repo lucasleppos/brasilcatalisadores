@@ -245,11 +245,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
-  const handleFinAdvance = async () => {
-    if (!purchase.finStatus) return;
+  const handleOpAdvance = async () => {
+    if (!purchase.opStatus) return;
     setLoading(true);
     try {
-      await advanceFinStatus(purchase.id, purchase.finStatus);
+      await advanceOpStatus(purchase.id, purchase.opStatus);
       onCompleted();
     } finally {
       setLoading(false);
