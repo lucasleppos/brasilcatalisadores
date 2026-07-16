@@ -72,6 +72,10 @@ export const MODULE_DEFINITIONS: Record<string, {
       { key: "refiner_total_value", label: "Valor Refinadora" },
     ],
   },
+  concluidos: {
+    label: "Concluídos",
+    actions: [],
+    fields: [],
   catalogo: {
     label: "Catálogo",
     actions: [
