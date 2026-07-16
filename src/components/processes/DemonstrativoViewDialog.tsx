@@ -153,6 +153,23 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const groupLabItems = isCeramico ? itemsForTotal.filter(i => labMap[i.id]) : [];
   const hasPerGroupLab = groupLabItems.length > 0;
 
+  // Fallback: aggregate all lab rows by versao (used when no per-group match)
+  const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
+  labRows.forEach(lr => {
+    const v = Number(lr.versao) || 0;
+    if (!v) return;
+    const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
+    a.pt += Number(lr.pt_ppm) || 0;
+    a.pd += Number(lr.pd_ppm) || 0;
+    a.rh += Number(lr.rh_ppm) || 0;
+    a.n += 1;
+    versionAgg[v] = a;
+  });
+  const versionAggRows = Object.entries(versionAgg)
+    .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
+    .sort((a, b) => a.versao - b.versao);
+  const hasAnyLab = isCeramico && (hasPerGroupLab || versionAggRows.length > 0 || !!generalAvg);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
