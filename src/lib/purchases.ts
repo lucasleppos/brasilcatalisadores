@@ -478,9 +478,8 @@ export async function updatePurchaseStatus(id: string, status: string) {
 
   const updateData: any = { status, status_history: history };
 
-  // If entering "Cerâmico: Aprovado", initialize parallel sub-flows
+  // If entering "Cerâmico: Aprovado", initialize operational sub-flow (envio ao Bags)
   if (status === "Cerâmico: Aprovado") {
-    updateData.fin_status = "Aguardando Pagamento";
     updateData.op_status = "Alocando Bag";
   }
 
