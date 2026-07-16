@@ -425,11 +425,11 @@ Deno.serve(async (req) => {
         doc.text("Análise Laboratorial", margin, y);
         y += 7;
 
-        if (groupLabItems.length > 0) {
-          const labCols = [contentWidth - 100, 25, 25, 25, 25];
+        if (groupAvgRows.length > 0) {
+          const labCols = [contentWidth - 75, 25, 25, 25];
           const labX = [margin];
           for (let i = 1; i < labCols.length; i++) labX.push(labX[i - 1] + labCols[i - 1]);
-          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)", "Versão"];
+          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)"];
 
           doc.setFillColor(240, 240, 240);
           doc.rect(margin, y, contentWidth, 7, "F");
@@ -441,20 +441,16 @@ Deno.serve(async (req) => {
           y += 7;
 
           doc.setFont("helvetica", "normal");
-          for (let i = 0; i < groupLabItems.length; i++) {
-            const it = groupLabItems[i];
-            const a = labAgg[it.id];
-            const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
-            const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+          for (let i = 0; i < groupAvgRows.length; i++) {
+            const r = groupAvgRows[i];
             if (i % 2 === 0) {
               doc.setFillColor(250, 250, 250);
               doc.rect(margin, y, contentWidth, 6, "F");
             }
-            doc.text(label || "—", labX[0] + 2, y + 4);
-            doc.text(fmt(a.pt / a.n), labX[1] + 2, y + 4);
-            doc.text(fmt(a.pd / a.n), labX[2] + 2, y + 4);
-            doc.text(fmt(a.rh / a.n), labX[3] + 2, y + 4);
-            doc.text(`v${a.maxV}`, labX[4] + 2, y + 4);
+            doc.text(r.label, labX[0] + 2, y + 4);
+            doc.text(fmt(r.pt), labX[1] + 2, y + 4);
+            doc.text(fmt(r.pd), labX[2] + 2, y + 4);
+            doc.text(fmt(r.rh), labX[3] + 2, y + 4);
             y += 6;
             if (y > 270) { doc.addPage(); y = margin; }
           }
