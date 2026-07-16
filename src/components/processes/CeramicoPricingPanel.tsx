@@ -221,10 +221,15 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         .update({ total_brl: totalValue })
         .eq("id", purchase.id);
 
-      // Advance to next stage automatically
-      await advanceStage(purchase.id, purchase.status);
-
-      toast.success("Precificação cerâmica confirmada");
+      // Só avança de etapa se estiver na etapa de precificação.
+      // Se o painel foi aberto a partir da Aprovação, apenas atualiza os valores
+      // e mantém a compra na etapa de Aprovação até o Boleto Syge ser incluído.
+      if (purchase.status === "Cerâmico: Em Precificação") {
+        await advanceStage(purchase.id, purchase.status);
+        toast.success("Precificação cerâmica confirmada");
+      } else {
+        toast.success("Precificação atualizada");
+      }
       onOpenChange(false);
       onCompleted();
     } catch {

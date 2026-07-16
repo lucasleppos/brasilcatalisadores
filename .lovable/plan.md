@@ -1,15 +1,27 @@
-## Ajuste na etapa de Aprovação
+## Manter cerâmico na etapa de Aprovação após confirmar precificação
 
-Na etapa de Aprovação, apenas o botão **Aprovar** ficará bloqueado enquanto o Boleto Syge não for informado. Os botões **Visualizar**, **PDF** e **Contestar** ficarão sempre ativos (respeitando apenas o estado de `loading`).
+O fluxo já bloqueia o botão **Aprovar** enquanto o Boleto Syge não é preenchido, e o campo inline de Syge está em `StageActionCard.tsx`. Falta corrigir um comportamento residual do painel de precificação cerâmica.
 
-### Alteração pontual
+### Problema
 
-Arquivo: `src/components/processes/StageActionCard.tsx` — branch da etapa de Aprovação (linhas ~420–492).
+Em `src/components/processes/CeramicoPricingPanel.tsx` (linha 225), ao **Confirmar Precificação** o painel executa `advanceStage(purchase.id, purchase.status)`. Como agora o cerâmico entra na etapa de Aprovação (`Cerâmico: Gerar Boleto de Aprovação`) direto após a análise, esse `advanceStage` faz a compra **sair** da Aprovação para `Aprovado - Aguardando Pagamento` / alocação de Bag — sem exigir o Syge.
 
-- **Linha 436 (Visualizar)**: remover `|| missingErp` do `disabled` → `disabled={loading}`.
-- **Linha 439 (PDF)**: remover `|| missingErp` do `disabled` → `disabled={loading}`.
-- **Linha 491 (Contestar)**: remover `|| missingErp` do `disabled` → `disabled={loading}`.
-- **Linha 460 (Aprovar)**: mantém `disabled={loading || missingErp}` — continua bloqueado até o Syge ser preenchido.
-- O bloco `{missingErp && ErpInlineInput}` (linha 421) permanece visível como aviso/entrada do número Syge.
+### Correção pontual
 
-Fora do escopo: nenhuma outra etapa é alterada, nenhuma lógica de negócio, PDF ou cálculo é modificada.
+Arquivo: `src/components/processes/CeramicoPricingPanel.tsx` (função `handleConfirm`, ~linhas 203–235).
+
+- Condicionar a chamada `await advanceStage(...)` a `purchase.status === "Cerâmico: Em Precificação"`.
+- Quando aberto a partir da Aprovação (`Cerâmico: Gerar Boleto de Aprovação`), o painel apenas salva `calc_input`, `calc_result`, `total_value` dos lotes e atualiza `total_brl` da compra, e então fecha. A compra permanece na Aprovação até o Syge ser incluído.
+- Ajustar a `toast.success` para refletir os dois casos (ex.: "Precificação atualizada" quando não avança).
+
+### Comportamento resultante
+
+1. Análise cerâmica finalizada → compra vai para **Aprovação** (`Cerâmico: Gerar Boleto de Aprovação`).
+2. Usuário pode: **Visualizar**, gerar **PDF**, **Contestar** e **Ver Precificação dos Lotes** (reprecificar quantas vezes precisar sem sair da etapa).
+3. Após OK do fornecedor, usuário preenche o **Boleto Syge** no campo inline → botão **Aprovar** libera.
+4. Ao clicar em Aprovar, a compra avança para Pagamento + alocação de Bag.
+
+### Fora do escopo
+
+- Nenhuma outra etapa, cálculo, PDF ou permissão é alterada.
+- Fluxo de peças continua como está (já funciona corretamente porque passa por `Peças: Aguardando Demonstrativo` antes da Aprovação).
