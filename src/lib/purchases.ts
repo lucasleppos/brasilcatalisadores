@@ -187,7 +187,10 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // Skip intermediate ceramic stages and parallel sub-flows
   if (current === "Cerâmico: Em Trituração/Homogeneização") return "Cerâmico: Lab em Análise";
-  if (current === "Cerâmico: Lab em Análise") return "Cerâmico: Em Precificação";
+  // Ceramic flow now skips "Em Precificação" — after analysis go directly to approval
+  if (current === "Cerâmico: Lab em Análise") return "Cerâmico: Gerar Boleto de Aprovação";
+  if (current === "Cerâmico: Resultado Incluído") return "Cerâmico: Gerar Boleto de Aprovação";
+  if (current === "Cerâmico: Em Precificação") return "Cerâmico: Gerar Boleto de Aprovação";
   if (current === "Cerâmico: Gerar Boleto de Aprovação") return "Cerâmico: Aprovado";
   // Keep legacy parallel support
   if (current === "Cerâmico: Aprovado") return null;
@@ -867,4 +870,12 @@ export function isPurchaseClosed(purchase: Purchase): boolean {
 /** Check if cerâmico is in parallel phase */
 export function isInParallelPhase(purchase: Purchase): boolean {
   return purchase.status === "Cerâmico: Aprovado" && purchase.finStatus != null && purchase.opStatus != null;
+}
+
+/** Update the Boleto Syge / ERP number on a purchase */
+export async function updatePurchaseErp(id: string, erpNumber: string): Promise<boolean> {
+  const trimmed = erpNumber.trim();
+  if (!trimmed) return false;
+  const { error } = await supabase.from("purchases").update({ erp_number: trimmed }).eq("id", id);
+  return !error;
 }

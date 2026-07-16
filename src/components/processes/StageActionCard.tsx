@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES, updatePurchaseErp } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
@@ -61,6 +61,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
   const [ceramicoPricingOpen, setCeramicoPricingOpen] = useState(false);
   const [viewDemoOpen, setViewDemoOpen] = useState(false);
+  const [erpInput, setErpInput] = useState("");
+  const [savingErp, setSavingErp] = useState(false);
 
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
@@ -109,6 +111,44 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       setLoading(false);
     }
   };
+
+  const handleSaveErp = async () => {
+    const val = erpInput.trim();
+    if (!val) return;
+    setSavingErp(true);
+    try {
+      const ok = await updatePurchaseErp(purchase.id, val);
+      if (ok) {
+        toast.success("Boleto Syge salvo");
+        setErpInput("");
+        onCompleted();
+      } else {
+        toast.error("Erro ao salvar Boleto Syge");
+      }
+    } finally {
+      setSavingErp(false);
+    }
+  };
+
+  const ErpInlineInput = (
+    <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+        <p className="text-xs text-destructive font-medium">Informe o Boleto Syge (ERP) para prosseguir</p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={erpInput}
+          onChange={(e) => setErpInput(e.target.value)}
+          placeholder="Número do Boleto Syge"
+          className="h-8 text-xs"
+        />
+        <Button size="sm" className="h-8 text-xs" disabled={!erpInput.trim() || savingErp} onClick={handleSaveErp}>
+          {savingErp ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
 
   const handleAnalysis = async () => {
     const pt = parseFloat(ptPpm.replace(",", "."));
@@ -378,11 +418,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
-            {missingErp && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
-              </div>
+            {missingErp && ErpInlineInput}
+            {purchase.materialFlow === "ceramico" && (
+              <>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => setCeramicoPricingOpen(true)}>
+                  <Calculator className="h-3 w-3 mr-1" /> Ver Precificação dos Lotes
+                </Button>
+                <CeramicoPricingPanel
+                  purchase={purchase}
+                  open={ceramicoPricingOpen}
+                  onOpenChange={setCeramicoPricingOpen}
+                  onCompleted={onCompleted}
+                />
+              </>
             )}
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="flex-1" disabled={loading || missingErp} onClick={() => setViewDemoOpen(true)}>
@@ -648,12 +696,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               onChecklistChange={handleChecklistChange}
             />
 
-            {needsErp && missingErp && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                <p className="text-xs text-destructive">Preencha o campo "Boleto Syge" na compra antes de prosseguir.</p>
-              </div>
-            )}
+            {needsErp && missingErp && ErpInlineInput}
 
             {canGeneratePdf && (
               <div className="flex gap-2">

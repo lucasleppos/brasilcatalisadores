@@ -49,7 +49,6 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     label: "Precif. / Demonstrativo",
     statuses: [
       "Peças: Aguardando Demonstrativo",
-      "Cerâmico: Em Precificação",
       "Peças: Pesagem Realizada",
       "Peças: Peso Divergente",
     ],
