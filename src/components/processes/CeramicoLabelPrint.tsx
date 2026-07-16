@@ -3,12 +3,14 @@ import { buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
 import { fmtNum } from "@/lib/utils";
 
 export interface LabelData {
+  /** Unique internal code (used as QR target + React key) */
   code: string;
+  /** Code displayed on the label header (without seq suffix) */
+  displayCode?: string;
   buyer: string;
   supplierName: string;
   group: string;
   weightNet: number;
-  tare: number;
 }
 
 interface Props {
@@ -63,25 +65,22 @@ export default function CeramicoLabelPrint({ labels }: Props) {
           line-height: 1.05; border-bottom: 0.4mm solid #000; padding-bottom: 1mm; margin-bottom: 1mm;
           white-space: nowrap; overflow: hidden; text-overflow: clip;
         }
-        .ceramico-label .row { font-size: 10.5pt; font-weight: 700; line-height: 1.25; margin: 0.3mm 0; }
+        .ceramico-label .row { font-size: 11pt; font-weight: 700; line-height: 1.3; margin: 0.4mm 0; }
         .ceramico-label .row .lbl { font-weight: 700; }
         .ceramico-label .row .val { font-weight: 800; }
-        .ceramico-label .weights { display: flex; gap: 3mm; font-size: 11pt; font-weight: 800; }
+        .ceramico-label .weights { font-size: 15pt; font-weight: 900; margin-top: 1mm; }
         .ceramico-label .qr { display: flex; align-items: center; justify-content: center; }
         .ceramico-label .qr img { width: 30mm; height: 30mm; }
       `}</style>
 
-      {labels.map((l) => (
-        <div key={l.code} className="ceramico-label">
+      {labels.map((l, idx) => (
+        <div key={`${l.code}-${idx}`} className="ceramico-label">
           <div className="info">
-            <div className="lote">{l.code}</div>
+            <div className="lote">{l.displayCode || l.code}</div>
             <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
             <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
             <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
-            <div className="weights">
-              <span>Peso Líq.: {fmtNum(l.weightNet, 3)} kg</span>
-              <span>Tara: {fmtNum(l.tare, 3)} kg</span>
-            </div>
+            <div className="weights">Peso Líq.: {fmtNum(l.weightNet, 3)} kg</div>
           </div>
           <div className="qr">
             {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
