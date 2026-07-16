@@ -32,6 +32,18 @@ interface InProcessMaterial {
   status: string;
 }
 
+interface AllocatedMaterial {
+  purchaseId: string;
+  purchaseItemId: string;
+  supplierName: string;
+  weight: number;
+  paidValue: number;
+  itemType: string;
+  bagId: string;
+  bagNumber: string;
+  bagLabel: string;
+}
+
 const statusColors: Record<string, string> = {
   "Amostragem": "bg-blue-100 text-blue-800",
   "Análise": "bg-purple-100 text-purple-800",
@@ -47,6 +59,7 @@ interface AllocationPanelProps {
 export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const { toast } = useToast();
   const [availableMaterials, setAvailableMaterials] = useState<AvailableMaterial[]>([]);
+  const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
