@@ -17,6 +17,7 @@ interface RawItem {
   item_type: string;
   quantity: number | null;
   weight: number | null;
+  weight_loss: number | null;
   total_value: number | null;
   category: string | null;
   pricing_source: string | null;
@@ -33,13 +34,6 @@ interface LabRow {
   rh_ppm: number;
 }
 
-interface SettingsRow {
-  pt_price: number;
-  pd_price: number;
-  rh_price: number;
-  usd_to_brl: number;
-}
-
 const typeLabels: Record<string, string> = {
   peca: "Peça",
   peca_sacola: "Peça em Sacola",
@@ -51,7 +45,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const [demo, setDemo] = useState<Demonstrativo | null>(null);
   const [items, setItems] = useState<RawItem[]>([]);
   const [labRows, setLabRows] = useState<LabRow[]>([]);
-  const [settings, setSettings] = useState<SettingsRow | null>(null);
   const [catalogParts, setCatalogParts] = useState<Record<string, { code: string; reference: string }>>({});
 
   useEffect(() => {
@@ -68,16 +61,14 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         }
         const latest = demos[demos.length - 1] || null;
 
-        const [itemsRes, labRes, settingsRes] = await Promise.all([
+        const [itemsRes, labRes] = await Promise.all([
           supabase.from("purchase_items").select("*").eq("purchase_id", purchase.id),
           supabase.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchase.id),
-          supabase.from("settings").select("pt_price,pd_price,rh_price,usd_to_brl").limit(1).single(),
         ]);
 
         const rawItems: RawItem[] = (itemsRes.data as any[]) || [];
         const rawLab: LabRow[] = (labRes.data as any[]) || [];
 
-        // fetch catalog parts
         const partIds = [...new Set(rawItems.filter(i => i.catalog_part_id).map(i => i.catalog_part_id as string))];
         const partsMap: Record<string, { code: string; reference: string }> = {};
         if (partIds.length > 0) {
@@ -89,7 +80,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         setDemo(latest);
         setItems(rawItems);
         setLabRows(rawLab);
-        setSettings((settingsRes.data as any) || null);
         setCatalogParts(partsMap);
       } finally {
         if (!cancelled) setLoading(false);
@@ -101,12 +91,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
   const isCeramico = purchase.materialFlow === "ceramico";
 
-  // Match edge-function totals: prefer conferencia items
   const conferenceItems = items.filter(i => i.category === "conferencia");
   const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
   const calculatedTotal = itemsForTotal.reduce((acc, i) => acc + (Number(i.total_value) || 0), 0);
   const effectiveTotal = Math.max(calculatedTotal, Number(demo?.valorTotal) || 0);
   const totalPecas = itemsForTotal.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+  const totalGrupos = itemsForTotal.length;
   const totalWeightKg = itemsForTotal.reduce((acc, i) => acc + (Number(i.weight) || 0), 0);
 
   const catalogFixedItems = items.filter(i => i.pricing_source === "catalogo");
@@ -114,23 +104,23 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const regularItems = items.filter(i => !i.pricing_source);
   const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
 
-  // Lab map per calc item (average across versoes)
-  const labAgg: Record<string, { pt: number; pd: number; rh: number; n: number }> = {};
+  // Lab map per item (average across versoes) + latest versao per item
+  const labAgg: Record<string, { pt: number; pd: number; rh: number; n: number; maxV: number }> = {};
   labRows.forEach(lr => {
     if (!lr.purchase_item_id) return;
-    const a = labAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0 };
+    const a = labAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0, maxV: 0 };
     a.pt += Number(lr.pt_ppm) || 0;
     a.pd += Number(lr.pd_ppm) || 0;
     a.rh += Number(lr.rh_ppm) || 0;
     a.n += 1;
+    a.maxV = Math.max(a.maxV, Number(lr.versao) || 0);
     labAgg[lr.purchase_item_id] = a;
   });
-  const labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
+  const labMap: Record<string, { pt: number; pd: number; rh: number; versao: number }> = {};
   Object.entries(labAgg).forEach(([k, v]) => {
-    if (v.n > 0) labMap[k] = { pt: v.pt / v.n, pd: v.pd / v.n, rh: v.rh / v.n };
+    if (v.n > 0) labMap[k] = { pt: v.pt / v.n, pd: v.pd / v.n, rh: v.rh / v.n, versao: v.maxV };
   });
 
-  // General lab (cerâmico) = average of purchase-level rows (no purchase_item_id)
   const generalLab = labRows.filter(l => !l.purchase_item_id);
   const generalLatestVersao = generalLab.reduce((m, l) => Math.max(m, l.versao || 0), 0);
   const generalAvg = generalLab.length > 0 ? {
@@ -150,13 +140,25 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
     return cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
   }
 
+  function weights(item: RawItem) {
+    const calcInput = item.calc_input || {};
+    const bruto = Number(calcInput.grossWeight) || Number(item.weight) || 0;
+    const tara = Number(calcInput.tare) || Number(item.weight_loss) || 0;
+    const liquido = Math.max(0, bruto - tara);
+    return { bruto, tara, liquido };
+  }
+
+  // Per-group lab list for cerâmico
+  const groupLabItems = isCeramico ? itemsForTotal.filter(i => labMap[i.id]) : [];
+  const hasPerGroupLab = groupLabItems.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center">Demonstrativo de Valores</DialogTitle>
           <DialogDescription className="text-center">
-            {demo ? `Versão ${demo.versao}` : "Prévia dos valores do demonstrativo"}
+            Prévia dos valores do demonstrativo
           </DialogDescription>
         </DialogHeader>
 
@@ -166,7 +168,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
           </div>
         ) : (
           <div className="space-y-4 text-sm">
-            {/* Header info */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-b py-3">
               <div><span className="font-semibold">Nº Pedido:</span> {purchase.purchaseNumber}</div>
               <div><span className="font-semibold">Data:</span> {new Date(purchase.date).toLocaleDateString("pt-BR")}</div>
@@ -176,7 +177,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               <div><span className="font-semibold">Boleto Syge:</span> {purchase.erpNumber || "—"}</div>
             </div>
 
-            {/* Sacola: catálogo fixo */}
             {catalogFixedItems.length > 0 && (
               <div>
                 <p className="font-semibold mb-1">Peças — Preço Fixo (Catálogo)</p>
@@ -203,7 +203,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {/* Sacola: calculadora */}
             {calcItems.length > 0 && (
               <div>
                 <p className="font-semibold mb-1">Peças — Preço Calculado (PPM Lab)</p>
@@ -239,7 +238,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {/* Demais itens */}
             {regularItems.length > 0 && (
               <div>
                 {hasSacolaBlocks && <p className="font-semibold mb-1">Demais Itens</p>}
@@ -248,7 +246,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                     <tr>
                       <th className="p-1 text-left">#</th>
                       <th className="p-1 text-left">Tipo</th>
-                      <th className="p-1 text-left">Qtd/Peso</th>
+                      <th className="p-1 text-left">{isCeramico ? "Pesos" : "Qtd/Peso"}</th>
                       <th className="p-1 text-left">Valor Unit.</th>
                       <th className="p-1 text-left">Valor Total</th>
                     </tr>
@@ -257,23 +255,37 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                     {regularItems.map((it, i) => {
                       const calcResult = it.calc_result;
                       const calcInput = it.calc_input;
-                      let qtyWeight = "—";
-                      if (it.item_type === "peca") {
+                      const w = weights(it);
+
+                      let qtyWeight: React.ReactNode = "—";
+                      if (isCeramico) {
+                        qtyWeight = (
+                          <div className="leading-tight">
+                            <div>Bruto: {fmtNum(w.bruto, 4)} kg</div>
+                            <div>Tara: {fmtNum(w.tara, 4)} kg</div>
+                            <div>Líquido: {fmtNum(w.liquido, 4)} kg</div>
+                          </div>
+                        );
+                      } else if (it.item_type === "peca") {
                         qtyWeight = `${it.quantity || 0} pç`;
                       } else if (it.item_type === "peca_sacola" && !calcInput) {
-                        qtyWeight = `${it.quantity || 0} pç`;
-                        if (it.weight) qtyWeight += ` / ${fmtNum(Number(it.weight), 4)} kg`;
+                        qtyWeight = `${it.quantity || 0} pç${it.weight ? ` / ${fmtNum(Number(it.weight), 4)} kg` : ""}`;
                       } else if (calcInput) {
-                        const net = (Number(calcInput.grossWeight) || 0) - (Number(calcInput.tare) || 0);
-                        qtyWeight = `${fmtNum(net, 4)} kg`;
+                        qtyWeight = `${fmtNum(w.liquido, 4)} kg`;
                       } else if (it.weight) {
                         qtyWeight = `${fmtNum(Number(it.weight), 4)} kg`;
                       }
 
                       let unitVal = "—";
                       let totalVal: string = "—";
-                      if (it.item_type === "peca" || (it.item_type === "peca_sacola" && !calcResult)) {
-                        const tv = Number(it.total_value) || 0;
+                      const tv = Number(it.total_value) || 0;
+                      if (isCeramico) {
+                        totalVal = tv > 0 ? fmtBrl(tv) : (calcResult?.finalValueBrl ? fmtBrl(Number(calcResult.finalValueBrl)) : "Pendente");
+                        const totalNum = tv > 0 ? tv : Number(calcResult?.finalValueBrl) || 0;
+                        if (totalNum > 0 && w.liquido > 0) {
+                          unitVal = `${fmtBrl(totalNum / w.liquido)}/kg`;
+                        }
+                      } else if (it.item_type === "peca" || (it.item_type === "peca_sacola" && !calcResult)) {
                         const qty = it.quantity || 1;
                         unitVal = tv > 0 ? fmtBrl(tv / qty) : "—";
                         totalVal = tv > 0 ? fmtBrl(tv) : "Pendente";
@@ -282,11 +294,11 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       }
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="p-1">{i + 1}</td>
-                          <td className="p-1">{typeLabel(it)}</td>
-                          <td className="p-1">{qtyWeight}</td>
-                          <td className="p-1">{unitVal}</td>
-                          <td className="p-1">{totalVal}</td>
+                          <td className="p-1 align-top">{i + 1}</td>
+                          <td className="p-1 align-top">{typeLabel(it)}</td>
+                          <td className="p-1 align-top">{qtyWeight}</td>
+                          <td className="p-1 align-top">{unitVal}</td>
+                          <td className="p-1 align-top">{totalVal}</td>
                         </tr>
                       );
                     })}
@@ -295,27 +307,46 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {/* Análise laboratorial (cerâmico) */}
-            {isCeramico && generalAvg && (
+            {isCeramico && (hasPerGroupLab || generalAvg) && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Análise Laboratorial</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <div><span className="font-semibold">Platina (Pt):</span> {fmtNum(generalAvg.pt, 2)} ppm</div>
-                  <div><span className="font-semibold">Paládio (Pd):</span> {fmtNum(generalAvg.pd, 2)} ppm</div>
-                  <div><span className="font-semibold">Ródio (Rh):</span> {fmtNum(generalAvg.rh, 2)} ppm</div>
-                  <div><span className="font-semibold">Versão análise:</span> v{generalLatestVersao}</div>
-                </div>
-                {settings && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <p className="font-semibold text-foreground">Cotações utilizadas:</p>
-                    <p>Pt: USD {fmtNum(settings.pt_price, 2)} | Pd: USD {fmtNum(settings.pd_price, 2)} | Rh: USD {fmtNum(settings.rh_price, 2)}</p>
-                    <p>Câmbio: {fmtBrl(settings.usd_to_brl)}</p>
+                {hasPerGroupLab ? (
+                  <table className="w-full text-xs border">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1 text-left">Grupo</th>
+                        <th className="p-1 text-left">Pt (ppm)</th>
+                        <th className="p-1 text-left">Pd (ppm)</th>
+                        <th className="p-1 text-left">Rh (ppm)</th>
+                        <th className="p-1 text-left">Versão</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupLabItems.map((it, i) => {
+                        const lab = labMap[it.id];
+                        return (
+                          <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                            <td className="p-1">{typeLabel(it)}</td>
+                            <td className="p-1">{fmtNum(lab.pt, 2)}</td>
+                            <td className="p-1">{fmtNum(lab.pd, 2)}</td>
+                            <td className="p-1">{fmtNum(lab.rh, 2)}</td>
+                            <td className="p-1">v{lab.versao}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : generalAvg && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div><span className="font-semibold">Pt:</span> {fmtNum(generalAvg.pt, 2)} ppm</div>
+                    <div><span className="font-semibold">Pd:</span> {fmtNum(generalAvg.pd, 2)} ppm</div>
+                    <div><span className="font-semibold">Rh:</span> {fmtNum(generalAvg.rh, 2)} ppm</div>
+                    <div><span className="font-semibold">Versão:</span> v{generalLatestVersao}</div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Conferência de peso */}
             {(purchase.weightDeclared != null || purchase.weightReal != null) && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Conferência de Peso</p>
@@ -329,13 +360,14 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {/* Resumo */}
             <div className="border-t pt-3 grid grid-cols-2 gap-4 text-xs">
-              <div><span className="font-semibold">Total de peças:</span> {totalPecas}</div>
+              <div>
+                <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
+                {isCeramico ? totalGrupos : totalPecas}
+              </div>
               <div><span className="font-semibold">Peso total:</span> {fmtNum(totalWeightKg, 4)} kg</div>
             </div>
 
-            {/* Valor total */}
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="text-lg font-bold">VALOR TOTAL:</span>
               <span className="text-lg font-bold">{fmtBrl(effectiveTotal)}</span>
@@ -346,11 +378,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                 Obs: {purchase.notes}
               </div>
             )}
-
-            <div className="text-[10px] text-muted-foreground pt-2">
-              {demo && <p>Envio em: {new Date(demo.enviadoEm).toLocaleString("pt-BR")}</p>}
-              <p>Visualizado em: {new Date().toLocaleString("pt-BR")}</p>
-            </div>
           </div>
         )}
       </DialogContent>
