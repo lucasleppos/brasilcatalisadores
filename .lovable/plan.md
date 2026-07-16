@@ -1,24 +1,23 @@
-## Fazer a Análise Laboratorial voltar a aparecer
+## Mostrar média final por grupo em vez de por versão
 
-### Diagnóstico
-Neste pedido (`07/07/2026 - 01`) existem 9 registros em `lab_results` — mas todos apontam para `purchase_item_id`s antigos (grupos que foram excluídos e recriados na conferência). Os itens atuais têm outros IDs, portanto o filtro `groupLabItems = itemsForTotal.filter(it => labAgg[it.id])` no PDF e no dialog resulta vazio, e a seção "Análise Laboratorial" simplesmente não é renderizada.
+### Mudança
+Substituir o fallback "agregado por versão" (v1/v2/v3) por uma tabela **agregada por grupo**, exibindo a média final de Pt/Pd/Rh que a etapa de análise já calcula (média das 3 versões por grupo).
 
-Também não há linhas "gerais" (`purchase_item_id IS NULL`), então o fallback existente (`generalAvg` / `latestLab`) também fica vazio.
+### Lógica
+1. Agrupar `lab_results` por `purchase_item_id` (ignorar linhas sem `purchase_item_id`).
+2. Para cada grupo, calcular a média de `pt_ppm`, `pd_ppm`, `rh_ppm` entre todas as versões existentes.
+3. Rótulo do grupo:
+   - Se o `purchase_item_id` bate com um item atual em `itemsForTotal` → usar o rótulo do item (código do catálogo ou tipo), como já é feito hoje.
+   - Se não bate (linhas órfãs de grupos recriados) → rotular como `Grupo 1`, `Grupo 2`, ... na ordem de aparição no `lab_results` (ordenado por `purchase_item_id` para estabilidade).
+4. Ordem final: primeiro os grupos que batem com itens atuais (na ordem de `itemsForTotal`), depois os grupos órfãos.
 
-### Correção (somente apresentação — não mexer nos dados)
-Ampliar a lógica de exibição no dialog e no PDF para que a seção **Análise Laboratorial** sempre apareça quando houver qualquer registro em `lab_results` para o pedido, aplicando esta ordem de prioridade:
+### Colunas da tabela
+`Grupo | Pt (ppm) | Pd (ppm) | Rh (ppm)` — sem coluna de versão.
 
-1. **Por grupo (preferido):** se algum item atual bater com um `purchase_item_id` em `lab_results`, montar a tabela por grupo como já é feito hoje.
-2. **Agregado por versão (fallback quando não há match por grupo):** agrupar TODAS as linhas `lab_results` do pedido por `versao` e mostrar uma tabela:
-   - Colunas: `Versão`, `Pt (ppm)`, `Pd (ppm)`, `Rh (ppm)`, com médias de Pt/Pd/Rh dentro da versão.
-   - Ordenar por versão crescente.
-   Assim os 9 registros existentes aparecem como v1/v2/v3 com as médias dos três grupos.
-3. **Manter** o fallback antigo de `generalAvg` (linhas sem `purchase_item_id`) para pedidos legados que usavam esse formato.
-
-### Arquivos alterados
-- `src/components/processes/DemonstrativoViewDialog.tsx` — adicionar bloco "agregado por versão" quando `hasPerGroupLab` for false e existir qualquer linha em `labRows`.
-- `supabase/functions/generate-demonstrativo-pdf/index.ts` — mesma tabela agregada por versão como fallback quando `groupLabItems.length === 0` e `allLabRows.length > 0`.
+### Aplicar em
+- `src/components/processes/DemonstrativoViewDialog.tsx` — substituir o bloco `versionAggRows` pela nova tabela por grupo. Também simplificar o caminho "por grupo" atual para o mesmo formato (sem coluna Versão).
+- `supabase/functions/generate-demonstrativo-pdf/index.ts` — mesma substituição, mantendo a formatação já existente (remover coluna Versão em ambos os caminhos, com ou sem match).
 
 ### Fora de escopo
-- Não vou apagar/migrar as linhas órfãs de `lab_results`. Se quiser, avalio depois uma limpeza/relacionamento com cascade — mas isso é mudança de dados e fica para outra rodada.
-- Nenhuma alteração em cálculos de valores.
+- Sem alterações no cálculo de valores nem na etapa de análise em si.
+- Sem limpeza de dados órfãos.
