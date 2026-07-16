@@ -398,7 +398,23 @@ Deno.serve(async (req) => {
       }
       const groupLabItems = itemsForTotal.filter((it: any) => labAgg[it.id]);
 
-      if (groupLabItems.length > 0 || latestLab) {
+      // Fallback aggregate by versao (used when no per-item match)
+      const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
+      for (const lr of allLabRows) {
+        const v = Number(lr.versao) || 0;
+        if (!v) continue;
+        const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
+        a.pt += Number(lr.pt_ppm) || 0;
+        a.pd += Number(lr.pd_ppm) || 0;
+        a.rh += Number(lr.rh_ppm) || 0;
+        a.n += 1;
+        versionAgg[v] = a;
+      }
+      const versionAggRows = Object.entries(versionAgg)
+        .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
+        .sort((a, b) => a.versao - b.versao);
+
+      if (groupLabItems.length > 0 || versionAggRows.length > 0 || latestLab) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text("Análise Laboratorial", margin, y);
