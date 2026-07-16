@@ -95,7 +95,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         return {
           itemId: item.id,
           category: catMap[item.id] || "Lote",
-          weight: Number(item.weight) || 0,
+          weight: Math.max(0, (Number(item.weight) || 0) - (Number(item.weight_loss) || 0)),
           labResultId: lr?.id || null,
           ptPpm: lr ? String(lr.pt) : "",
           pdPpm: lr ? String(lr.pd) : "",
