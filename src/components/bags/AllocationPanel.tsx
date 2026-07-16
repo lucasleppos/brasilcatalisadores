@@ -78,8 +78,54 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadAvailableMaterials(), loadInProcessMaterials()]);
+    await Promise.all([loadAvailableMaterials(), loadAllocatedMaterials(), loadInProcessMaterials()]);
     setLoading(false);
+  };
+
+  const loadAllocatedMaterials = async () => {
+    // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
+    const { data: ceramicPurchases } = await supabase
+      .from("purchases")
+      .select("id, supplier_name, status, op_status")
+      .eq("status", "Cerâmico: Aprovado");
+
+    const purchaseIds = (ceramicPurchases || []).map(p => p.id);
+    if (purchaseIds.length === 0) { setAllocatedMaterials([]); return; }
+
+    const { data: bagItems } = await supabase
+      .from("bag_items")
+      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name")
+      .in("purchase_id", purchaseIds);
+
+    if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
+
+    const itemIds = bagItems.map((b: any) => b.purchase_item_id);
+    const { data: items } = await supabase
+      .from("purchase_items")
+      .select("id, item_type")
+      .in("id", itemIds);
+
+    const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
+
+    const allocated: AllocatedMaterial[] = [];
+    (bagItems || []).forEach((bi: any) => {
+      const bag = bags.find(b => b.id === bi.bag_id);
+      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id);
+      const item = itemsMap.get(bi.purchase_item_id) as any;
+      allocated.push({
+        purchaseId: bi.purchase_id,
+        purchaseItemId: bi.purchase_item_id,
+        supplierName: bi.supplier_name || purchase?.supplier_name || "—",
+        weight: Number(bi.weight) || 0,
+        paidValue: Number(bi.paid_value) || 0,
+        itemType: item?.item_type || "—",
+        bagId: bi.bag_id,
+        bagNumber: bag?.bagNumber || "—",
+        bagLabel: bag?.bagLabel || "",
+      });
+    });
+
+    setAllocatedMaterials(allocated);
   };
 
   const loadAvailableMaterials = async () => {
