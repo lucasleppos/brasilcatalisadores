@@ -88,7 +88,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
       // Calculate for each lot
       const calculatedLots: LotPricing[] = items.map(item => {
         const lr = labMap[item.id];
-        const weight = Number(item.weight) || 0;
+        const grossW = Number(item.weight) || 0;
+        const tareW = Number(item.weight_loss) || 0;
+        const weight = Math.max(0, grossW - tareW);
 
         // If already calculated, use existing
         if (item.calc_result && item.total_value && Number(item.total_value) > 0) {
