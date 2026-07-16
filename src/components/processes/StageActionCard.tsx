@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES, updatePurchaseErp } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
