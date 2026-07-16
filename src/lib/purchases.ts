@@ -871,3 +871,11 @@ export function isPurchaseClosed(purchase: Purchase): boolean {
 export function isInParallelPhase(purchase: Purchase): boolean {
   return purchase.status === "Cerâmico: Aprovado" && purchase.finStatus != null && purchase.opStatus != null;
 }
+
+/** Update the Boleto Syge / ERP number on a purchase */
+export async function updatePurchaseErp(id: string, erpNumber: string): Promise<boolean> {
+  const trimmed = erpNumber.trim();
+  if (!trimmed) return false;
+  const { error } = await supabase.from("purchases").update({ erp_number: trimmed }).eq("id", id);
+  return !error;
+}
