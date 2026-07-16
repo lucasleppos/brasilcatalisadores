@@ -378,54 +378,82 @@ Deno.serve(async (req) => {
     doc.line(margin, y, pageWidth - margin, y);
     y += 6;
 
-    // --- Lab Results (cerâmico) ---
-    if (isCeramico && latestLab) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("Análise Laboratorial", margin, y);
-      y += 7;
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-
-      const labInfo = [
-        { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm))} ppm` },
-        { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm))} ppm` },
-        { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm))} ppm` },
-        { label: "Versão análise:", value: `v${latestLab.versao}` },
-      ];
-
-      for (const info of labInfo) {
-        doc.setFont("helvetica", "bold");
-        doc.text(info.label, margin, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(info.value, margin + 35, y);
-        y += 5;
+    // --- Lab Results (cerâmico) — per group ---
+    if (isCeramico) {
+      // Build per-item lab averages
+      const labAgg: Record<string, { pt: number; pd: number; rh: number; n: number; maxV: number }> = {};
+      for (const lr of allLabRows) {
+        if (!lr.purchase_item_id) continue;
+        const a = labAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0, maxV: 0 };
+        a.pt += Number(lr.pt_ppm) || 0;
+        a.pd += Number(lr.pd_ppm) || 0;
+        a.rh += Number(lr.rh_ppm) || 0;
+        a.n += 1;
+        a.maxV = Math.max(a.maxV, Number(lr.versao) || 0);
+        labAgg[lr.purchase_item_id] = a;
       }
-      y += 4;
+      const groupLabItems = itemsForTotal.filter((it: any) => labAgg[it.id]);
 
-      // Settings/pricing info
-      if (settings) {
+      if (groupLabItems.length > 0 || latestLab) {
         doc.setFont("helvetica", "bold");
-        doc.text("Cotações utilizadas:", margin, y);
-        y += 5;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(11);
+        doc.text("Análise Laboratorial", margin, y);
+        y += 7;
 
-        const pricingInfo = [
-          `Pt: USD ${fmt(Number(settings.pt_price))} | Pd: USD ${fmt(Number(settings.pd_price))} | Rh: USD ${fmt(Number(settings.rh_price))}`,
-          `Câmbio: ${fmtBrl(Number(settings.usd_to_brl))}`,
-        ];
+        if (groupLabItems.length > 0) {
+          const labCols = [contentWidth - 100, 25, 25, 25, 25];
+          const labX = [margin];
+          for (let i = 1; i < labCols.length; i++) labX.push(labX[i - 1] + labCols[i - 1]);
+          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)", "Versão"];
 
-        for (const line of pricingInfo) {
-          doc.text(line, margin, y);
-          y += 4;
+          doc.setFillColor(240, 240, 240);
+          doc.rect(margin, y, contentWidth, 7, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          for (let i = 0; i < labHeaders.length; i++) {
+            doc.text(labHeaders[i], labX[i] + 2, y + 5);
+          }
+          y += 7;
+
+          doc.setFont("helvetica", "normal");
+          for (let i = 0; i < groupLabItems.length; i++) {
+            const it = groupLabItems[i];
+            const a = labAgg[it.id];
+            const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
+            const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+            if (i % 2 === 0) {
+              doc.setFillColor(250, 250, 250);
+              doc.rect(margin, y, contentWidth, 6, "F");
+            }
+            doc.text(label || "—", labX[0] + 2, y + 4);
+            doc.text(fmt(a.pt / a.n), labX[1] + 2, y + 4);
+            doc.text(fmt(a.pd / a.n), labX[2] + 2, y + 4);
+            doc.text(fmt(a.rh / a.n), labX[3] + 2, y + 4);
+            doc.text(`v${a.maxV}`, labX[4] + 2, y + 4);
+            y += 6;
+            if (y > 270) { doc.addPage(); y = margin; }
+          }
+        } else if (latestLab) {
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          const labInfo = [
+            { label: "Platina (Pt):", value: `${fmt(Number(latestLab.pt_ppm))} ppm` },
+            { label: "Paládio (Pd):", value: `${fmt(Number(latestLab.pd_ppm))} ppm` },
+            { label: "Ródio (Rh):", value: `${fmt(Number(latestLab.rh_ppm))} ppm` },
+            { label: "Versão análise:", value: `v${latestLab.versao}` },
+          ];
+          for (const info of labInfo) {
+            doc.setFont("helvetica", "bold");
+            doc.text(info.label, margin, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(info.value, margin + 35, y);
+            y += 5;
+          }
         }
         y += 4;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
       }
-
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
     }
 
     // --- Weight info ---
