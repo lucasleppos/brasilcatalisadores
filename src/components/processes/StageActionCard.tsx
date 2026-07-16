@@ -764,6 +764,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DemonstrativoViewDialog open={viewDemoOpen} onOpenChange={setViewDemoOpen} purchase={purchase} />
     </Card>
   );
 }
