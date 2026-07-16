@@ -1,43 +1,48 @@
+# Visualização inline do demonstrativo na etapa de Aprovação
+
 ## Objetivo
-Na etapa **Cerâmico — Laboratório**, permitir **até 3 linhas de análise por lote** (Pt/Pd/Rh em PPM). O sistema calcula automaticamente a **média simples** das linhas preenchidas e usa como resultado do lote.
+Na etapa de Aprovação (Demonstrativo pendente), permitir que o operador **visualize os mesmos dados do PDF** dentro do app, sem precisar baixar o arquivo a cada atualização. Ocultar temporariamente o botão de WhatsApp.
 
-## Comportamento
+## Escopo
+- Apenas UI/frontend em `src/components/processes/StageActionCard.tsx`.
+- Nenhuma alteração em backend, edge functions ou banco.
+- Mantém os botões existentes: **PDF** (download), **Aprovar**, **Contestar**.
+- O botão **WhatsApp** fica apenas oculto (código preservado, comentado) para reativação futura.
 
-Para cada lote conferido:
-- Exibir **3 linhas** de inputs (Análise 1, 2, 3) com Pt/Pd/Rh.
-- **Sem botão por linha** — basta preencher os 3 campos (Pt/Pd/Rh) de uma linha para ela contar.
-- **Análise 1 obrigatória**; 2 e 3 opcionais. Uma linha é válida quando os 3 campos estão preenchidos com número; linha parcial é ignorada.
-- Bloco **Média** (Pt/Pd/Rh) exibido em tempo real assim que ≥ 1 linha estiver completa:
-  - 1 linha → média = a própria linha
-  - 2 linhas → média simples das 2
-  - 3 linhas → média simples das 3
-- Um único botão **Salvar Lote** por lote persiste todas as linhas válidas de uma vez (ou salvamento automático com debounce ao sair do campo — decisão de implementação: usar **salvamento no blur/onBlur** por linha completa, para evitar cliques extras, mantendo consistência com o pedido do usuário).
-- Lote conta como **"Registrado"** (verde) quando tem ≥ 1 linha válida salva. Progresso `savedCount/total` e botão **Encerrar** seguem a mesma lógica.
+## Alterações
 
-## Persistência
+### 1. Novo botão "Visualizar" (com ícone Eye)
+Posicionado antes do botão **PDF**, na mesma linha, com o mesmo estilo (outline/sm). Abre um `<Dialog>` grande (max-w-3xl, scroll interno) contendo todos os dados que hoje compõem o PDF:
 
-Reutilizar `lab_results` (já tem `versao` e `purchase_item_id`):
-- 1 registro por linha válida, `versao ∈ {1,2,3}`.
-- Upsert por (`purchase_item_id`, `versao`): insert se novo, update se existente.
-- Se o usuário limpar uma linha antes salva, deletar aquele `versao`.
-- Média **não persiste** — recalculada a partir das linhas.
+- **Cabeçalho**: Nº Pedido, Fornecedor, Comprador, Data, Fluxo, Boleto Syge, Versão do demonstrativo.
+- **Itens**: mesma tabela do PDF, respeitando os blocos existentes:
+  - Peças — Preço Fixo (Catálogo)
+  - Peças — Preço Calculado (PPM Lab) com colunas Pt/Pd/Rh
+  - Demais Itens (com Tipo, Qtd/Peso, Valor Unit., Valor Total)
+- **Análise Laboratorial** (cerâmico): Pt/Pd/Rh em ppm, versão, e cotações usadas (Pt/Pd/Rh USD + Câmbio) — quando `materialFlow === "ceramico"`.
+- **Conferência de Peso**: declarado, real, diferença (perda/ganho) quando disponível.
+- **Resumo**: total de peças e peso total.
+- **VALOR TOTAL** em destaque (mesmo valor do PDF, incluindo o fallback para maior entre `valor_total` do demonstrativo e soma dos itens de conferência).
+- Observações (`purchase.notes`) quando existirem.
 
-Sem migração de schema.
+Toda a informação já está disponível no cliente via `loadDemonstrativos`, `purchase.items`, `lab_results` (via `loadLabResultsForPurchase` ou similar) e `settings`. O componente carregará o necessário no `useEffect` do dialog (open) e mostrará skeleton enquanto carrega. Formatação usa os utilitários brasileiros já existentes (`fmtNum`/`parseNum`).
 
-## Arquivos afetados
+O botão aparece nos mesmos dois pontos onde hoje existem os botões PDF/WhatsApp (topo "Demonstrative: approve, contest, or generate PDF" e a duplicata em `canGeneratePdf`).
 
-- `src/components/processes/CeramicoLabPanel.tsx` — estado por lote passa a array de 3 slots; render sem botão por linha; auto-save no blur quando linha completa; cálculo/exibição da média; delete quando linha limpa.
-- `src/components/processes/CeramicoPricingPanel.tsx` e demais consumidores de `lab_results` do item cerâmico — usar a **média** das versões existentes por `purchase_item_id`.
-- `src/lib/lab-results.ts` — se necessário, adicionar helper `getAverageByItem(purchaseId)` retornando `{itemId → {pt,pd,rh}}` já com média.
+### 2. Ocultar botão WhatsApp
+Nos dois blocos que renderizam `<MessageCircle .../>WhatsApp` (linhas ~410-425 e ~700-718), envolver com comentário `{/* WhatsApp temporariamente desativado */}` e não renderizar. Preservar o handler para reativação futura (ou comentar o JSX inteiro).
 
 ## Detalhes técnicos
+- Criar um pequeno componente local `DemonstrativoViewDialog` no mesmo arquivo (ou em `src/components/processes/DemonstrativoViewDialog.tsx`) para manter `StageActionCard.tsx` legível.
+- Reutilizar exatamente as mesmas regras de cálculo do edge function (`generate-demonstrativo-pdf/index.ts`) reescritas em TS no cliente: separação por `pricing_source` (catalogo/calculadora/regular), média de `lab_results` por `versao`, fallback `Math.max(calculatedTotal, valor_total)`.
+- Sem chamadas à edge function — tudo lido direto do Supabase para evitar novo download.
+- Dialog rola verticalmente e é responsivo (mobile: full width).
 
-- Inputs: `type='text'` + `inputMode='decimal'` + `parseNum` (vírgula decimal).
-- Exibição: `fmtNum(v, 4)`.
-- Layout compacto: 3 linhas empilhadas por lote (Análise 1/2/3 com badge quando salva), bloco Média destacado abaixo com "Média de N análise(s)".
-- Sem regra de desvio máximo (diferente do `TripleAnalysisForm` de peças).
+## Arquivos alterados
+- `src/components/processes/StageActionCard.tsx` — adicionar botão Visualizar, ocultar WhatsApp.
+- (opcional) `src/components/processes/DemonstrativoViewDialog.tsx` — novo componente com a view.
 
-## Verificação
-
-- `tsgo` typecheck.
-- Preencher 1, 2 e 3 linhas em lotes distintos; confirmar média em tempo real, persistência no reload e valores propagados à precificação.
+## Fora de escopo
+- Mudanças no PDF em si.
+- Remoção definitiva do WhatsApp (apenas ocultado).
+- Ajustes em outras etapas.
