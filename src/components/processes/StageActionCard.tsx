@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceFinStatus, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerFinStatus, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_FIN_STATUSES, CER_OP_STATUSES, updatePurchaseErp } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp } from "@/lib/purchases";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
@@ -67,7 +67,6 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
   const [adminTargetStatus, setAdminTargetStatus] = useState("");
-  const [adminTargetFinStatus, setAdminTargetFinStatus] = useState("");
   const [adminTargetOpStatus, setAdminTargetOpStatus] = useState("");
   const [adminMoveNote, setAdminMoveNote] = useState("");
 
@@ -246,17 +245,6 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
-  const handleFinAdvance = async () => {
-    if (!purchase.finStatus) return;
-    setLoading(true);
-    try {
-      await advanceFinStatus(purchase.id, purchase.finStatus);
-      onCompleted();
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleOpAdvance = async () => {
     if (!purchase.opStatus) return;
     setLoading(true);
@@ -267,6 +255,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       setLoading(false);
     }
   };
+
   const handleAdminMove = async () => {
     if (!adminTargetStatus) return;
     setLoading(true);
@@ -280,21 +269,18 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
 
       const updateData: any = { status: adminTargetStatus, status_history: history };
 
-      // Initialize parallel sub-flows if moving to "Cerâmico: Aprovado"
+      // Ao mover para "Cerâmico: Aprovado", inicializa fluxo operacional
       if (adminTargetStatus === "Cerâmico: Aprovado") {
-        updateData.fin_status = "Aguardando Pagamento";
         updateData.op_status = "Alocando Bag";
       }
 
-      // Allow overriding parallel sub-statuses
-      if (adminTargetFinStatus) updateData.fin_status = adminTargetFinStatus;
+      // Permite sobrescrever sub-status operacional
       if (adminTargetOpStatus) updateData.op_status = adminTargetOpStatus;
 
       await supabase.from("purchases").update(updateData).eq("id", purchase.id);
       toast.success(`Etapa alterada para: ${adminTargetStatus}`);
       setAdminMoveOpen(false);
       setAdminTargetStatus("");
-      setAdminTargetFinStatus("");
       setAdminTargetOpStatus("");
       setAdminMoveNote("");
       onCompleted();
@@ -378,34 +364,21 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         {/* Parallel sub-flows (cerâmico) */}
         {isParallel ? (
           <div className="space-y-2 pt-1 border-t border-border/40">
-            <p className="text-xs font-medium text-muted-foreground">Sub-fluxos paralelos</p>
-            <div className="grid grid-cols-2 gap-2">
-              {/* Financial */}
-              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
-                <p className="text-[10px] font-semibold text-muted-foreground">💰 Financeiro</p>
-                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.finStatus || "")}`}>
-                  {purchase.finStatus}
-                </Badge>
-                {purchase.finStatus !== "Encerrado ERP" && (
-                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleFinAdvance}>
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-                    Avançar
-                  </Button>
-                )}
-              </div>
-              {/* Operational */}
-              <div className="space-y-1 p-2 rounded-md border bg-muted/30">
-                <p className="text-[10px] font-semibold text-muted-foreground">📦 Operacional</p>
-                <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.opStatus || "")}`}>
-                  {purchase.opStatus}
-                </Badge>
-                {purchase.opStatus !== "Enviado Exportação" && (
-                  <Button size="sm" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleOpAdvance}>
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-                    Avançar
-                  </Button>
-                )}
-              </div>
+            <p className="text-xs font-medium text-muted-foreground">Alocação em Bag</p>
+            <div className="space-y-1 p-2 rounded-md border bg-muted/30">
+              <p className="text-[10px] font-semibold text-muted-foreground">📦 Operacional</p>
+              <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.opStatus || "")}`}>
+                {purchase.opStatus}
+              </Badge>
+              <p className="text-[10px] text-muted-foreground">
+                Material enviado ao módulo Bags. Após a alocação de todos os grupos, o processo será encerrado automaticamente.
+              </p>
+              {purchase.opStatus !== "Bag Alocado" && (
+                <Button size="sm" variant="outline" className="w-full h-7 text-[10px]" disabled={loading} onClick={handleOpAdvance}>
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1" />}
+                  Marcar como Bag Alocado
+                </Button>
+              )}
             </div>
           </div>
         ) : isAnalysis ? (
@@ -736,7 +709,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       </CardContent>
 
       {/* Admin Manual Stage Move Dialog */}
-      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetFinStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
+      <Dialog open={adminMoveOpen} onOpenChange={(open) => { if (!open) { setAdminMoveOpen(false); setAdminTargetStatus(""); setAdminTargetOpStatus(""); setAdminMoveNote(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -761,35 +734,20 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               </Select>
             </div>
 
-            {/* Parallel sub-status selectors for cerâmico */}
+            {/* Sub-status operacional (cerâmico) */}
             {(adminTargetStatus === "Cerâmico: Aprovado" || isInParallelPhase(purchase)) && purchase.materialFlow === "ceramico" && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">💰 Financeiro</label>
-                  <Select value={adminTargetFinStatus} onValueChange={setAdminTargetFinStatus}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Manter atual" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CER_FIN_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">📦 Operacional</label>
-                  <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Manter atual" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CER_OP_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">📦 Operacional (Bags)</label>
+                <Select value={adminTargetOpStatus} onValueChange={setAdminTargetOpStatus}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Manter atual" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CER_OP_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

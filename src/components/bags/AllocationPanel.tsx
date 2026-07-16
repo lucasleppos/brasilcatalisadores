@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Package, ArrowRight, Clock } from "lucide-react";
+import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
+import { advanceOpStatus } from "@/lib/purchases";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -31,6 +32,18 @@ interface InProcessMaterial {
   status: string;
 }
 
+interface AllocatedMaterial {
+  purchaseId: string;
+  purchaseItemId: string;
+  supplierName: string;
+  weight: number;
+  paidValue: number;
+  itemType: string;
+  bagId: string;
+  bagNumber: string;
+  bagLabel: string;
+}
+
 const statusColors: Record<string, string> = {
   "Amostragem": "bg-blue-100 text-blue-800",
   "Análise": "bg-purple-100 text-purple-800",
@@ -46,6 +59,7 @@ interface AllocationPanelProps {
 export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const { toast } = useToast();
   const [availableMaterials, setAvailableMaterials] = useState<AvailableMaterial[]>([]);
+  const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,8 +78,54 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadAvailableMaterials(), loadInProcessMaterials()]);
+    await Promise.all([loadAvailableMaterials(), loadAllocatedMaterials(), loadInProcessMaterials()]);
     setLoading(false);
+  };
+
+  const loadAllocatedMaterials = async () => {
+    // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
+    const { data: ceramicPurchases } = await supabase
+      .from("purchases")
+      .select("id, supplier_name, status, op_status")
+      .eq("status", "Cerâmico: Aprovado");
+
+    const purchaseIds = (ceramicPurchases || []).map(p => p.id);
+    if (purchaseIds.length === 0) { setAllocatedMaterials([]); return; }
+
+    const { data: bagItems } = await supabase
+      .from("bag_items")
+      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name")
+      .in("purchase_id", purchaseIds);
+
+    if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
+
+    const itemIds = bagItems.map((b: any) => b.purchase_item_id);
+    const { data: items } = await supabase
+      .from("purchase_items")
+      .select("id, item_type")
+      .in("id", itemIds);
+
+    const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
+
+    const allocated: AllocatedMaterial[] = [];
+    (bagItems || []).forEach((bi: any) => {
+      const bag = bags.find(b => b.id === bi.bag_id);
+      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id);
+      const item = itemsMap.get(bi.purchase_item_id) as any;
+      allocated.push({
+        purchaseId: bi.purchase_id,
+        purchaseItemId: bi.purchase_item_id,
+        supplierName: bi.supplier_name || purchase?.supplier_name || "—",
+        weight: Number(bi.weight) || 0,
+        paidValue: Number(bi.paid_value) || 0,
+        itemType: item?.item_type || "—",
+        bagId: bi.bag_id,
+        bagNumber: bag?.bagNumber || "—",
+        bagLabel: bag?.bagLabel || "",
+      });
+    });
+
+    setAllocatedMaterials(allocated);
   };
 
   const loadAvailableMaterials = async () => {
@@ -197,9 +257,35 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     });
     setSaving(false);
     toast({ title: "Material alocado com sucesso" });
+
+    // Se cerâmico: verifica se todos os grupos de conferência da compra estão alocados
+    // e, em caso positivo, avança op_status para "Bag Alocado" (Encerra automaticamente)
+    const purchaseId = allocatingMaterial.purchaseId;
+    const { data: purchase } = await supabase
+      .from("purchases")
+      .select("status, op_status")
+      .eq("id", purchaseId)
+      .single();
+    if (purchase?.status === "Cerâmico: Aprovado" && purchase.op_status === "Alocando Bag") {
+      const { data: confItems } = await supabase
+        .from("purchase_items")
+        .select("id")
+        .eq("purchase_id", purchaseId)
+        .eq("category", "conferencia");
+      const { data: allocatedItems } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .eq("purchase_id", purchaseId);
+      const allocatedSet = new Set((allocatedItems || []).map((a: any) => a.purchase_item_id));
+      const remaining = (confItems || []).filter((i: any) => !allocatedSet.has(i.id));
+      if (remaining.length === 0) {
+        await advanceOpStatus(purchaseId, "Alocando Bag");
+      }
+    }
+
     setAllocatingMaterial(null);
     onAllocated();
-    loadAvailableMaterials();
+    loadData();
   };
 
   if (loading) {
@@ -278,6 +364,52 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <Button size="sm" onClick={() => handleAllocateClick(m)}>
                         <ArrowRight className="h-4 w-4 mr-1" /> Alocar
                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
+      {/* Section 1b: Already allocated (still visible until bag closes) */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold">Materiais Alocados</h2>
+          <Badge variant="secondary">{allocatedMaterials.length}</Badge>
+        </div>
+        {allocatedMaterials.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground border rounded-md">
+            <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Nenhum material alocado no momento.</p>
+          </div>
+        ) : (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fornecedor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Peso (kg)</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
+                  <TableHead>Bag</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allocatedMaterials.map((m) => (
+                  <TableRow key={m.purchaseItemId}>
+                    <TableCell className="font-medium">{m.supplierName}</TableCell>
+                    <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
+                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="bg-emerald-100 text-emerald-800">
+                        {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

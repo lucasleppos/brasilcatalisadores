@@ -1,52 +1,90 @@
-## Remover item placeholder de Cerâmico ao separar em lotes
+# Reformulação do pós-aprovação (Cerâmico)
 
-### Causa raiz
+## Fluxo atual (hoje)
 
-Ao criar uma compra do tipo Cerâmico, `src/components/purchases/NewPurchaseDialog.tsx` (linha 267) insere um item placeholder:
-
-```ts
-items: [{ id: crypto.randomUUID(), itemType: "ceramico", quantity: 1 }]
+```text
+Cerâmico: Gerar Boleto de Aprovação
+     │ (Syge + aprovação)
+     ▼
+Cerâmico: Aprovado  ──── inicia 2 sub-fluxos paralelos ────
+     │
+     ├── FIN: Aguardando Pagamento → Pagamento Realizado → Encerrado ERP
+     └── OP:  Alocando Bag → Bag Alocado → Enviado Exportação
+                     │
+                     ▼
+            Cerâmico: Encerrado → Concluído
 ```
 
-Ele existe só para que `determineMaterialFlow` classifique a compra como fluxo cerâmico. Como não tem peso nem valor, aparece no demonstrativo como **"Cerâmico — 1 pç — Pendente"** e como linha extra na tabela de itens da compra.
+Problemas:
+1. Existe uma coluna "Pagamento" no ProcessBoard e um sub-fluxo financeiro (`CER_FIN_STATUSES`) que não faz mais sentido — o pagamento não é etapa do sistema.
+2. Ao ser alocado a um bag, o material some do painel (a lógica esconde quando `opStatus === "Enviado Exportação"` ou quando o item já está em `bag_items`).
+3. Não há módulo "Concluídos" com visualização em lista dos materiais cerâmicos finalizados.
 
-Depois, na Conferência (`src/components/processes/CeramicoConferenciaPanel.tsx`, `persistAll`, linhas 140–162), o painel apaga apenas os itens `item_type='ceramico' AND category='conferencia'` antes de reinserir os lotes. O placeholder original (sem `category`) sobrevive — daí o item fantasma.
+## Fluxo desejado
 
-### Correção pontual
-
-Arquivo único: `src/components/processes/CeramicoConferenciaPanel.tsx`, função `persistAll`.
-
-- Alterar o `DELETE` inicial para remover **todos** os itens cerâmicos da compra (não só os de `category='conferencia'`), garantindo que o placeholder criado no momento da compra seja removido quando os lotes são efetivamente separados em grupos.
-
-Antes:
-```ts
-await supabase
-  .from("purchase_items")
-  .delete()
-  .eq("purchase_id", purchase.id)
-  .eq("item_type", "ceramico")
-  .eq("category", "conferencia");
+```text
+Cerâmico: Gerar Boleto de Aprovação
+     │ (Syge + aprovação)
+     ▼
+Cerâmico: Aprovado
+     │  (envio automático ao módulo Bags — grupos disponíveis para alocação)
+     ▼
+[Alocação em Bag]  ← material permanece visível no módulo Bags
+     │  (após Bag ser fechado / enviado à exportação)
+     ▼
+Módulo "Concluídos"  ← lista tipo Compras com todas as infos da compra + grupos
 ```
 
-Depois:
-```ts
-await supabase
-  .from("purchase_items")
-  .delete()
-  .eq("purchase_id", purchase.id)
-  .eq("item_type", "ceramico");
-```
+Sem etapa de Pagamento. Sem sub-fluxo financeiro. Um único caminho operacional Aprovado → Bags → Concluído.
 
-### Por que não mexer na criação da compra
+## Mudanças
 
-`determineMaterialFlow` (`src/lib/purchases.ts` linha 232) decide o fluxo a partir dos itens. Se remover o placeholder na criação sem refatorar essa função, a compra vira fluxo "peças". A correção no momento da separação em grupos é exatamente o que o usuário pediu ("retirada no momento que temos a separação em grupos") e não afeta a decisão de fluxo, que já foi persistida em `purchases.material_flow` na criação.
+### 1. `src/lib/purchases.ts` — remover sub-fluxo financeiro
+- Remover `CER_FIN_STATUSES` (Aguardando Pagamento / Pagamento Realizado / Encerrado ERP) e a função `advanceFinStatus`.
+- Manter `CER_OP_STATUSES` mas renomear/simplificar para 2 estados: `"Alocando Bag"` → `"Bag Alocado"` (concluído). Remover `"Enviado Exportação"`.
+- `isInParallelPhase` passa a checar apenas `opStatus`.
+- Em `StageActionCard.tsx`, ao mover para "Cerâmico: Aprovado" não setar mais `fin_status`; setar apenas `op_status = "Alocando Bag"`.
+- `advanceOpStatus`: quando chegar a `"Bag Alocado"`, mover automaticamente `status` para `"Cerâmico: Encerrado"` (sem depender de fin_status).
 
-### Resultado esperado
+### 2. `src/components/processes/ProcessBoard.tsx` — reorganizar colunas
+- **Remover** o grupo "Pagamento".
+- **Renomear** "Bags / Exportação" → "Bags".
+- A coluna Bags mostra compras cerâmicas em `Cerâmico: Aprovado` cujo `opStatus !== "Bag Alocado"`.
+- Compras com `opStatus === "Bag Alocado"` ou `status = "Cerâmico: Encerrado"` migram para a nova aba "Concluídos" (fora do ProcessBoard).
 
-- Compra Cerâmica é criada normalmente (fluxo cerâmico preservado via `material_flow`).
-- Ao salvar a Conferência com os lotes, o placeholder some.
-- Tabela de itens da compra e demonstrativo mostram apenas os lotes reais (`conferencia`), sem linha "1 pç Pendente".
+### 3. Módulo Bags — material não some após alocado
+- `AllocationPanel.tsx` e `AllocateMaterialDialog.tsx`: hoje filtram `.eq("op_status", "Alocando Bag")` e removem itens já presentes em `bag_items`. Manter esse filtro somente para a seção **"Disponíveis para alocação"**.
+- Adicionar seção **"Alocados"** listando os grupos já vinculados a um bag, com badge do bag correspondente (link para o BagDetail). Item continua visível até o bag ser encerrado.
+- Quando **todos** os `purchase_items` cerâmicos de uma compra estiverem alocados, avançar `op_status` para `"Bag Alocado"` (o registro sai da fila mas permanece consultável via módulo Concluídos e via BagDetail).
 
-### Fora do escopo
+### 4. Novo módulo "Concluídos"
+- Nova rota `/concluidos` e item no menu lateral (visível conforme permissão `concluidos.access`).
+- Página `src/pages/CompletedPage.tsx` + componentes em `src/components/completed/`:
+  - Layout inspirado em `PurchasesPage`: filtros (fornecedor, comprador, período, nº Syge), tabela com colunas: Nº Compra, Data, Fornecedor, Comprador, Nº Syge, Peso total, Valor total, Bag(s) alocado(s), Status final.
+  - Ação "Ver detalhes" abre dialog mostrando: dados da compra, grupos (com peso, teor, valor), demonstrativo (link para PDF), bags associados.
+- Fonte de dados: `purchases` com `status IN ('Cerâmico: Encerrado','Concluído')` **ou** com `op_status = 'Bag Alocado'` (materialFlow = ceramico).
+- Somente leitura — nenhuma ação de avanço de etapa.
 
-- Nenhuma mudança em criação de compra, cálculo, PDF, fluxo de peças ou outras etapas.
+### 5. Permissões
+- Nova chave `concluidos` no JSONB de permissões (`permissions` table). Ações: `access` (mesma lógica dos outros módulos).
+- Seed via `insert` tool após aprovação do plano: adicionar `concluidos.access = true` para `super_admin` e `admin`.
+
+### 6. Dados existentes / migração
+- Compras cerâmicas legadas com `fin_status` preenchido: ignoradas pelo novo fluxo (o campo permanece na tabela mas deixa de ser lido). Nada a migrar em SQL — sem alteração de schema.
+
+## Escopo excluído
+- Fluxo de Peças: nenhuma mudança.
+- Cálculo, precificação, PDF, geração de boleto Syge: nenhuma mudança.
+- Estrutura das tabelas `purchases`, `bags`, `bag_items`: nenhuma mudança (apenas leitura diferente).
+
+## Detalhes técnicos
+- `CER_FIN_STATUSES` e `advanceFinStatus` deixam de ser exportados; remover imports em `StageActionCard.tsx` e `ProcessBoard.tsx`.
+- Nova permissão: um `UPDATE public.permissions SET permissions = jsonb_set(...)` via insert tool (não é migration — é dado).
+- Menu lateral (provavelmente em `src/components/Layout` ou similar): adicionar link "Concluídos" com ícone (ex.: `CheckCircle2`).
+
+## Ordem de execução (após aprovação)
+1. Ajustar `src/lib/purchases.ts` (remover fin, simplificar op).
+2. Ajustar `ProcessBoard.tsx` e `StageActionCard.tsx`.
+3. Atualizar Bags (`AllocationPanel`, `AllocateMaterialDialog`) para manter visibilidade dos alocados.
+4. Criar página + rota "Concluídos".
+5. Rodar `insert` para adicionar permissão `concluidos.access`.

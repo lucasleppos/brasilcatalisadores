@@ -12,6 +12,7 @@ import PurchasesPage from "@/pages/PurchasesPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
+import CompletedPage from "@/pages/CompletedPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import ReportsPage from "@/pages/ReportsPage";
 import LoginPage from "@/pages/LoginPage";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/fornecedores" element={<ProtectedRoute module="fornecedores"><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/processos" element={<ProtectedRoute module="processos"><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/bags" element={<ProtectedRoute module="bags"><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/concluidos" element={<ProtectedRoute module="concluidos"><AppLayout><CompletedPage /></AppLayout></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute module="relatorios"><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/calculadora" element={<ProtectedRoute module="calculadora"><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute module="configuracoes"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />

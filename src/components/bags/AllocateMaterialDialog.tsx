@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight, getMaterialTypeLabel } from "@/lib/bags";
+import { advanceOpStatus } from "@/lib/purchases";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fmtNum, fmtBrl } from "@/lib/utils";
@@ -140,6 +141,30 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
     });
     setSaving(false);
     toast({ title: "Material alocado com sucesso" });
+
+    // Cerâmico: auto-encerra quando todos os grupos estão alocados
+    const { data: purchase } = await supabase
+      .from("purchases")
+      .select("status, op_status")
+      .eq("id", material.purchaseId)
+      .single();
+    if (purchase?.status === "Cerâmico: Aprovado" && purchase.op_status === "Alocando Bag") {
+      const { data: confItems } = await supabase
+        .from("purchase_items")
+        .select("id")
+        .eq("purchase_id", material.purchaseId)
+        .eq("category", "conferencia");
+      const { data: allocatedItems } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .eq("purchase_id", material.purchaseId);
+      const allocatedSet = new Set((allocatedItems || []).map((a: any) => a.purchase_item_id));
+      const remaining = (confItems || []).filter((i: any) => !allocatedSet.has(i.id));
+      if (remaining.length === 0) {
+        await advanceOpStatus(material.purchaseId, "Alocando Bag");
+      }
+    }
+
     setSelectedMaterial("");
     onAllocated();
     loadAvailableMaterials();

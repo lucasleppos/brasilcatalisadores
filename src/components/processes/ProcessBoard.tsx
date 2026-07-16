@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity } from "lucide-react";
-import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_FIN_STATUSES, CER_OP_STATUSES } from "@/lib/purchases";
+import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_OP_STATUSES } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import { subDays, isAfter, parseISO } from "date-fns";
@@ -63,15 +63,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     ],
   },
   {
-    label: "Pagamento",
-    statuses: [
-      "Peças: Aprovado - Aguardando Pagamento",
-      "Peças: Pagamento Realizado",
-    ],
-    parallelMatch: "fin",
-  },
-  {
-    label: "Bags / Exportação",
+    label: "Bags",
     statuses: ["Peças: Alocado ao Bag"],
     parallelMatch: "op",
   },
@@ -143,21 +135,15 @@ export default function ProcessBoard() {
     visibleGroups.forEach((g) => { map[g.label] = []; });
 
     filtered.forEach((p) => {
-      // Parallel phase (Cerâmico: Aprovado with sub-flows) goes to Pagamento AND/OR Bags
+      // Fase pós-aprovação do Cerâmico → aparece na coluna Bags até ser 'Bag Alocado'
       if (isInParallelPhase(p)) {
-        const pagGroup = visibleGroups.find((g) => g.parallelMatch === "fin");
         const bagGroup = visibleGroups.find((g) => g.parallelMatch === "op");
-        // Show in Pagamento if fin sub-flow not done
-        if (pagGroup && p.finStatus && p.finStatus !== "Encerrado ERP") {
-          map[pagGroup.label]?.push(p);
-        }
-        // Show in Bags if op sub-flow not done
-        if (bagGroup && p.opStatus && p.opStatus !== "Enviado Exportação") {
+        if (bagGroup && p.opStatus && p.opStatus !== "Bag Alocado") {
           map[bagGroup.label]?.push(p);
         }
-        // If both done but main status not yet Encerrado, show in Encerrados
-        if (p.finStatus === "Encerrado ERP" && p.opStatus === "Enviado Exportação") {
-          if (map["Encerrados"]) map["Encerrados"].push(p);
+        // Concluído automático quando terminou de alocar
+        if (p.opStatus === "Bag Alocado") {
+          if (map["Concluídos"]) map["Concluídos"].push(p);
         }
         return;
       }

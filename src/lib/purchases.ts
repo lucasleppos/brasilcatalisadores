@@ -48,17 +48,12 @@ const CERAMICO_STATUSES = [
   "Concluído",
 ] as const;
 
-// Cerâmico parallel sub-statuses
-export const CER_FIN_STATUSES = [
-  "Aguardando Pagamento",
-  "Pagamento Realizado",
-  "Encerrado ERP",
-] as const;
+// Cerâmico operational sub-status (legado: fin_status deixou de ser usado)
+export const CER_FIN_STATUSES = [] as const;
 
 export const CER_OP_STATUSES = [
   "Alocando Bag",
   "Bag Alocado",
-  "Enviado Exportação",
 ] as const;
 
 // Legacy statuses (for backward compatibility)
@@ -483,9 +478,8 @@ export async function updatePurchaseStatus(id: string, status: string) {
 
   const updateData: any = { status, status_history: history };
 
-  // If entering "Cerâmico: Aprovado", initialize parallel sub-flows
+  // If entering "Cerâmico: Aprovado", initialize operational sub-flow (envio ao Bags)
   if (status === "Cerâmico: Aprovado") {
-    updateData.fin_status = "Aguardando Pagamento";
     updateData.op_status = "Alocando Bag";
   }
 
@@ -554,25 +548,9 @@ export async function contestDemonstrativo(purchaseId: string, motivo: string): 
   return true;
 }
 
-/** Advance financial sub-status (cerâmico) */
-export async function advanceFinStatus(id: string, currentFinStatus: CerFinStatus): Promise<boolean> {
-  const next = getNextFinStatus(currentFinStatus);
-  if (!next) return false;
-
-  const { data: current } = await supabase.from("purchases").select("status_history, op_status").eq("id", id).single();
-  if (!current) return false;
-
-  const history = [...((current.status_history as any[]) || []), { status: `Fin: ${next}`, date: new Date().toISOString() }];
-  const updateData: any = { fin_status: next, status_history: history };
-
-  // Check if both sub-flows are done
-  if (next === "Encerrado ERP" && current.op_status === "Enviado Exportação") {
-    updateData.status = "Cerâmico: Encerrado";
-    history.push({ status: "Cerâmico: Encerrado", date: new Date().toISOString() });
-  }
-
-  await supabase.from("purchases").update(updateData).eq("id", id);
-  return true;
+/** DEPRECATED — fluxo financeiro removido. Mantido como no-op para compatibilidade. */
+export async function advanceFinStatus(_id: string, _currentFinStatus: CerFinStatus): Promise<boolean> {
+  return false;
 }
 
 /** Advance operational sub-status (cerâmico) */
@@ -580,14 +558,14 @@ export async function advanceOpStatus(id: string, currentOpStatus: CerOpStatus):
   const next = getNextOpStatus(currentOpStatus);
   if (!next) return false;
 
-  const { data: current } = await supabase.from("purchases").select("status_history, fin_status").eq("id", id).single();
+  const { data: current } = await supabase.from("purchases").select("status_history").eq("id", id).single();
   if (!current) return false;
 
   const history = [...((current.status_history as any[]) || []), { status: `Op: ${next}`, date: new Date().toISOString() }];
   const updateData: any = { op_status: next, status_history: history };
 
-  // Check if both sub-flows are done
-  if (next === "Enviado Exportação" && current.fin_status === "Encerrado ERP") {
+  // Quando termina de alocar todos os bags, encerra automaticamente
+  if (next === "Bag Alocado") {
     updateData.status = "Cerâmico: Encerrado";
     history.push({ status: "Cerâmico: Encerrado", date: new Date().toISOString() });
   }
@@ -867,9 +845,9 @@ export function isPurchaseClosed(purchase: Purchase): boolean {
   return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
 }
 
-/** Check if cerâmico is in parallel phase */
+/** Check if cerâmico is in parallel phase (aprovado + em alocação de bag) */
 export function isInParallelPhase(purchase: Purchase): boolean {
-  return purchase.status === "Cerâmico: Aprovado" && purchase.finStatus != null && purchase.opStatus != null;
+  return purchase.status === "Cerâmico: Aprovado" && purchase.opStatus != null;
 }
 
 /** Update the Boleto Syge / ERP number on a purchase */
