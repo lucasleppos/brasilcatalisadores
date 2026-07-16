@@ -453,6 +453,35 @@ Deno.serve(async (req) => {
             y += 6;
             if (y > 270) { doc.addPage(); y = margin; }
           }
+        } else if (versionAggRows.length > 0) {
+          const vCols = [30, (contentWidth - 30) / 3, (contentWidth - 30) / 3, (contentWidth - 30) / 3];
+          const vX = [margin];
+          for (let i = 1; i < vCols.length; i++) vX.push(vX[i - 1] + vCols[i - 1]);
+          const vHeaders = ["Versão", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)"];
+
+          doc.setFillColor(240, 240, 240);
+          doc.rect(margin, y, contentWidth, 7, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          for (let i = 0; i < vHeaders.length; i++) {
+            doc.text(vHeaders[i], vX[i] + 2, y + 5);
+          }
+          y += 7;
+
+          doc.setFont("helvetica", "normal");
+          for (let i = 0; i < versionAggRows.length; i++) {
+            const r = versionAggRows[i];
+            if (i % 2 === 0) {
+              doc.setFillColor(250, 250, 250);
+              doc.rect(margin, y, contentWidth, 6, "F");
+            }
+            doc.text(`v${r.versao}`, vX[0] + 2, y + 4);
+            doc.text(fmt(r.pt), vX[1] + 2, y + 4);
+            doc.text(fmt(r.pd), vX[2] + 2, y + 4);
+            doc.text(fmt(r.rh), vX[3] + 2, y + 4);
+            y += 6;
+            if (y > 270) { doc.addPage(); y = margin; }
+          }
         } else if (latestLab) {
           doc.setFontSize(9);
           doc.setFont("helvetica", "normal");
