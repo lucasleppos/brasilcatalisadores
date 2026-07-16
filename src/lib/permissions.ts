@@ -76,6 +76,7 @@ export const MODULE_DEFINITIONS: Record<string, {
     label: "Concluídos",
     actions: [],
     fields: [],
+  },
   catalogo: {
     label: "Catálogo",
     actions: [
