@@ -74,7 +74,7 @@ export default function CeramicoLabelPrint({ labels }: Props) {
       {labels.map((l) => (
         <div key={l.code} className="ceramico-label">
           <div className="info">
-            <div className="lote">LOTE: {l.code}</div>
+            <div className="lote">{l.code}</div>
             <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
             <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
             <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
