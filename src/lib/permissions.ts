@@ -106,7 +106,7 @@ export function usePermissions() {
   const { role } = useAuth();
 
   const { data: permissionProfile, isLoading } = useQuery({
-    queryKey: ["permissions", role],
+    queryKey: ["permissions", role, "v2"],
     queryFn: async () => {
       if (!role) return null;
       const { data } = await supabase
