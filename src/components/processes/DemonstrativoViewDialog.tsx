@@ -334,7 +334,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
             {hasAnyLab && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Análise Laboratorial</p>
-                {hasPerGroupLab ? (
+                {groupAvgRows.length > 0 ? (
                   <table className="w-full text-xs border">
                     <thead className="bg-muted">
                       <tr>
@@ -342,38 +342,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         <th className="p-1 text-left">Pt (ppm)</th>
                         <th className="p-1 text-left">Pd (ppm)</th>
                         <th className="p-1 text-left">Rh (ppm)</th>
-                        <th className="p-1 text-left">Versão</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {groupLabItems.map((it, i) => {
-                        const lab = labMap[it.id];
-                        return (
-                          <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                            <td className="p-1">{typeLabel(it)}</td>
-                            <td className="p-1">{fmtNum(lab.pt, 2)}</td>
-                            <td className="p-1">{fmtNum(lab.pd, 2)}</td>
-                            <td className="p-1">{fmtNum(lab.rh, 2)}</td>
-                            <td className="p-1">v{lab.versao}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : versionAggRows.length > 0 ? (
-                  <table className="w-full text-xs border">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="p-1 text-left">Versão</th>
-                        <th className="p-1 text-left">Pt (ppm)</th>
-                        <th className="p-1 text-left">Pd (ppm)</th>
-                        <th className="p-1 text-left">Rh (ppm)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {versionAggRows.map((r, i) => (
-                        <tr key={r.versao} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="p-1">v{r.versao}</td>
+                      {groupAvgRows.map((r, i) => (
+                        <tr key={r.key} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                          <td className="p-1">{r.label}</td>
                           <td className="p-1">{fmtNum(r.pt, 2)}</td>
                           <td className="p-1">{fmtNum(r.pd, 2)}</td>
                           <td className="p-1">{fmtNum(r.rh, 2)}</td>
