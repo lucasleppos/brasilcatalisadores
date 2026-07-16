@@ -1,27 +1,52 @@
-## Manter cerâmico na etapa de Aprovação após confirmar precificação
+## Remover item placeholder de Cerâmico ao separar em lotes
 
-O fluxo já bloqueia o botão **Aprovar** enquanto o Boleto Syge não é preenchido, e o campo inline de Syge está em `StageActionCard.tsx`. Falta corrigir um comportamento residual do painel de precificação cerâmica.
+### Causa raiz
 
-### Problema
+Ao criar uma compra do tipo Cerâmico, `src/components/purchases/NewPurchaseDialog.tsx` (linha 267) insere um item placeholder:
 
-Em `src/components/processes/CeramicoPricingPanel.tsx` (linha 225), ao **Confirmar Precificação** o painel executa `advanceStage(purchase.id, purchase.status)`. Como agora o cerâmico entra na etapa de Aprovação (`Cerâmico: Gerar Boleto de Aprovação`) direto após a análise, esse `advanceStage` faz a compra **sair** da Aprovação para `Aprovado - Aguardando Pagamento` / alocação de Bag — sem exigir o Syge.
+```ts
+items: [{ id: crypto.randomUUID(), itemType: "ceramico", quantity: 1 }]
+```
+
+Ele existe só para que `determineMaterialFlow` classifique a compra como fluxo cerâmico. Como não tem peso nem valor, aparece no demonstrativo como **"Cerâmico — 1 pç — Pendente"** e como linha extra na tabela de itens da compra.
+
+Depois, na Conferência (`src/components/processes/CeramicoConferenciaPanel.tsx`, `persistAll`, linhas 140–162), o painel apaga apenas os itens `item_type='ceramico' AND category='conferencia'` antes de reinserir os lotes. O placeholder original (sem `category`) sobrevive — daí o item fantasma.
 
 ### Correção pontual
 
-Arquivo: `src/components/processes/CeramicoPricingPanel.tsx` (função `handleConfirm`, ~linhas 203–235).
+Arquivo único: `src/components/processes/CeramicoConferenciaPanel.tsx`, função `persistAll`.
 
-- Condicionar a chamada `await advanceStage(...)` a `purchase.status === "Cerâmico: Em Precificação"`.
-- Quando aberto a partir da Aprovação (`Cerâmico: Gerar Boleto de Aprovação`), o painel apenas salva `calc_input`, `calc_result`, `total_value` dos lotes e atualiza `total_brl` da compra, e então fecha. A compra permanece na Aprovação até o Syge ser incluído.
-- Ajustar a `toast.success` para refletir os dois casos (ex.: "Precificação atualizada" quando não avança).
+- Alterar o `DELETE` inicial para remover **todos** os itens cerâmicos da compra (não só os de `category='conferencia'`), garantindo que o placeholder criado no momento da compra seja removido quando os lotes são efetivamente separados em grupos.
 
-### Comportamento resultante
+Antes:
+```ts
+await supabase
+  .from("purchase_items")
+  .delete()
+  .eq("purchase_id", purchase.id)
+  .eq("item_type", "ceramico")
+  .eq("category", "conferencia");
+```
 
-1. Análise cerâmica finalizada → compra vai para **Aprovação** (`Cerâmico: Gerar Boleto de Aprovação`).
-2. Usuário pode: **Visualizar**, gerar **PDF**, **Contestar** e **Ver Precificação dos Lotes** (reprecificar quantas vezes precisar sem sair da etapa).
-3. Após OK do fornecedor, usuário preenche o **Boleto Syge** no campo inline → botão **Aprovar** libera.
-4. Ao clicar em Aprovar, a compra avança para Pagamento + alocação de Bag.
+Depois:
+```ts
+await supabase
+  .from("purchase_items")
+  .delete()
+  .eq("purchase_id", purchase.id)
+  .eq("item_type", "ceramico");
+```
+
+### Por que não mexer na criação da compra
+
+`determineMaterialFlow` (`src/lib/purchases.ts` linha 232) decide o fluxo a partir dos itens. Se remover o placeholder na criação sem refatorar essa função, a compra vira fluxo "peças". A correção no momento da separação em grupos é exatamente o que o usuário pediu ("retirada no momento que temos a separação em grupos") e não afeta a decisão de fluxo, que já foi persistida em `purchases.material_flow` na criação.
+
+### Resultado esperado
+
+- Compra Cerâmica é criada normalmente (fluxo cerâmico preservado via `material_flow`).
+- Ao salvar a Conferência com os lotes, o placeholder some.
+- Tabela de itens da compra e demonstrativo mostram apenas os lotes reais (`conferencia`), sem linha "1 pç Pendente".
 
 ### Fora do escopo
 
-- Nenhuma outra etapa, cálculo, PDF ou permissão é alterada.
-- Fluxo de peças continua como está (já funciona corretamente porque passa por `Peças: Aguardando Demonstrativo` antes da Aprovação).
+- Nenhuma mudança em criação de compra, cálculo, PDF, fluxo de peças ou outras etapas.

@@ -141,8 +141,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       .from("purchase_items")
       .delete()
       .eq("purchase_id", purchase.id)
-      .eq("item_type", "ceramico")
-      .eq("category", "conferencia");
+      .eq("item_type", "ceramico");
 
     await supabase
       .from("stage_evidence")
