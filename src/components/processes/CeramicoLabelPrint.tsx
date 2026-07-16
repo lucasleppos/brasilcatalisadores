@@ -10,7 +10,8 @@ export interface LabelData {
   buyer: string;
   supplierName: string;
   group: string;
-  weightNet: number;
+  /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
+  weightGross: number;
 }
 
 interface Props {
@@ -80,7 +81,7 @@ export default function CeramicoLabelPrint({ labels }: Props) {
             <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
             <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
             <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
-            <div className="weights">Peso Líq.: {fmtNum(l.weightNet, 3)} kg</div>
+            <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
           </div>
           <div className="qr">
             {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}

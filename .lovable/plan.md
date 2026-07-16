@@ -1,57 +1,25 @@
-# Plano: Ajuste da Etiqueta Térmica de Cerâmico
+Objetivo: ajustar a etiqueta térmica do cerâmico para mostrar "Peso Bruto" no lugar de "Peso Líq.", já que a tara ainda não é informada nessa etapa.
 
-## Objetivo
-Simplificar a etiqueta térmica gerada na conferência de material cerâmico, removendo a sequência numérica confusa e a informação de tara, e imprimir 3 etiquetas idênticas por grupo.
+Etapa 1 — Prévia visual
+- Gerar uma imagem estática da etiqueta 100 x 50 mm com dados de exemplo (código LOT-260707-01, comprador Marcos, fornecedora Cleusa de Fátima, Grupo 01, 8.000 kg) e o texto "Peso Bruto" em destaque.
+- Apresentar a prévia antes de aplicar a mudança no código.
 
-## Decisões do usuário
-- **Sequência**: não exibir `01`, `02`, `03` na etiqueta; manter unicidade apenas no backend.
-- **Tara**: remover completamente da conferência e da etiqueta.
-- **Quantidade**: imprimir **3 etiquetas idênticas por grupo** de material.
-- **Prévia**: gerar prévia visual antes de implementar no código.
+Etapa 2 — Ajuste no layout da etiqueta
+Arquivo: `src/components/processes/CeramicoLabelPrint.tsx`
+- Trocar o texto exibido de `Peso Líq.` para `Peso Bruto`.
+- Manter o QR code apontando para o código único interno (`l.code`).
+- Manter o cabeçalho somente com o código base (sem sequência 01/02/03).
 
-## Etapas
+Etapa 3 — Alinhamento semântico (opcional, se fizer sentido)
+Arquivos: `src/components/processes/CeramicoLabelPrint.tsx` e `src/components/processes/CeramicoConferenciaPanel.tsx`
+- Renomear a propriedade `weightNet` para `weightGross` no tipo `LabelData` e nos pontos onde ela é preenchida, para refletir que o peso conferido é bruto nesta etapa.
+- Se preferir manter o nome interno, apenas o texto visual será alterado.
 
-### 1. Prévia visual da nova etiqueta
-- Gerar prévia estática (100×50 mm) com os dados de exemplo:
-  - Código: `LOT-260707-01` (sem sequência final)
-  - Comprador: Marcos
-  - Fornecedor: Cleusa de Fatima
-  - Grupo: Grupo 01
-  - Peso Líq.: 8,000 kg
-  - QR Code na lateral apontando para o lote específico
-- Apresentar para aprovação antes de prosseguir.
+Etapa 4 — Verificação
+- Rodar `tsgo` para garantir que tipos e referências estejam consistentes.
 
-### 2. Código do lote (`src/lib/labels.ts`)
-- Criar `buildLabelCodeDisplay` retornando código sem sequência (`LOT-260707-01`).
-- Manter identificador único interno por grupo para o QR code e rastreabilidade no banco.
-
-### 3. Remover tara da conferência (`CeramicoConferenciaPanel.tsx`)
-- Remover campo "Tara (kg)" do formulário.
-- Remover exibição de tara na lista de lotes.
-- Ajustar cálculo de saldo/tolerância para `bulkWeight - sum(weightNet)`.
-- Zerar `weight_loss` ao persistir em `purchase_items`.
-
-### 4. Layout da etiqueta (`CeramicoLabelPrint.tsx`)
-- Remover linha "Tara".
-- Ampliar peso líquido para ocupar o espaço, mantendo leitura grande e legível.
-- Cabeçalho exibe apenas o código sem sequência.
-- Manter QR code na lateral apontando para o identificador único interno.
-
-### 5. Imprimir 3 etiquetas idênticas por grupo
-- Ajustar `handlePrintOne` para expandir o lote em **3 cópias idênticas** antes de enviar para `CeramicoLabelPrint`.
-- Ajustar `handlePrintAll` para gerar 3 cópias por grupo, mantendo a ordem (Grupo A × 3, Grupo B × 3, ...).
-- Cada cópia é uma página impressa separada (100×50 mm), preservando `page-break-after` já existente.
-- Atualizar contadores/labels do botão se necessário (ex: "Imprimir Etiquetas (N grupos × 3)").
-
-### 6. Verificação
-- Ajustar tipo `LabelData` (remover `tare`).
-- Rodar typecheck (`tsgo`).
-
-## Arquivos envolvidos
-- `src/lib/labels.ts`
-- `src/components/processes/CeramicoConferenciaPanel.tsx`
+Arquivos envolvidos:
 - `src/components/processes/CeramicoLabelPrint.tsx`
+- `src/components/processes/CeramicoConferenciaPanel.tsx` (se renomearmos a propriedade)
 
-## Notas
-- A sequência numérica deixa de ser visível, mas continua rastreável internamente via QR code.
-- 3 etiquetas idênticas por grupo permitem afixar em múltiplos pontos do lote físico.
+Observação: a conferência continua sem campo de tara e o saldo permanece `Peso Bruto Recebido - ΣPesos Brutos dos Grupos`.
