@@ -75,7 +75,15 @@ Deno.serve(async (req) => {
 
     // Summary counts
     const totalPecas = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.quantity) || 1), 0);
-    const totalWeightKg = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.weight) || 0), 0);
+    const totalBrutoKg = itemsForTotal.reduce((acc: number, i: any) => {
+      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
+      return acc + bruto;
+    }, 0);
+    const totalLiquidoKg = itemsForTotal.reduce((acc: number, i: any) => {
+      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
+      const tara = Number(i.calc_input?.tare) || Number(i.weight_loss) || 0;
+      return acc + Math.max(0, bruto - tara);
+    }, 0);
 
     // Fetch catalog part codes for items with catalog_part_id
     const catalogPartIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id))];
