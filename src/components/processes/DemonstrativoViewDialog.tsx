@@ -325,7 +325,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {isCeramico && (hasPerGroupLab || generalAvg) && (
+            {hasAnyLab && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Análise Laboratorial</p>
                 {hasPerGroupLab ? (
@@ -352,6 +352,27 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                ) : versionAggRows.length > 0 ? (
+                  <table className="w-full text-xs border">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1 text-left">Versão</th>
+                        <th className="p-1 text-left">Pt (ppm)</th>
+                        <th className="p-1 text-left">Pd (ppm)</th>
+                        <th className="p-1 text-left">Rh (ppm)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {versionAggRows.map((r, i) => (
+                        <tr key={r.versao} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                          <td className="p-1">v{r.versao}</td>
+                          <td className="p-1">{fmtNum(r.pt, 2)}</td>
+                          <td className="p-1">{fmtNum(r.pd, 2)}</td>
+                          <td className="p-1">{fmtNum(r.rh, 2)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 ) : generalAvg && (
