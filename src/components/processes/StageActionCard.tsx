@@ -269,21 +269,18 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
 
       const updateData: any = { status: adminTargetStatus, status_history: history };
 
-      // Initialize parallel sub-flows if moving to "Cerâmico: Aprovado"
+      // Ao mover para "Cerâmico: Aprovado", inicializa fluxo operacional
       if (adminTargetStatus === "Cerâmico: Aprovado") {
-        updateData.fin_status = "Aguardando Pagamento";
         updateData.op_status = "Alocando Bag";
       }
 
-      // Allow overriding parallel sub-statuses
-      if (adminTargetFinStatus) updateData.fin_status = adminTargetFinStatus;
+      // Permite sobrescrever sub-status operacional
       if (adminTargetOpStatus) updateData.op_status = adminTargetOpStatus;
 
       await supabase.from("purchases").update(updateData).eq("id", purchase.id);
       toast.success(`Etapa alterada para: ${adminTargetStatus}`);
       setAdminMoveOpen(false);
       setAdminTargetStatus("");
-      setAdminTargetFinStatus("");
       setAdminTargetOpStatus("");
       setAdminMoveNote("");
       onCompleted();
