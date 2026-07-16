@@ -396,35 +396,40 @@ Deno.serve(async (req) => {
         a.maxV = Math.max(a.maxV, Number(lr.versao) || 0);
         labAgg[lr.purchase_item_id] = a;
       }
-      const groupLabItems = itemsForTotal.filter((it: any) => labAgg[it.id]);
+      // Build unified group-averages (final average per group across versions).
+      // Match to current items when possible; fall back to generic "Grupo N" labels for orphan groups.
+      const currentIds = new Set(itemsForTotal.map((i: any) => i.id));
+      const matchedRows = itemsForTotal
+        .filter((it: any) => labAgg[it.id])
+        .map((it: any) => {
+          const a = labAgg[it.id];
+          const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
+          const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+          return { label: label || "—", pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
+        });
+      const orphanIds = Object.keys(labAgg).filter(id => !currentIds.has(id)).sort();
+      const orphanRows = orphanIds.map((id, idx) => {
+        const a = labAgg[id];
+        return {
+          label: `Grupo ${matchedRows.length + idx + 1}`,
+          pt: a.pt / a.n,
+          pd: a.pd / a.n,
+          rh: a.rh / a.n,
+        };
+      });
+      const groupAvgRows: { label: string; pt: number; pd: number; rh: number }[] = [...matchedRows, ...orphanRows];
 
-      // Fallback aggregate by versao (used when no per-item match)
-      const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
-      for (const lr of allLabRows) {
-        const v = Number(lr.versao) || 0;
-        if (!v) continue;
-        const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
-        a.pt += Number(lr.pt_ppm) || 0;
-        a.pd += Number(lr.pd_ppm) || 0;
-        a.rh += Number(lr.rh_ppm) || 0;
-        a.n += 1;
-        versionAgg[v] = a;
-      }
-      const versionAggRows = Object.entries(versionAgg)
-        .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
-        .sort((a, b) => a.versao - b.versao);
-
-      if (groupLabItems.length > 0 || versionAggRows.length > 0 || latestLab) {
+      if (groupAvgRows.length > 0 || latestLab) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text("Análise Laboratorial", margin, y);
         y += 7;
 
-        if (groupLabItems.length > 0) {
-          const labCols = [contentWidth - 100, 25, 25, 25, 25];
+        if (groupAvgRows.length > 0) {
+          const labCols = [contentWidth - 75, 25, 25, 25];
           const labX = [margin];
           for (let i = 1; i < labCols.length; i++) labX.push(labX[i - 1] + labCols[i - 1]);
-          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)", "Versão"];
+          const labHeaders = ["Grupo", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)"];
 
           doc.setFillColor(240, 240, 240);
           doc.rect(margin, y, contentWidth, 7, "F");
@@ -436,49 +441,16 @@ Deno.serve(async (req) => {
           y += 7;
 
           doc.setFont("helvetica", "normal");
-          for (let i = 0; i < groupLabItems.length; i++) {
-            const it = groupLabItems[i];
-            const a = labAgg[it.id];
-            const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
-            const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+          for (let i = 0; i < groupAvgRows.length; i++) {
+            const r = groupAvgRows[i];
             if (i % 2 === 0) {
               doc.setFillColor(250, 250, 250);
               doc.rect(margin, y, contentWidth, 6, "F");
             }
-            doc.text(label || "—", labX[0] + 2, y + 4);
-            doc.text(fmt(a.pt / a.n), labX[1] + 2, y + 4);
-            doc.text(fmt(a.pd / a.n), labX[2] + 2, y + 4);
-            doc.text(fmt(a.rh / a.n), labX[3] + 2, y + 4);
-            doc.text(`v${a.maxV}`, labX[4] + 2, y + 4);
-            y += 6;
-            if (y > 270) { doc.addPage(); y = margin; }
-          }
-        } else if (versionAggRows.length > 0) {
-          const vCols = [30, (contentWidth - 30) / 3, (contentWidth - 30) / 3, (contentWidth - 30) / 3];
-          const vX = [margin];
-          for (let i = 1; i < vCols.length; i++) vX.push(vX[i - 1] + vCols[i - 1]);
-          const vHeaders = ["Versão", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)"];
-
-          doc.setFillColor(240, 240, 240);
-          doc.rect(margin, y, contentWidth, 7, "F");
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(9);
-          for (let i = 0; i < vHeaders.length; i++) {
-            doc.text(vHeaders[i], vX[i] + 2, y + 5);
-          }
-          y += 7;
-
-          doc.setFont("helvetica", "normal");
-          for (let i = 0; i < versionAggRows.length; i++) {
-            const r = versionAggRows[i];
-            if (i % 2 === 0) {
-              doc.setFillColor(250, 250, 250);
-              doc.rect(margin, y, contentWidth, 6, "F");
-            }
-            doc.text(`v${r.versao}`, vX[0] + 2, y + 4);
-            doc.text(fmt(r.pt), vX[1] + 2, y + 4);
-            doc.text(fmt(r.pd), vX[2] + 2, y + 4);
-            doc.text(fmt(r.rh), vX[3] + 2, y + 4);
+            doc.text(r.label, labX[0] + 2, y + 4);
+            doc.text(fmt(r.pt), labX[1] + 2, y + 4);
+            doc.text(fmt(r.pd), labX[2] + 2, y + 4);
+            doc.text(fmt(r.rh), labX[3] + 2, y + 4);
             y += 6;
             if (y > 270) { doc.addPage(); y = margin; }
           }

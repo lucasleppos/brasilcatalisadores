@@ -149,26 +149,32 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
     return { bruto, tara, liquido };
   }
 
-  // Per-group lab list for cerâmico
-  const groupLabItems = isCeramico ? itemsForTotal.filter(i => labMap[i.id]) : [];
-  const hasPerGroupLab = groupLabItems.length > 0;
-
-  // Fallback: aggregate all lab rows by versao (used when no per-group match)
-  const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
-  labRows.forEach(lr => {
-    const v = Number(lr.versao) || 0;
-    if (!v) return;
-    const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
-    a.pt += Number(lr.pt_ppm) || 0;
-    a.pd += Number(lr.pd_ppm) || 0;
-    a.rh += Number(lr.rh_ppm) || 0;
-    a.n += 1;
-    versionAgg[v] = a;
-  });
-  const versionAggRows = Object.entries(versionAgg)
-    .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
-    .sort((a, b) => a.versao - b.versao);
-  const hasAnyLab = isCeramico && (hasPerGroupLab || versionAggRows.length > 0 || !!generalAvg);
+  // Cerâmico: aggregated final average per group (average across versions per purchase_item_id).
+  // Match to current items when possible; fall back to generic "Grupo N" labels for orphan groups.
+  const currentItemIds = new Set(itemsForTotal.map(i => i.id));
+  const matchedGroupRows = isCeramico
+    ? itemsForTotal
+        .filter(i => labAgg[i.id])
+        .map(i => {
+          const a = labAgg[i.id];
+          return { key: i.id, label: typeLabel(i), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
+        })
+    : [];
+  const orphanGroupIds = Object.keys(labAgg).filter(id => !currentItemIds.has(id)).sort();
+  const orphanGroupRows = isCeramico
+    ? orphanGroupIds.map((id, idx) => {
+        const a = labAgg[id];
+        return {
+          key: id,
+          label: `Grupo ${matchedGroupRows.length + idx + 1}`,
+          pt: a.pt / a.n,
+          pd: a.pd / a.n,
+          rh: a.rh / a.n,
+        };
+      })
+    : [];
+  const groupAvgRows = [...matchedGroupRows, ...orphanGroupRows];
+  const hasAnyLab = isCeramico && (groupAvgRows.length > 0 || !!generalAvg);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -328,7 +334,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
             {hasAnyLab && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Análise Laboratorial</p>
-                {hasPerGroupLab ? (
+                {groupAvgRows.length > 0 ? (
                   <table className="w-full text-xs border">
                     <thead className="bg-muted">
                       <tr>
@@ -336,38 +342,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         <th className="p-1 text-left">Pt (ppm)</th>
                         <th className="p-1 text-left">Pd (ppm)</th>
                         <th className="p-1 text-left">Rh (ppm)</th>
-                        <th className="p-1 text-left">Versão</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {groupLabItems.map((it, i) => {
-                        const lab = labMap[it.id];
-                        return (
-                          <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                            <td className="p-1">{typeLabel(it)}</td>
-                            <td className="p-1">{fmtNum(lab.pt, 2)}</td>
-                            <td className="p-1">{fmtNum(lab.pd, 2)}</td>
-                            <td className="p-1">{fmtNum(lab.rh, 2)}</td>
-                            <td className="p-1">v{lab.versao}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : versionAggRows.length > 0 ? (
-                  <table className="w-full text-xs border">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="p-1 text-left">Versão</th>
-                        <th className="p-1 text-left">Pt (ppm)</th>
-                        <th className="p-1 text-left">Pd (ppm)</th>
-                        <th className="p-1 text-left">Rh (ppm)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {versionAggRows.map((r, i) => (
-                        <tr key={r.versao} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="p-1">v{r.versao}</td>
+                      {groupAvgRows.map((r, i) => (
+                        <tr key={r.key} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                          <td className="p-1">{r.label}</td>
                           <td className="p-1">{fmtNum(r.pt, 2)}</td>
                           <td className="p-1">{fmtNum(r.pd, 2)}</td>
                           <td className="p-1">{fmtNum(r.rh, 2)}</td>
