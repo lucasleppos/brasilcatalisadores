@@ -153,6 +153,23 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const groupLabItems = isCeramico ? itemsForTotal.filter(i => labMap[i.id]) : [];
   const hasPerGroupLab = groupLabItems.length > 0;
 
+  // Fallback: aggregate all lab rows by versao (used when no per-group match)
+  const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
+  labRows.forEach(lr => {
+    const v = Number(lr.versao) || 0;
+    if (!v) return;
+    const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
+    a.pt += Number(lr.pt_ppm) || 0;
+    a.pd += Number(lr.pd_ppm) || 0;
+    a.rh += Number(lr.rh_ppm) || 0;
+    a.n += 1;
+    versionAgg[v] = a;
+  });
+  const versionAggRows = Object.entries(versionAgg)
+    .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
+    .sort((a, b) => a.versao - b.versao);
+  const hasAnyLab = isCeramico && (hasPerGroupLab || versionAggRows.length > 0 || !!generalAvg);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -308,7 +325,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {isCeramico && (hasPerGroupLab || generalAvg) && (
+            {hasAnyLab && (
               <div className="border-t pt-3">
                 <p className="font-semibold mb-1">Análise Laboratorial</p>
                 {hasPerGroupLab ? (
@@ -335,6 +352,27 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                ) : versionAggRows.length > 0 ? (
+                  <table className="w-full text-xs border">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1 text-left">Versão</th>
+                        <th className="p-1 text-left">Pt (ppm)</th>
+                        <th className="p-1 text-left">Pd (ppm)</th>
+                        <th className="p-1 text-left">Rh (ppm)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {versionAggRows.map((r, i) => (
+                        <tr key={r.versao} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                          <td className="p-1">v{r.versao}</td>
+                          <td className="p-1">{fmtNum(r.pt, 2)}</td>
+                          <td className="p-1">{fmtNum(r.pd, 2)}</td>
+                          <td className="p-1">{fmtNum(r.rh, 2)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 ) : generalAvg && (

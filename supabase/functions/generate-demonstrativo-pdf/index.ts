@@ -398,7 +398,23 @@ Deno.serve(async (req) => {
       }
       const groupLabItems = itemsForTotal.filter((it: any) => labAgg[it.id]);
 
-      if (groupLabItems.length > 0 || latestLab) {
+      // Fallback aggregate by versao (used when no per-item match)
+      const versionAgg: Record<number, { pt: number; pd: number; rh: number; n: number }> = {};
+      for (const lr of allLabRows) {
+        const v = Number(lr.versao) || 0;
+        if (!v) continue;
+        const a = versionAgg[v] || { pt: 0, pd: 0, rh: 0, n: 0 };
+        a.pt += Number(lr.pt_ppm) || 0;
+        a.pd += Number(lr.pd_ppm) || 0;
+        a.rh += Number(lr.rh_ppm) || 0;
+        a.n += 1;
+        versionAgg[v] = a;
+      }
+      const versionAggRows = Object.entries(versionAgg)
+        .map(([v, a]) => ({ versao: Number(v), pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n }))
+        .sort((a, b) => a.versao - b.versao);
+
+      if (groupLabItems.length > 0 || versionAggRows.length > 0 || latestLab) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text("Análise Laboratorial", margin, y);
@@ -434,6 +450,35 @@ Deno.serve(async (req) => {
             doc.text(fmt(a.pd / a.n), labX[2] + 2, y + 4);
             doc.text(fmt(a.rh / a.n), labX[3] + 2, y + 4);
             doc.text(`v${a.maxV}`, labX[4] + 2, y + 4);
+            y += 6;
+            if (y > 270) { doc.addPage(); y = margin; }
+          }
+        } else if (versionAggRows.length > 0) {
+          const vCols = [30, (contentWidth - 30) / 3, (contentWidth - 30) / 3, (contentWidth - 30) / 3];
+          const vX = [margin];
+          for (let i = 1; i < vCols.length; i++) vX.push(vX[i - 1] + vCols[i - 1]);
+          const vHeaders = ["Versão", "Pt (ppm)", "Pd (ppm)", "Rh (ppm)"];
+
+          doc.setFillColor(240, 240, 240);
+          doc.rect(margin, y, contentWidth, 7, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          for (let i = 0; i < vHeaders.length; i++) {
+            doc.text(vHeaders[i], vX[i] + 2, y + 5);
+          }
+          y += 7;
+
+          doc.setFont("helvetica", "normal");
+          for (let i = 0; i < versionAggRows.length; i++) {
+            const r = versionAggRows[i];
+            if (i % 2 === 0) {
+              doc.setFillColor(250, 250, 250);
+              doc.rect(margin, y, contentWidth, 6, "F");
+            }
+            doc.text(`v${r.versao}`, vX[0] + 2, y + 4);
+            doc.text(fmt(r.pt), vX[1] + 2, y + 4);
+            doc.text(fmt(r.pd), vX[2] + 2, y + 4);
+            doc.text(fmt(r.rh), vX[3] + 2, y + 4);
             y += 6;
             if (y > 270) { doc.addPage(); y = margin; }
           }
