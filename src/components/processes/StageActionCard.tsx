@@ -67,7 +67,6 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
   const [adminTargetStatus, setAdminTargetStatus] = useState("");
-  const [adminTargetFinStatus, setAdminTargetFinStatus] = useState("");
   const [adminTargetOpStatus, setAdminTargetOpStatus] = useState("");
   const [adminMoveNote, setAdminMoveNote] = useState("");
 
