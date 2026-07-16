@@ -274,6 +274,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    const typeLabels: Record<string, string> = {
+      peca: "Peça",
+      peca_sacola: "Peça em Sacola",
+      ceramico: "Cerâmico",
+    };
+
     // === Regular items (non-sacola or items without pricing_source) ===
     if (regularItems.length > 0) {
       if (hasSacolaBlocks) {
