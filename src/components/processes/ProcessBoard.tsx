@@ -62,15 +62,6 @@ const PROCESS_GROUPS: ProcessGroup[] = [
       "Cerâmico: Demonstrativo Contestado",
     ],
   },
-  {
-    label: "Bags",
-    statuses: ["Peças: Alocado ao Bag"],
-    parallelMatch: "op",
-  },
-  {
-    label: "Concluídos",
-    statuses: ["Concluído", "Peças: Encerrado", "Cerâmico: Encerrado"],
-  },
 ];
 
 /** Check if a user role can see a group (has permission on at least one status in the group) */
