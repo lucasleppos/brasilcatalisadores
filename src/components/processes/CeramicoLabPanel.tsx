@@ -46,7 +46,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, category")
+        .select("id, weight, weight_loss, category")
         .eq("purchase_id", purchase.id)
         .eq("item_type", "ceramico")
         .eq("category", "conferencia");
