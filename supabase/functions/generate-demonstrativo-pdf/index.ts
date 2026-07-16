@@ -55,7 +55,12 @@ Deno.serve(async (req) => {
 
     const purchase = purchaseRes.data;
     const demo = demoRes.data;
-    const items = itemsRes.data || [];
+    const rawItems = itemsRes.data || [];
+    const isPlaceholder = (i: any) =>
+      !i.category && !i.pricing_source && !i.catalog_part_id &&
+      !i.calc_input && !i.calc_result &&
+      !(Number(i.weight) > 0) && !(Number(i.weight_loss) > 0) && !(Number(i.total_value) > 0);
+    const items = rawItems.filter((i: any) => !isPlaceholder(i));
     const allLabRows: any[] = allLabRes.data || [];
     const generalLabRows = allLabRows.filter(l => !l.purchase_item_id);
     const latestLab = generalLabRows.length > 0
