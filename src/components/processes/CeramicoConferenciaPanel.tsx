@@ -29,7 +29,7 @@ const TOLERANCE_PCT = 0.02; // 2%
 interface CeramicoLote {
   id?: string;
   category: string;
-  weightNet: number;
+  weightGross: number;
   photoUrl: string;
   labelCode?: string;
 }
