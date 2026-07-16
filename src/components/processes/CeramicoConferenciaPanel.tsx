@@ -44,7 +44,7 @@ interface CeramicoConferenciaPanelProps {
 export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoConferenciaPanelProps) {
   const [lotes, setLotes] = useState<CeramicoLote[]>([]);
   const [category, setCategory] = useState("");
-  const [weightNetStr, setWeightNetStr] = useState("");
+  const [weightGrossStr, setWeightGrossStr] = useState("");
   
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -93,8 +93,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     setLotes(data.map(d => ({
       id: d.id,
       category: catMap[d.id] || "",
-      weightNet: Number(d.weight) || 0,
-      tare: Number(d.weight_loss) || 0,
+      weightGross: Number(d.weight) || 0,
       photoUrl: photoMap[d.id] || "",
       labelCode: labelMap[d.id] || undefined,
     })));
@@ -115,13 +114,13 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
 
   const handleAdd = () => {
     if (!category) { toast.error("Selecione a categoria"); return; }
-    const w = parseFloat(weightNetStr.replace(",", "."));
-    if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
+    const w = parseFloat(weightGrossStr.replace(",", "."));
+    if (isNaN(w) || w <= 0) { toast.error("Informe o peso bruto"); return; }
     if (!photoUrl) { toast.error("Adicione a foto do lote"); return; }
 
-    setLotes(prev => [...prev, { category, weightNet: w, photoUrl }]);
+    setLotes(prev => [...prev, { category, weightGross: w, photoUrl }]);
     setCategory("");
-    setWeightNetStr("");
+    setWeightGrossStr("");
     setPhotoUrl("");
   };
 
