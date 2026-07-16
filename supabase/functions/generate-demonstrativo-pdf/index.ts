@@ -75,7 +75,15 @@ Deno.serve(async (req) => {
 
     // Summary counts
     const totalPecas = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.quantity) || 1), 0);
-    const totalWeightKg = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.weight) || 0), 0);
+    const totalBrutoKg = itemsForTotal.reduce((acc: number, i: any) => {
+      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
+      return acc + bruto;
+    }, 0);
+    const totalLiquidoKg = itemsForTotal.reduce((acc: number, i: any) => {
+      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
+      const tara = Number(i.calc_input?.tare) || Number(i.weight_loss) || 0;
+      return acc + Math.max(0, bruto - tara);
+    }, 0);
 
     // Fetch catalog part codes for items with catalog_part_id
     const catalogPartIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id))];
@@ -103,12 +111,8 @@ Deno.serve(async (req) => {
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("DEMONSTRATIVO DE VALORES", pageWidth / 2, y, { align: "center" });
-    y += 8;
+    y += 6;
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Versão ${demo.versao}`, pageWidth / 2, y, { align: "center" });
-    y += 10;
 
     // --- Divider ---
     doc.setDrawColor(200);
@@ -491,7 +495,9 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas}`, margin, y);
-    doc.text(`Peso total: ${fmt(totalWeightKg)} kg`, pageWidth / 2, y);
+    y += 5;
+    doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
+    doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);
     y += 8;
 
     doc.line(margin, y, pageWidth - margin, y);
