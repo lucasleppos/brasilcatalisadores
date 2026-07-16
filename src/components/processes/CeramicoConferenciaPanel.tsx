@@ -45,7 +45,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   const [lotes, setLotes] = useState<CeramicoLote[]>([]);
   const [category, setCategory] = useState("");
   const [weightNetStr, setWeightNetStr] = useState("");
-  const [tareStr, setTareStr] = useState("");
+  
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -412,12 +412,8 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           {/* Summary + Actions */}
           <div className="space-y-3 pt-2 border-t border-border/40">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Conferido (Líq+Tara):</span>
-              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalConferido, 3)} kg</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Total Líquido:</span>
-              <span>{fmtNum(totalNet, 3)} kg</span>
+              <span className="text-muted-foreground">Total Líquido Conferido:</span>
+              <span className="font-semibold">{lotes.length} lotes | {fmtNum(totalNet, 3)} kg</span>
             </div>
 
             {declaredWeight > 0 && (
@@ -425,7 +421,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                 <div className="flex items-center gap-2">
                   <Progress value={progress} className="h-2 flex-1" />
                   <span className={`text-xs font-semibold whitespace-nowrap ${withinTolerance && lotes.length > 0 ? "text-green-600" : "text-amber-600"}`}>
-                    {fmtNum(totalConferido, 1)}/{fmtNum(declaredWeight, 1)} kg
+                    {fmtNum(totalNet, 1)}/{fmtNum(declaredWeight, 1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px]">
