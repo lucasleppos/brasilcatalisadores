@@ -63,15 +63,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     ],
   },
   {
-    label: "Pagamento",
-    statuses: [
-      "Peças: Aprovado - Aguardando Pagamento",
-      "Peças: Pagamento Realizado",
-    ],
-    parallelMatch: "fin",
-  },
-  {
-    label: "Bags / Exportação",
+    label: "Bags",
     statuses: ["Peças: Alocado ao Bag"],
     parallelMatch: "op",
   },
