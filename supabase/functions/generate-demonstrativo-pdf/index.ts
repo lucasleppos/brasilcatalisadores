@@ -490,7 +490,7 @@ Deno.serve(async (req) => {
     y += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Total de peças: ${totalPecas}`, margin, y);
+    doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas}`, margin, y);
     doc.text(`Peso total: ${fmt(totalWeightKg)} kg`, pageWidth / 2, y);
     y += 8;
 
