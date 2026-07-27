@@ -20,11 +20,27 @@ interface AnalysisRow {
   rh: string;
 }
 
+interface HistoryEntry {
+  id: string;
+  itemId: string | null;
+  versao: number;
+  oldPt: number | null;
+  oldPd: number | null;
+  oldRh: number | null;
+  newPt: number | null;
+  newPd: number | null;
+  newRh: number | null;
+  action: string;
+  by: string | null;
+  at: string;
+}
+
 interface LabLote {
   itemId: string;
   category: string;
   weight: number;
   rows: AnalysisRow[]; // exactly 3 slots
+  rescued?: boolean;
 }
 
 const emptyRow = (versao: number): AnalysisRow => ({
