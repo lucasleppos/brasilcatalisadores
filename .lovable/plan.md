@@ -1,58 +1,29 @@
 ## Objetivo
 
-Na tela **Conferência — Peças** (`SacolaConferenciaPanel.tsx`):
+No painel de Conferência dos fluxos **Peça** e **Peça em Sacola**, substituir o campo "Peso (kg)" por "Quantidade (un)" e exigir seleção do catálogo (sem código manual).
 
-1. Ao selecionar uma peça no catálogo, preencher automaticamente o campo de peso com o peso cadastrado no catálogo (editável pelo operador).
-2. Deixar claro o que é **Código** e o que é **Referência** na peça selecionada e na lista de peças conferidas.
+## Alterações (src/components/processes/SacolaConferenciaPanel.tsx)
 
-## Alterações
+1. **Formulário "Adicionar Peça"**
+   - Remover o campo "Ou código manual (se não encontrar)" e o estado `manualCode`.
+   - Substituir o input de peso por **Quantidade (un)** (inteiro, padrão 1).
+   - Botão "Adicionar Peça" habilitado apenas com peça do catálogo selecionada e quantidade ≥ 1.
+   - O peso continua vindo automaticamente do catálogo (`part.weight`), apenas não é mais editável na tela.
 
-### 1. Peso automático
-- No `handlePartSelect`, além de guardar a peça, preencher `weight` com o peso do catálogo formatado no padrão brasileiro (ex.: `1,000`).
-- O campo continua editável; se o operador limpar/alterar, vale o valor digitado.
-- Ao remover a seleção (após adicionar a peça), o campo volta a ficar vazio, como hoje.
-- Rótulo do campo passa de "Peso líquido (kg)" para **"Peso (kg)"** com a dica "sugerido pelo catálogo" quando veio preenchido automaticamente.
+2. **Lista de peças conferidas**
+   - Cada linha passa a mostrar: Código, Referência, **Qtd**, peso unitário e peso total (qtd × peso unitário).
+   - Se a mesma peça do catálogo for adicionada novamente, somar na linha existente em vez de criar duplicata.
+   - Botões para ajustar quantidade (+/−) e remover a linha.
+   - Deixa de existir o estado "Não encontrada no catálogo" (todas as peças vêm do catálogo).
 
-### 2. Identificação Código / Referência
+3. **Totais e progresso**
+   - Contagem de peças passa a ser a **soma das quantidades** (não o número de linhas), comparada com o total declarado na criação da compra.
+   - Peso total = soma de (qtd × peso unitário).
 
-Peça selecionada (abaixo da busca) — de:
+4. **Persistência**
+   - Cada linha grava um registro em `purchase_items` com `quantity` = quantidade informada e `weight` = peso unitário × quantidade (mantendo a semântica de peso total do item usada nas etapas seguintes).
+   - Ao recarregar, as linhas voltam agrupadas por peça do catálogo com sua quantidade.
 
-```text
-✓ 810295 — JEEP GRAND CHEROKEE
-```
+## Observação
 
-para:
-
-```text
-✓ Peça selecionada
-  Código: 52090492AB
-  Referência: 810295
-  Marca/Veículo: JEEP GRAND CHEROKEE
-  Peso catálogo: 1,000 kg
-```
-
-Card da lista "Peças Conferidas" — de:
-
-```text
-#1 — 52090492AB
-✓ 810295
-1,000 kg
-```
-
-para:
-
-```text
-#1
-Código: 52090492AB
-Referência: 810295            (✓ verde = achada no catálogo)
-Peso: 1,000 kg
-```
-
-Quando a peça for digitada manualmente (fora do catálogo), mostra `Código: <digitado>` e o aviso âmbar "Não encontrada no catálogo", sem linha de Referência.
-
-- Também ajustar os resultados do dropdown de busca (`PartSearch.tsx`) para prefixar `Cód.` e `Ref.`, mantendo o mesmo entendimento na busca.
-
-## Notas técnicas
-
-- Nenhuma mudança de banco: `catalog_parts.weight` já existe e já é carregado em `CatalogPart.weight`.
-- É preciso guardar a referência da peça no estado local (`reference`) para exibir código e referência separadamente na lista; ao recarregar itens salvos, o `loadExistingPieces` já busca `code` e `reference` do catálogo.
+Peças fora do catálogo deixam de ser aceitas nesta etapa; se aparecer uma peça nova, ela precisa ser cadastrada antes no módulo de Catálogo.
