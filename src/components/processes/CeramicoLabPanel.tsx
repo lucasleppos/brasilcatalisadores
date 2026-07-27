@@ -72,23 +72,20 @@ const calcAverage = (l: LabLote) => {
   return { pt, pd, rh, n: filled.length };
 };
 
-// Reconstrói o estado das análises no momento da contestação, desfazendo o
-// histórico posterior a essa data. Retorna a média inicial (congelada).
-const calcBaselineAverage = (
-  l: LabLote,
-  history: HistoryEntry[],
-  contestDate: string | null,
-) => {
-  if (!contestDate) return null;
-  const cut = new Date(contestDate).getTime();
-  const after = history
-    .filter(h => h.itemId === l.itemId && new Date(h.at).getTime() >= cut)
-    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  if (after.length === 0) return null;
+interface Baseline { pt: number; pd: number; rh: number; n: number }
 
+const BASELINE_STAGE = "analise_ceramico";
+const baselineKey = (itemId: string) => `lab_baseline_${itemId}`;
+
+// Snapshot da análise inicial (antes da contestação): para cada versão usa o
+// valor mais antigo registrado no histórico (valor original) ou, se nunca foi
+// alterado, o valor atual da linha.
+const calcInitialSnapshot = (l: LabLote, history: HistoryEntry[]): Baseline | null => {
   const values: { pt: number; pd: number; rh: number }[] = [];
   [1, 2, 3].forEach(v => {
-    const first = after.find(h => h.versao === v);
+    const first = history
+      .filter(h => h.itemId === l.itemId && h.versao === v)
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
     if (first) {
       if (first.oldPt === null && first.oldPd === null && first.oldRh === null) return;
       values.push({ pt: first.oldPt ?? 0, pd: first.oldPd ?? 0, rh: first.oldRh ?? 0 });
@@ -99,7 +96,6 @@ const calcBaselineAverage = (
       values.push({ pt: parseNum(row.pt), pd: parseNum(row.pd), rh: parseNum(row.rh) });
     }
   });
-
   if (values.length === 0) return null;
   return {
     pt: values.reduce((s, r) => s + r.pt, 0) / values.length,
@@ -108,6 +104,7 @@ const calcBaselineAverage = (
     n: values.length,
   };
 };
+
 
 interface CeramicoLabPanelProps {
   purchase: Purchase;
@@ -124,6 +121,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const [baselines, setBaselines] = useState<Record<string, Baseline>>({});
+
   const contestDate = getContestInfo(purchase)?.date ?? null;
 
 
@@ -163,7 +162,53 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
       (profs || []).forEach(p => { map[p.id] = p.full_name || ""; });
       setNames(map);
     }
+    return entries;
   };
+
+  // Carrega (ou cria uma única vez) o snapshot congelado da análise inicial
+  const loadBaselines = async (loteList: LabLote[], entries: HistoryEntry[]) => {
+    if (!contestDate || loteList.length === 0) {
+      setBaselines({});
+      return;
+    }
+    const { data: ev } = await supabase
+      .from("stage_evidence")
+      .select("task_key, value_text")
+      .eq("purchase_id", purchase.id)
+      .eq("stage", BASELINE_STAGE)
+      .like("task_key", "lab_baseline_%");
+
+    const map: Record<string, Baseline> = {};
+    (ev || []).forEach(e => {
+      const itemId = e.task_key.replace("lab_baseline_", "");
+      try {
+        const parsed = JSON.parse(e.value_text || "");
+        if (parsed && typeof parsed.pt === "number") {
+          map[itemId] = { pt: parsed.pt, pd: parsed.pd, rh: parsed.rh, n: parsed.n || 1 };
+        }
+      } catch { /* ignore */ }
+    });
+
+    const toInsert: any[] = [];
+    loteList.forEach(l => {
+      if (map[l.itemId]) return;
+      const snap = calcInitialSnapshot(l, entries);
+      if (!snap) return;
+      map[l.itemId] = snap;
+      toInsert.push({
+        purchase_id: purchase.id,
+        stage: BASELINE_STAGE,
+        task_key: baselineKey(l.itemId),
+        data_type: "text",
+        value_text: JSON.stringify({ ...snap, at: new Date().toISOString() }),
+      });
+    });
+    if (toInsert.length > 0) {
+      await supabase.from("stage_evidence").insert(toInsert);
+    }
+    setBaselines(map);
+  };
+
 
   const loadLotes = async () => {
     setLoading(true);
@@ -245,7 +290,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         });
       }
 
-      setLotes(items.map(item => {
+      const loteList: LabLote[] = items.map(item => {
         const existing = byItem[item.id] || [];
         const rows: AnalysisRow[] = [1, 2, 3].map(v => {
           const found = existing.find(r => r.versao === v);
@@ -258,9 +303,12 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
           rows,
           rescued: rescued.has(item.id),
         };
-      }));
+      });
+      setLotes(loteList);
 
-      await loadHistory();
+      const entries = await loadHistory();
+      await loadBaselines(loteList, entries);
+
     } finally {
       setLoading(false);
     }
@@ -448,7 +496,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
             <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
             {lotes.map((l, i) => {
               const avg = calcAverage(l);
-              const baselineAvg = calcBaselineAverage(l, history, contestDate);
+              const baselineAvg = contestDate ? (baselines[l.itemId] ?? null) : null;
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
