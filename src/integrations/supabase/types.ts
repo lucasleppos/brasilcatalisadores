@@ -303,6 +303,54 @@ export type Database = {
           },
         ]
       }
+      lab_result_history: {
+        Row: {
+          action: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_pd_ppm: number | null
+          new_pt_ppm: number | null
+          new_rh_ppm: number | null
+          old_pd_ppm: number | null
+          old_pt_ppm: number | null
+          old_rh_ppm: number | null
+          purchase_id: string
+          purchase_item_id: string | null
+          versao: number
+        }
+        Insert: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_pd_ppm?: number | null
+          new_pt_ppm?: number | null
+          new_rh_ppm?: number | null
+          old_pd_ppm?: number | null
+          old_pt_ppm?: number | null
+          old_rh_ppm?: number | null
+          purchase_id: string
+          purchase_item_id?: string | null
+          versao?: number
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_pd_ppm?: number | null
+          new_pt_ppm?: number | null
+          new_rh_ppm?: number | null
+          old_pd_ppm?: number | null
+          old_pt_ppm?: number | null
+          old_rh_ppm?: number | null
+          purchase_id?: string
+          purchase_item_id?: string | null
+          versao?: number
+        }
+        Relationships: []
+      }
       lab_results: {
         Row: {
           created_at: string
