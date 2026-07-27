@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, getContestInfo } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 
@@ -70,6 +70,43 @@ const calcAverage = (l: LabLote) => {
   const pd = filled.reduce((s, r) => s + parseNum(r.pd), 0) / filled.length;
   const rh = filled.reduce((s, r) => s + parseNum(r.rh), 0) / filled.length;
   return { pt, pd, rh, n: filled.length };
+};
+
+// Reconstrói o estado das análises no momento da contestação, desfazendo o
+// histórico posterior a essa data. Retorna a média inicial (congelada).
+const calcBaselineAverage = (
+  l: LabLote,
+  history: HistoryEntry[],
+  contestDate: string | null,
+) => {
+  if (!contestDate) return null;
+  const cut = new Date(contestDate).getTime();
+  const after = history
+    .filter(h => h.itemId === l.itemId && new Date(h.at).getTime() >= cut)
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  if (after.length === 0) return null;
+
+  const values: { pt: number; pd: number; rh: number }[] = [];
+  [1, 2, 3].forEach(v => {
+    const first = after.find(h => h.versao === v);
+    if (first) {
+      if (first.oldPt === null && first.oldPd === null && first.oldRh === null) return;
+      values.push({ pt: first.oldPt ?? 0, pd: first.oldPd ?? 0, rh: first.oldRh ?? 0 });
+      return;
+    }
+    const row = l.rows.find(r => r.versao === v);
+    if (row && isRowFilled(row)) {
+      values.push({ pt: parseNum(row.pt), pd: parseNum(row.pd), rh: parseNum(row.rh) });
+    }
+  });
+
+  if (values.length === 0) return null;
+  return {
+    pt: values.reduce((s, r) => s + r.pt, 0) / values.length,
+    pd: values.reduce((s, r) => s + r.pd, 0) / values.length,
+    rh: values.reduce((s, r) => s + r.rh, 0) / values.length,
+    n: values.length,
+  };
 };
 
 interface CeramicoLabPanelProps {
