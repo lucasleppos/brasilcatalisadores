@@ -176,8 +176,14 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   if (current === "Cerâmico: Demonstrativo Contestado") return "Cerâmico: Em Trituração/Homogeneização";
   if (current === "Peças: Peso Divergente") return "Peças: Alocado ao Bag";
 
-  // Skip payment stages for Peças: go directly from approval to bag allocation
-  if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
+  // Peças: após aprovação (boleto) segue para Corte → Trituração/Amostragem → Bag
+  if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Em Corte";
+  if (current === "Peças: Em Corte") return "Peças: Trituração e Amostragem";
+  if (current === "Peças: Trituração e Amostragem") return "Peças: Alocado ao Bag";
+  // Legado: status que saíram do fluxo linear
+  if (current === "Peças: Laboratório") return "Peças: Aguardando Demonstrativo";
+  if (current === "Peças: Em Trituração" || current === "Peças: Em Amostragem") return "Peças: Alocado ao Bag";
+  if (current === "Peças: Aprovado - Aguardando Pagamento" || current === "Peças: Pagamento Realizado") return "Peças: Em Corte";
 
   // Skip intermediate ceramic stages and parallel sub-flows
   if (current === "Cerâmico: Em Trituração/Homogeneização") return "Cerâmico: Lab em Análise";
@@ -197,9 +203,10 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // Bifurcation: after "Em Conferência", jump to the correct flow
   if (current === "Em Conferência") {
-    if (materialFlow === "pecas") return "Peças: Trituração e Amostragem";
+    if (materialFlow === "pecas") return "Peças: Aguardando Demonstrativo";
     if (materialFlow === "ceramico") return "Cerâmico: Em Trituração/Homogeneização";
   }
+
 
   return flow[idx + 1];
 }
