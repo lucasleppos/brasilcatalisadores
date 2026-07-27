@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical } from "lucide-react";
+import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
