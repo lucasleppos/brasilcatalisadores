@@ -102,7 +102,9 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
-  const needsErp = isDemonstrative || isPiecePricing || isContested || purchase.status === "Cerâmico: Em Precificação";
+  // Boleto Syge é exigido apenas na etapa de Aprovação (Gerar Boleto de Aprovação)
+  const needsErp = isDemonstrative;
+
 
   const handleConfirm = async () => {
     setLoading(true);
