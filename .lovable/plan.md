@@ -1,37 +1,22 @@
-## Objetivo
+## Diagnóstico (verificado no banco)
 
-Quando um demonstrativo é contestado e o processo volta para trás, o card deve ficar visualmente destacado como "EM REAMOSTRAGEM E REANÁLISE", exibir o motivo da contestação e permitir que o operador reedite todos os dados já lançados (grupos, pesos, TARA, fotos e análises), percorrendo novamente as etapas até a aprovação.
+Na compra `27/07/2026 - 01` existem taras gravadas (0,133 / 0,222 / 0,333 kg) em `stage_evidence`, porém vinculadas a IDs de itens antigos (`d1258972…`, `d9ba9809…`, `6ada9a96…`) que não existem mais. Os itens atuais (13 / 5 / 7 kg) têm `weight_loss = 0`. Ou seja: a tara não sumiu por erro de leitura — ela ficou órfã porque, na volta por contestação, os itens de conferência foram recriados com novos IDs (comportamento da versão anterior do painel, já corrigido para preservar IDs).
 
-## 1. Detectar o modo reanálise
+## 1. Carregar a TARA já registrada
 
-Criar um helper em `src/lib/purchases.ts` (`isInReanalysis(purchase)` + `getContestInfo(purchase)`), que varre o histórico de status de trás para frente e identifica se existe um registro de contestação posterior à última passagem pela etapa de aprovação. Retorna também o motivo e a data da contestação, que já ficam gravados na observação do histórico.
+No painel de Trituração/Homogeneização (`CeramicoTrituracaoPanel`):
 
-O modo permanece ativo em todas as etapas do retorno (Conferência, Trituração/Homogeneização, Análise, Precificação) e é encerrado quando o processo chega novamente à etapa de Aprovação/Boleto.
+- Manter a leitura por ID (`tare_<itemId>` e `photo_embalagem_<itemId>`), que já funciona para os processos novos.
+- Adicionar um resgate para evidências órfãs: quando nenhum lote atual encontra tara por ID e existem registros de tara antigos em quantidade igual à de lotes atuais, associá-los por ordem de criação, pré-preenchendo o campo TARA e a foto da embalagem.
+- Os valores resgatados entram como sugestão editável (o operador confirma ou altera) e são re-gravados com o ID atual ao salvar, eliminando o órfão de vez.
+- Exibir uma marcação discreta "tara carregada do registro anterior — confirme" no lote resgatado.
+- Também usar `purchase_items.weight_loss` como fonte quando maior que zero (já previsto no código atual).
 
-## 2. Aparência do card
+## 2. Esconder "Dados já registrados" no card
 
-Em `src/components/processes/StageActionCard.tsx`, quando em reanálise:
-
-- Borda e fundo do card em laranja claro (tokens novos no design system, sem cores hardcoded).
-- Faixa no topo com o selo "EM REAMOSTRAGEM E REANÁLISE".
-- Bloco de destaque com: motivo da contestação, data e etapa de destino.
-- Resumo dos dados já registrados (grupos conferidos com peso bruto, TARA, peso líquido e médias de análise), para o operador ver o que existe antes de alterar.
-
-## 3. Reedição dos dados
-
-- **Conferência**: o painel de conferência cerâmica já carrega os grupos existentes; passa a permitir editar peso bruto, categoria e foto de cada grupo, além de adicionar e remover grupos (conforme decidido). Ao remover um grupo, as análises e evidências vinculadas a ele são apagadas junto, com aviso de confirmação.
-- **Ponto crítico a corrigir**: hoje o salvamento da conferência apaga e recria todos os itens do processo, o que zera a TARA e desvincula as análises de laboratório. Passa a atualizar os grupos existentes pelo id e só inserir/excluir o que mudou, preservando TARA, análises e alocações.
-- **Trituração/Homogeneização**: já recarrega TARA e foto por grupo; mantém o comportamento de edição.
-- **Análise**: o painel de laboratório já recarrega até 3 análises por grupo; mantém edição e recálculo automático da média.
-
-## 4. Fluxo de retorno
-
-O processo percorre novamente as etapas normalmente (Conferência → Trituração → Análise → Precificação → Aprovação), com os botões de avanço de sempre. Ao voltar à etapa de aprovação, o destaque laranja e o selo somem, um novo demonstrativo é gerado com os valores atualizados e o motivo da contestação anterior permanece registrado no histórico do processo.
+No `ReanalysisBanner`, remover a tabela de resumo (Grupo / Bruto / Tara / Líquido / Pt / Pd / Rh) do card. Ficam apenas o selo "EM REAMOSTRAGEM E REANÁLISE", o motivo da contestação e a frase de orientação sobre poder alterar pesos, grupos, fotos e análises.
 
 ## Detalhes técnicos
 
-- `src/lib/purchases.ts`: helpers `isInReanalysis` / `getContestInfo` a partir de `status_history`.
-- `src/components/processes/StageActionCard.tsx`: estilo condicional do card, selo, bloco de motivo e resumo dos dados já lançados.
-- `src/components/processes/CeramicoConferenciaPanel.tsx`: edição inline dos grupos e persistência incremental (update/insert/delete por id) em vez de apagar tudo.
-- `src/index.css` / `tailwind.config.ts`: token semântico para o estado de reanálise (laranja claro).
-- Sem alteração de banco de dados nem da edge function de PDF.
+- `src/components/processes/CeramicoTrituracaoPanel.tsx`: buscar todas as evidências de tara/foto do estágio, separar as com ID válido das órfãs, e aplicar o mapeamento posicional apenas como fallback; marcar o lote como "pendente de confirmação" no estado local.
+- `src/components/processes/ReanalysisBanner.tsx`: remover o bloco da tabela e as consultas que só existiam para alimentá-la.
