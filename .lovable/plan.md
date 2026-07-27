@@ -1,27 +1,58 @@
 ## Objetivo
 
-Na etapa **Conferência** do fluxo de **Peça / Peça em Sacola**, remover o checklist (foto do material recebido + confirmar itens do pedido) e deixar apenas um botão de ação que abre a tela de inclusão das peças conferidas (busca no catálogo + peso, com opção manual).
+Na tela **Conferência — Peças** (`SacolaConferenciaPanel.tsx`):
 
-## Situação atual (verificada)
-
-- `StageActionCard.tsx` só abre o painel de conferência quando a compra tem itens `peca_sacola` (`isSacolaConferencia`). Compras de **Peça** simples caem no checklist genérico — é o card da imagem.
-- `stage-tasks.ts` define para `"Em Conferência"`: `photo_recebimento` (foto) e `confirm_itens` (nota), ambos obrigatórios.
-- Já existe `SacolaConferenciaPanel.tsx` com busca no catálogo (`PartSearch`), código manual, peso, lista de peças conferidas, progresso `x/y` contra as unidades declaradas, "Salvar e Continuar" e "Encerrar".
+1. Ao selecionar uma peça no catálogo, preencher automaticamente o campo de peso com o peso cadastrado no catálogo (editável pelo operador).
+2. Deixar claro o que é **Código** e o que é **Referência** na peça selecionada e na lista de peças conferidas.
 
 ## Alterações
 
-1. **`src/lib/stage-tasks.ts`**: esvaziar os requisitos de `"Em Conferência"` (o cerâmico já usa painel próprio, e o fluxo de peças passará a usar painel próprio). Assim nenhum card exibe mais foto/confirmação nessa etapa.
+### 1. Peso automático
+- No `handlePartSelect`, além de guardar a peça, preencher `weight` com o peso do catálogo formatado no padrão brasileiro (ex.: `1,000`).
+- O campo continua editável; se o operador limpar/alterar, vale o valor digitado.
+- Ao remover a seleção (após adicionar a peça), o campo volta a ficar vazio, como hoje.
+- Rótulo do campo passa de "Peso líquido (kg)" para **"Peso (kg)"** com a dica "sugerido pelo catálogo" quando veio preenchido automaticamente.
 
-2. **`src/components/processes/StageActionCard.tsx`**: passar a condição de conferência de peças a valer para todo o fluxo `pecas` (com ou sem itens `peca_sacola`), não só quando há sacola. Botão único: **"Incluir Peças Conferidas"**, abrindo o painel. Sem checklist e sem o botão genérico "Concluir Em Conferência" nesse caso — o encerramento continua pelo botão "Encerrar" dentro do painel.
+### 2. Identificação Código / Referência
 
-3. **`src/components/processes/SacolaConferenciaPanel.tsx`**: generalizar para os dois fluxos:
-   - título "Conferência — Peças" quando não for sacola;
-   - gravar `item_type` conforme o fluxo (`peca_sacola` ou `peca`), mantendo `category: "conferencia"`;
-   - meta de progresso baseada no total de unidades declaradas na compra (campo "Total de Peças Recebidas"), já que na criação não há mais itens detalhados;
-   - remover o item placeholder criado na compra ao salvar as peças reais (mesmo comportamento já usado no cerâmico), evitando linha fantasma no demonstrativo.
+Peça selecionada (abaixo da busca) — de:
+
+```text
+✓ 810295 — JEEP GRAND CHEROKEE
+```
+
+para:
+
+```text
+✓ Peça selecionada
+  Código: 52090492AB
+  Referência: 810295
+  Marca/Veículo: JEEP GRAND CHEROKEE
+  Peso catálogo: 1,000 kg
+```
+
+Card da lista "Peças Conferidas" — de:
+
+```text
+#1 — 52090492AB
+✓ 810295
+1,000 kg
+```
+
+para:
+
+```text
+#1
+Código: 52090492AB
+Referência: 810295            (✓ verde = achada no catálogo)
+Peso: 1,000 kg
+```
+
+Quando a peça for digitada manualmente (fora do catálogo), mostra `Código: <digitado>` e o aviso âmbar "Não encontrada no catálogo", sem linha de Referência.
+
+- Também ajustar os resultados do dropdown de busca (`PartSearch.tsx`) para prefixar `Cód.` e `Ref.`, mantendo o mesmo entendimento na busca.
 
 ## Notas técnicas
 
-- Nenhuma mudança de banco: continua usando `purchase_items` com `category = 'conferencia'`.
-- O avanço de etapa segue por `advanceStage` chamado no "Encerrar" do painel.
-- Fluxo cerâmico permanece intocado (usa `CeramicoConferenciaPanel`).
+- Nenhuma mudança de banco: `catalog_parts.weight` já existe e já é carregado em `CatalogPart.weight`.
+- É preciso guardar a referência da peça no estado local (`reference`) para exibir código e referência separadamente na lista; ao recarregar itens salvos, o `loadExistingPieces` já busca `code` e `reference` do catálogo.
