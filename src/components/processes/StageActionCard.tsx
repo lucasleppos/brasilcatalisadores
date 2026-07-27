@@ -91,7 +91,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
-  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
+  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas";
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
