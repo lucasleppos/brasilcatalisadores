@@ -255,14 +255,33 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   // For ceramico, we don't need items — only bulkWeight + photos
   const isCeramicoMode = addType === "ceramico";
+  // Peça / Peça em Sacola creation: items are registered during Conferência
+  const isPecaCreate = !isEditing && (addType === "peca" || addType === "peca_sacola");
 
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier) return;
     if (!isEditing && photos.length === 0) return;
 
-    // For ceramico: no items needed, just bulk weight
-    if (isCeramicoMode && !isEditing) {
+    // Simplified creation: ceramico (bulk kg) and peças (units) — items come later
+    if ((isCeramicoMode || isPecaCreate) && !isEditing) {
+      if (bulkWeight <= 0) {
+        toast({
+          title: isCeramicoMode ? "Informe o peso total recebido" : "Informe o total de peças recebidas",
+          variant: "destructive",
+        });
+        return;
+      }
+      const newPurchase = await createPurchase({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        buyer: supplier.buyer || "",
+        items: [{ id: crypto.randomUUID(), itemType: addType, quantity: 1 }],
+        notes,
+        erpNumber,
+        bulkWeight,
+      });
+
       if (bulkWeight <= 0) {
         toast({ title: "Informe o peso total recebido", variant: "destructive" });
         return;
