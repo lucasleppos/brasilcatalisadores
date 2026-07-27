@@ -325,9 +325,8 @@ Deno.serve(async (req) => {
         const calcResult = item.calc_result as any;
         const calcInput = item.calc_input as any;
 
-        const bruto = Number(calcInput?.grossWeight) || Number(item.weight) || 0;
-        const tara = Number(calcInput?.tare) || Number(item.weight_loss) || 0;
-        const liquido = Math.max(0, bruto - tara);
+        const { bruto, tara, liquido } = itemWeights(item);
+
 
         let qtyWeightLines: string[] = ["—"];
         if (isCeramico) {
