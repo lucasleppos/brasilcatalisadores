@@ -1,32 +1,27 @@
-## Problema confirmado
+## Objetivo
 
-Nos dados da compra em teste (3 grupos: 13, 5 e 7 kg = 25 kg):
+Dois ajustes no demonstrativo (PDF e visualização em tela) para o fluxo de material cerâmico.
 
-| Campo | Grupo A | Grupo B | Grupo C |
-|---|---|---|---|
-| `weight` (bruto real) | 13 | 5 | 7 |
-| `weight_loss` (tara) | 0,333 | 0,133 | 0,222 |
-| `calc_input.grossWeight` | 12,667 | 4,867 | 6,778 |
-| `calc_input.tare` | 0 | 0 | 0 |
+## 1. Remover o bloco "Análise Laboratorial" do PDF
 
-A precificação já grava `calc_input.grossWeight` como peso **líquido** (bruto − tara) e `tare: 0`. Mas o demonstrativo (diálogo e PDF) trata `calc_input.grossWeight` como bruto e ainda subtrai `weight_loss`:
+Hoje o PDF imprime a tabela de Pt/Pd/Rh por grupo duas vezes na prática: uma dentro do bloco "Preço Calculado (PPM Lab)" e outra na seção "Análise Laboratorial" no rodapé.
 
-- Bruto exibido: 24,3120 (na verdade é o líquido)
-- Líquido exibido: 23,6240 (tara descontada duas vezes)
-- Correto: bruto 25,0000 / tara 0,6880 / líquido 24,3120
+Ação: suprimir a seção "Análise Laboratorial" (tabela por grupo e a variante de resumo geral Pt/Pd/Rh) sempre que o bloco de preço calculado com PPM já tiver sido impresso. Nos casos em que esse bloco não existe, a seção continua sendo exibida para não perder a informação.
 
-## Correção
+A visualização em tela (diálogo) permanece como está, salvo indicação contrária.
 
-Usar a tabela `purchase_items` como fonte da verdade dos pesos no demonstrativo:
+## 2. Trocar "Peça/Peças" por "Material" no fluxo cerâmico
 
-- bruto = `item.weight`
-- tara = `item.weight_loss`
-- líquido = bruto − tara (nunca negativo)
-- Fallback apenas quando `weight` estiver vazio: usar `calc_input.grossWeight` como bruto e `calc_input.tare` como tara.
+No fluxo cerâmico, os rótulos passam a ser:
 
-## Arquivos afetados
+- Título do bloco: "Material — Preço Fixo (Catálogo)" e "Material — Preço Calculado (PPM Lab)"
+- Cabeçalho de coluna: "Peça" → "Material"
+- Rótulo de tipo de item: mantém "Cerâmico" (já usado)
 
-1. `src/components/processes/DemonstrativoViewDialog.tsx` — função `weights()` (linhas ~149-155): inverter a prioridade para `item.weight` / `item.weight_loss`.
-2. `supabase/functions/generate-demonstrativo-pdf/index.ts` — mesma lógica nos três pontos (linhas ~84, ~88-89 e ~326-327), extraída numa função auxiliar única para evitar divergência. Redeploy da função.
+No fluxo de peças, os textos atuais permanecem inalterados.
 
-Nenhuma alteração de cálculo de preço: os valores em R$ continuam baseados no peso líquido, que é o que a precificação já usou (12,667 / 4,867 / 6,778) — apenas a exibição de bruto/tara/líquido é corrigida.
+## Detalhes técnicos
+
+- `supabase/functions/generate-demonstrativo-pdf/index.ts`: condicionar a seção de análise laboratorial à ausência do bloco de preço calculado; usar rótulos dinâmicos baseados na flag `isCeramico` já existente.
+- `src/components/processes/DemonstrativoViewDialog.tsx`: aplicar os mesmos rótulos dinâmicos ("Material") quando `isCeramico`.
+- Redeploy da edge function após a alteração.
