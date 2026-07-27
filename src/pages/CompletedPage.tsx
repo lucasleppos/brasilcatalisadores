@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, Search, Eye } from "lucide-react";
-import { Purchase, loadPurchases, getItemLabel, getStatusColor } from "@/lib/purchases";
+import { Purchase, loadPurchases, getItemLabel, getStatusColor, syncCeramicoAllocation } from "@/lib/purchases";
 import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import { fmtBrl } from "@/lib/utils";
