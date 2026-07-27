@@ -148,11 +148,15 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
   function weights(item: RawItem) {
     const calcInput = item.calc_input || {};
-    const bruto = Number(calcInput.grossWeight) || Number(item.weight) || 0;
-    const tara = Number(calcInput.tare) || Number(item.weight_loss) || 0;
+    // purchase_items is the source of truth: weight = bruto, weight_loss = tara.
+    // calc_input.grossWeight already stores the NET weight (with tare: 0), so it is
+    // only used as a fallback when the item has no stored weight.
+    const bruto = Number(item.weight) || Number(calcInput.grossWeight) || 0;
+    const tara = Number(item.weight_loss) || Number(calcInput.tare) || 0;
     const liquido = Math.max(0, bruto - tara);
     return { bruto, tara, liquido };
   }
+
 
   // Cerâmico: aggregated final average per group (average across versions per purchase_item_id).
   // Match to current items when possible; fall back to generic "Grupo N" labels for orphan groups.

@@ -78,17 +78,19 @@ Deno.serve(async (req) => {
       await sb.from("demonstrativos").update({ valor_total: calculatedTotal }).eq("id", demonstrativoId);
     }
 
+    // Weights: purchase_items is the source of truth (weight = bruto, weight_loss = tara).
+    // calc_input.grossWeight already holds the NET weight (tare: 0) — fallback only.
+    const itemWeights = (i: any) => {
+      const bruto = Number(i.weight) || Number(i.calc_input?.grossWeight) || 0;
+      const tara = Number(i.weight_loss) || Number(i.calc_input?.tare) || 0;
+      return { bruto, tara, liquido: Math.max(0, bruto - tara) };
+    };
+
     // Summary counts
     const totalPecas = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.quantity) || 1), 0);
-    const totalBrutoKg = itemsForTotal.reduce((acc: number, i: any) => {
-      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
-      return acc + bruto;
-    }, 0);
-    const totalLiquidoKg = itemsForTotal.reduce((acc: number, i: any) => {
-      const bruto = Number(i.calc_input?.grossWeight) || Number(i.weight) || 0;
-      const tara = Number(i.calc_input?.tare) || Number(i.weight_loss) || 0;
-      return acc + Math.max(0, bruto - tara);
-    }, 0);
+    const totalBrutoKg = itemsForTotal.reduce((acc: number, i: any) => acc + itemWeights(i).bruto, 0);
+    const totalLiquidoKg = itemsForTotal.reduce((acc: number, i: any) => acc + itemWeights(i).liquido, 0);
+
 
     // Fetch catalog part codes for items with catalog_part_id
     const catalogPartIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id))];
@@ -323,9 +325,8 @@ Deno.serve(async (req) => {
         const calcResult = item.calc_result as any;
         const calcInput = item.calc_input as any;
 
-        const bruto = Number(calcInput?.grossWeight) || Number(item.weight) || 0;
-        const tara = Number(calcInput?.tare) || Number(item.weight_loss) || 0;
-        const liquido = Math.max(0, bruto - tara);
+        const { bruto, tara, liquido } = itemWeights(item);
+
 
         let qtyWeightLines: string[] = ["—"];
         if (isCeramico) {
