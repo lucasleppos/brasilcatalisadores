@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical } from "lucide-react";
+import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
@@ -20,11 +20,27 @@ interface AnalysisRow {
   rh: string;
 }
 
+interface HistoryEntry {
+  id: string;
+  itemId: string | null;
+  versao: number;
+  oldPt: number | null;
+  oldPd: number | null;
+  oldRh: number | null;
+  newPt: number | null;
+  newPd: number | null;
+  newRh: number | null;
+  action: string;
+  by: string | null;
+  at: string;
+}
+
 interface LabLote {
   itemId: string;
   category: string;
   weight: number;
   rows: AnalysisRow[]; // exactly 3 slots
+  rescued?: boolean;
 }
 
 const emptyRow = (versao: number): AnalysisRow => ({
@@ -68,6 +84,9 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingRow, setSavingRow] = useState<string | null>(null); // "itemId-versao"
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -75,15 +94,48 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, purchase.id]);
 
+  const loadHistory = async () => {
+    const { data } = await supabase
+      .from("lab_result_history")
+      .select("*")
+      .eq("purchase_id", purchase.id)
+      .order("created_at", { ascending: true });
+
+    const entries: HistoryEntry[] = (data || []).map((h: any) => ({
+      id: h.id,
+      itemId: h.purchase_item_id,
+      versao: Number(h.versao) || 1,
+      oldPt: h.old_pt_ppm === null ? null : Number(h.old_pt_ppm),
+      oldPd: h.old_pd_ppm === null ? null : Number(h.old_pd_ppm),
+      oldRh: h.old_rh_ppm === null ? null : Number(h.old_rh_ppm),
+      newPt: h.new_pt_ppm === null ? null : Number(h.new_pt_ppm),
+      newPd: h.new_pd_ppm === null ? null : Number(h.new_pd_ppm),
+      newRh: h.new_rh_ppm === null ? null : Number(h.new_rh_ppm),
+      action: h.action || "update",
+      by: h.changed_by,
+      at: h.created_at,
+    }));
+    setHistory(entries);
+
+    const ids = Array.from(new Set(entries.map(e => e.by).filter(Boolean))) as string[];
+    if (ids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      const map: Record<string, string> = {};
+      (profs || []).forEach(p => { map[p.id] = p.full_name || ""; });
+      setNames(map);
+    }
+  };
+
   const loadLotes = async () => {
     setLoading(true);
     try {
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, weight_loss, category")
+        .select("id, weight, weight_loss, category, created_at")
         .eq("purchase_id", purchase.id)
         .eq("item_type", "ceramico")
-        .eq("category", "conferencia");
+        .eq("category", "conferencia")
+        .order("created_at", { ascending: true });
 
       if (!items || items.length === 0) {
         setLotes([]);
@@ -106,24 +158,53 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
 
       const { data: labResults } = await supabase
         .from("lab_results")
-        .select("id, purchase_item_id, versao, pt_ppm, pd_ppm, rh_ppm")
+        .select("id, purchase_item_id, versao, pt_ppm, pd_ppm, rh_ppm, created_at")
         .eq("purchase_id", purchase.id)
         .not("purchase_item_id", "is", null)
-        .order("versao", { ascending: true });
+        .order("created_at", { ascending: true });
+
+      const currentIds = new Set(items.map(i => i.id));
+      const toRow = (lr: any): AnalysisRow => ({
+        id: lr.id,
+        versao: Number(lr.versao) || 1,
+        pt: String(lr.pt_ppm ?? ""),
+        pd: String(lr.pd_ppm ?? ""),
+        rh: String(lr.rh_ppm ?? ""),
+      });
 
       const byItem: Record<string, AnalysisRow[]> = {};
+      const orphanGroups: string[] = [];
+      const orphanRows: Record<string, any[]> = {};
+
       (labResults || []).forEach(lr => {
-        if (!lr.purchase_item_id) return;
+        const pid = lr.purchase_item_id as string | null;
+        if (!pid) return;
         const v = Number(lr.versao) || 1;
         if (v < 1 || v > 3) return;
-        (byItem[lr.purchase_item_id] ||= []).push({
-          id: lr.id,
-          versao: v,
-          pt: String(lr.pt_ppm ?? ""),
-          pd: String(lr.pd_ppm ?? ""),
-          rh: String(lr.rh_ppm ?? ""),
-        });
+        if (currentIds.has(pid)) {
+          (byItem[pid] ||= []).push(toRow(lr));
+        } else {
+          if (!orphanRows[pid]) { orphanRows[pid] = []; orphanGroups.push(pid); }
+          orphanRows[pid].push(lr);
+        }
       });
+
+      // Fallback: análises órfãs (itens recriados na contestação) mapeadas por ordem de criação
+      const rescued = new Set<string>();
+      if (Object.keys(byItem).length === 0 && orphanGroups.length > 0) {
+        orphanGroups.slice(0, items.length).forEach((oldId, idx) => {
+          const target = items[idx];
+          if (!target) return;
+          byItem[target.id] = orphanRows[oldId].map(toRow);
+          rescued.add(target.id);
+          supabase
+            .from("lab_results")
+            .update({ purchase_item_id: target.id })
+            .eq("purchase_id", purchase.id)
+            .eq("purchase_item_id", oldId)
+            .then(() => undefined);
+        });
+      }
 
       setLotes(items.map(item => {
         const existing = byItem[item.id] || [];
@@ -136,8 +217,11 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
           category: catMap[item.id] || "Lote",
           weight: Math.max(0, (Number(item.weight) || 0) - (Number(item.weight_loss) || 0)),
           rows,
+          rescued: rescued.has(item.id),
         };
       }));
+
+      await loadHistory();
     } finally {
       setLoading(false);
     }
@@ -159,6 +243,40 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     }));
   };
 
+  const logHistory = async (
+    itemId: string,
+    versao: number,
+    action: "update" | "delete",
+    oldVals: { pt: number; pd: number; rh: number },
+    newVals: { pt: number; pd: number; rh: number } | null,
+  ) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("lab_result_history").insert({
+      purchase_id: purchase.id,
+      purchase_item_id: itemId,
+      versao,
+      old_pt_ppm: oldVals.pt,
+      old_pd_ppm: oldVals.pd,
+      old_rh_ppm: oldVals.rh,
+      new_pt_ppm: newVals?.pt ?? null,
+      new_pd_ppm: newVals?.pd ?? null,
+      new_rh_ppm: newVals?.rh ?? null,
+      action,
+      changed_by: user?.id ?? null,
+    });
+    await loadHistory();
+  };
+
+  const fetchCurrent = async (id: string) => {
+    const { data } = await supabase
+      .from("lab_results")
+      .select("pt_ppm, pd_ppm, rh_ppm")
+      .eq("id", id)
+      .maybeSingle();
+    if (!data) return null;
+    return { pt: Number(data.pt_ppm) || 0, pd: Number(data.pd_ppm) || 0, rh: Number(data.rh_ppm) || 0 };
+  };
+
   const persistRow = async (loteIdx: number, versao: number) => {
     const lote = lotes[loteIdx];
     const row = lote.rows.find(r => r.versao === versao);
@@ -169,7 +287,9 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
       if (row.id) {
         setSavingRow(`${lote.itemId}-${versao}`);
         try {
+          const prevVals = await fetchCurrent(row.id);
           await supabase.from("lab_results").delete().eq("id", row.id);
+          if (prevVals) await logHistory(lote.itemId, versao, "delete", prevVals, null);
           setLotes(prev => prev.map((l, i) => i !== loteIdx ? l : {
             ...l,
             rows: l.rows.map(r => r.versao === versao ? { ...r, id: null } : r),
@@ -192,10 +312,18 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (row.id) {
+        const prevVals = await fetchCurrent(row.id);
+        const changed = prevVals && (prevVals.pt !== pt || prevVals.pd !== pd || prevVals.rh !== rh);
         await supabase
           .from("lab_results")
           .update({ pt_ppm: pt, pd_ppm: pd, rh_ppm: rh })
           .eq("id", row.id);
+        if (changed && prevVals) {
+          await logHistory(lote.itemId, versao, "update", prevVals, { pt, pd, rh });
+        }
+        if (lote.rescued) {
+          setLotes(prev => prev.map((l, i) => i !== loteIdx ? l : { ...l, rescued: false }));
+        }
       } else {
         const { data, error } = await supabase
           .from("lab_results")
@@ -284,6 +412,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
+              const loteHistory = history.filter(h => h.itemId === l.itemId);
+              const historyOpen = !!openHistory[l.itemId];
               return (
                 <Card key={l.itemId} className={`border-border/50 ${registered ? "bg-green-500/5 border-green-300/50" : ""}`}>
                   <CardContent className="p-3 space-y-2">
@@ -298,6 +428,14 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                         </Badge>
                       )}
                     </div>
+
+                    {l.rescued && (
+                      <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Análise carregada do registro anterior — confirme ou altere
+                      </p>
+                    )}
+
 
                     <div className="space-y-1.5">
                       <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center text-[10px] text-muted-foreground pl-1">
@@ -362,6 +500,48 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                         </div>
                       </div>
                     )}
+
+                    {loteHistory.length > 0 && (
+                      <div className="rounded-md border border-border/60 bg-muted/30 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenHistory(prev => ({ ...prev, [l.itemId]: !prev[l.itemId] }))}
+                          className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold"
+                        >
+                          <span className="flex items-center gap-1">
+                            <HistoryIcon className="h-3 w-3" />
+                            Histórico de análises ({loteHistory.length})
+                          </span>
+                          <ChevronDown className={`h-3 w-3 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {historyOpen && (
+                          <div className="px-2 pb-2 space-y-1.5">
+                            {loteHistory.map(h => (
+                              <div key={h.id} className="text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                                <div className="flex justify-between">
+                                  <span className="font-medium text-foreground">Análise {h.versao}</span>
+                                  <span>{new Date(h.at).toLocaleString("pt-BR")}</span>
+                                </div>
+                                <div>
+                                  <span className="line-through">
+                                    Pt {fmtNum(h.oldPt ?? 0, 0)} · Pd {fmtNum(h.oldPd ?? 0, 0)} · Rh {fmtNum(h.oldRh ?? 0, 0)}
+                                  </span>
+                                  {" → "}
+                                  {h.action === "delete" ? (
+                                    <span className="text-destructive font-medium">removida</span>
+                                  ) : (
+                                    <span className="text-foreground font-medium">
+                                      Pt {fmtNum(h.newPt ?? 0, 0)} · Pd {fmtNum(h.newPd ?? 0, 0)} · Rh {fmtNum(h.newRh ?? 0, 0)}
+                                    </span>
+                                  )}
+                                </div>
+                                {h.by && names[h.by] && <div>por {names[h.by]}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -370,6 +550,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         )}
 
         <div className="space-y-3 pt-2 border-t border-border/40">
+
           <div className="flex items-center gap-2">
             <Progress value={totalCount > 0 ? (savedCount / totalCount) * 100 : 0} className="h-2 flex-1" />
             <span className={`text-xs font-semibold whitespace-nowrap ${isComplete ? "text-green-600" : "text-amber-600"}`}>
