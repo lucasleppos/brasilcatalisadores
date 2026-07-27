@@ -124,6 +124,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const contestDate = getContestInfo(purchase)?.date ?? null;
+
 
   useEffect(() => {
     if (!open) return;
