@@ -708,7 +708,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && items.length === 0) || (isCeramicoMode && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
+          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && !isPecaCreate && items.length === 0) || ((isCeramicoMode || isPecaCreate) && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
             <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
           </Button>
         </DialogFooter>
