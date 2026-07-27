@@ -17,6 +17,7 @@ import { CatalogPart } from "@/lib/catalog";
 interface ConferenciaPiece {
   id?: string;
   code: string;
+  reference: string | null;
   catalogPartId: string | null;
   catalogPartName: string | null;
   weight: number;
@@ -73,6 +74,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(data.map(d => ({
       id: d.id,
       code: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].code : "",
+      reference: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].reference : null,
       catalogPartId: d.catalog_part_id,
       catalogPartName: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].reference : null,
       weight: Number(d.weight) || 0,
@@ -82,16 +84,18 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const handlePartSelect = (part: CatalogPart) => {
     setSelectedPart(part);
     setManualCode(part.code || part.reference);
+    if (part.weight > 0) setWeight(fmtNum(part.weight, 3));
   };
 
   const handleAdd = () => {
-    const w = parseFloat(weight.replace(",", "."));
+    const w = parseFloat(weight.replace(/\./g, "").replace(",", "."));
     const code = selectedPart ? (selectedPart.code || selectedPart.reference) : manualCode.trim();
     if (!code) { toast.error("Informe o código da peça"); return; }
-    if (isNaN(w) || w <= 0) { toast.error("Informe o peso líquido"); return; }
+    if (isNaN(w) || w <= 0) { toast.error("Informe o peso"); return; }
 
     setPieces(prev => [...prev, {
       code,
+      reference: selectedPart ? selectedPart.reference : null,
       catalogPartId: selectedPart?.id || null,
       catalogPartName: selectedPart ? (selectedPart.reference || selectedPart.code) : null,
       weight: w,
