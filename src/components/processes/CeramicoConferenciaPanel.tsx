@@ -124,61 +124,112 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     setPhotoUrl("");
   };
 
+  const updateLote = (index: number, patch: Partial<CeramicoLote>) => {
+    setLotes(prev => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  };
+
+  const handleEditPhoto = async (index: number, file: File) => {
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadStagePhoto(purchase.id, file);
+      if (url) updateLote(index, { photoUrl: url });
+      else toast.error("Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const deleteItemData = async (itemId: string) => {
+    await supabase.from("lab_results").delete().eq("purchase_item_id", itemId);
+    await supabase.from("purchase_items").delete().eq("id", itemId);
+    await supabase.from("stage_evidence").delete()
+      .eq("purchase_id", purchase.id)
+      .in("task_key", [
+        `lote_cat_${itemId}`, `photo_lote_${itemId}`, `label_${itemId}`,
+        `tare_${itemId}`, `photo_embalagem_${itemId}`,
+      ]);
+  };
+
   const handleRemove = async (index: number) => {
     const lote = lotes[index];
     if (lote.id) {
-      await supabase.from("purchase_items").delete().eq("id", lote.id);
-      await supabase.from("stage_evidence").delete()
-        .eq("purchase_id", purchase.id)
-        .in("task_key", [`lote_cat_${lote.id}`, `photo_lote_${lote.id}`, `label_${lote.id}`]);
+      const ok = window.confirm(
+        "Remover este grupo? As análises de laboratório e evidências vinculadas a ele também serão excluídas."
+      );
+      if (!ok) return;
+      await deleteItemData(lote.id);
     }
     setLotes(prev => prev.filter((_, i) => i !== index));
   };
 
-  /** Persist all lotes + evidences. Returns saved lotes with ids + label codes. */
+  /**
+   * Persist all lotes incrementally (update by id / insert new / delete removed),
+   * preserving TARA, lab results and allocations of existing groups.
+   */
   const persistAll = async (): Promise<CeramicoLote[] | null> => {
-    await supabase
+    const { data: existing } = await supabase
       .from("purchase_items")
-      .delete()
+      .select("id")
       .eq("purchase_id", purchase.id)
       .eq("item_type", "ceramico");
 
-    await supabase
-      .from("stage_evidence")
-      .delete()
-      .eq("purchase_id", purchase.id)
-      .eq("stage", "conferencia_ceramico");
-
-    const { data: inserted, error } = await supabase.from("purchase_items").insert(
-      lotes.map(l => ({
-        purchase_id: purchase.id,
-        item_type: "ceramico" as const,
-        category: "conferencia",
-        quantity: 1,
-        weight: l.weightGross,
-        weight_loss: 0,
-      }))
-    ).select("id");
-
-    if (error || !inserted) return null;
+    const keepIds = new Set(lotes.filter(l => l.id).map(l => l.id as string));
+    const toDelete = (existing || []).map(e => e.id).filter(id => !keepIds.has(id));
+    for (const id of toDelete) {
+      await deleteItemData(id);
+    }
 
     const saved: CeramicoLote[] = [];
-    for (let i = 0; i < inserted.length; i++) {
-      const id = inserted[i].id;
-      const code = buildLabelCode(purchase.purchaseNumber, purchase.date, i + 1);
+    for (let i = 0; i < lotes.length; i++) {
+      const l = lotes[i];
+      let id = l.id;
+
+      if (id) {
+        const { error } = await supabase
+          .from("purchase_items")
+          .update({ weight: l.weightGross })
+          .eq("id", id);
+        if (error) return null;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("purchase_items")
+          .insert({
+            purchase_id: purchase.id,
+            item_type: "ceramico" as const,
+            category: "conferencia",
+            quantity: 1,
+            weight: l.weightGross,
+            weight_loss: 0,
+          })
+          .select("id")
+          .single();
+        if (error || !inserted) return null;
+        id = inserted.id;
+      }
+
+      const code = l.labelCode || buildLabelCode(purchase.purchaseNumber, purchase.date, i + 1);
+
+      await supabase
+        .from("stage_evidence")
+        .delete()
+        .eq("purchase_id", purchase.id)
+        .eq("stage", "conferencia_ceramico")
+        .in("task_key", [`lote_cat_${id}`, `label_${id}`, `photo_lote_${id}`]);
+
       const rows: any[] = [
-        { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `lote_cat_${id}`, data_type: "text", value_text: lotes[i].category },
+        { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `lote_cat_${id}`, data_type: "text", value_text: l.category },
         { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `label_${id}`, data_type: "text", value_text: code },
       ];
-      if (lotes[i].photoUrl) {
+      if (l.photoUrl) {
         rows.push({
           purchase_id: purchase.id, stage: "conferencia_ceramico",
-          task_key: `photo_lote_${id}`, data_type: "photo", file_url: lotes[i].photoUrl,
+          task_key: `photo_lote_${id}`, data_type: "photo", file_url: l.photoUrl,
         });
       }
       await supabase.from("stage_evidence").insert(rows);
-      saved.push({ ...lotes[i], id, labelCode: code });
+      saved.push({ ...l, id, labelCode: code });
     }
+
     setLotes(saved);
     return saved;
   };
