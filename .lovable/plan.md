@@ -1,47 +1,23 @@
-## Objetivo
+## Causa
 
-Reordenar o fluxo de **Peças / Peça em Sacola** para:
+As peças da conferência são gravadas em `purchase_items` com `category = "conferencia"`. O painel de precificação (`PiecePricingPanel`) lista os itens por `getOriginalItems()`, que justamente **filtra fora** tudo que tem `category = "conferencia"` — por isso a lista aparece vazia (imagem 2), enquanto o Visualizar/Demonstrativo, que lê os itens direto do banco, mostra as duas peças (imagem 1).
 
-```text
-Conferência (incluir peças do catálogo)
-   ↓
-Precif. / Demonstrativo (puxa as peças conferidas, visualizar + PDF)
-   ↓
-Aprovação (bloqueada sem Boleto Syge)
-   ↓
-Corte (abertura das carcaças + peso real da cerâmica)
-   ↓
-Trit. / Homog. / Amostr. (confirmação simples)
-   ↓
-Concluído + Alocação de Bag
-```
+## Alteração
 
-A etapa de Laboratório/Análise deixa de existir no fluxo de Peças.
+**`src/components/processes/PiecePricingPanel.tsx` (reescrita do conteúdo do diálogo)**
 
-## Alterações
-
-**1. Máquina de estados (`src/lib/purchases.ts`)**
-- Novo `PECAS_FLOW`: `Aguardando Inclusão → Aguardando Conferência → Em Conferência → Peças: Aguardando Demonstrativo → Peças: Gerar Boleto de Aprovação → Peças: Em Corte → Peças: Trituração e Amostragem → Peças: Alocado ao Bag → Concluído`.
-- `getNextStatus`: após "Em Conferência" (fluxo peças) vai para "Peças: Aguardando Demonstrativo"; após "Gerar Boleto de Aprovação" vai para "Peças: Em Corte" (em vez de "Alocado ao Bag"); após "Em Corte" vai para "Peças: Trituração e Amostragem"; após esta, vai para "Peças: Alocado ao Bag".
-- Estados removidos do fluxo linear (mantidos apenas como legado para compras antigas): "Peças: Laboratório", "Peças: Em Trituração", "Peças: Em Amostragem", "Peças: Aprovado - Aguardando Pagamento", "Peças: Pagamento Realizado".
-- Contestação no fluxo peças volta para "Em Conferência" ou "Peças: Aguardando Demonstrativo" (não mais para Laboratório).
-- Ao alocar todas as peças em bag, a compra encerra e entra no módulo Concluídos (mesma lógica já usada no cerâmico).
-
-**2. Checklists (`src/lib/stage-tasks.ts`)**
-- "Peças: Em Corte": apenas **peso real da cerâmica extraída (kg)** obrigatório; foto passa a opcional.
-- "Peças: Trituração e Amostragem": mantém apenas a confirmação simples ("trituração e amostragem concluídas").
-
-**3. Card de etapa (`src/components/processes/StageActionCard.tsx`)**
-- Em "Peças: Aguardando Demonstrativo": painel de precificação já carrega os itens conferidos; botões **Visualizar demonstrativo** e **Gerar PDF** ativos.
-- Em "Peças: Gerar Boleto de Aprovação": Visualizar/PDF/Contestar ativos; **Aprovar** bloqueado até o Boleto Syge ser informado (mesmo comportamento do cerâmico), e a aprovação passa a mandar para Corte.
-- Remove o painel de Laboratório (`SacolaLabPanel`) do fluxo de peças.
-
-**4. Quadro de processos (`src/components/processes/ProcessBoard.tsx`)**
-- Coluna "Prep. Amostra / Análise" deixa de listar "Peças: Laboratório".
-- "Corte" e "Trit. / Homog. / Amostr." passam a aparecer depois de "Aprovação" na ordem das colunas para refletir o novo fluxo.
+- Passa a carregar os itens via `getConferenciaItems(purchase)` (fallback para os itens de peça quando não houver nenhum com `category = "conferencia"`, para compras antigas).
+- Remove a busca no catálogo, o botão "Adicionar item manual", o formulário de inclusão e o botão de excluir item. Nenhuma peça nova pode ser criada nesta etapa.
+- O diálogo vira uma tabela em coluna única, uma linha por item conferido:
+  - Código / Referência do catálogo
+  - Quantidade (un) e peso total (kg) — somente leitura
+  - Campo editável **Valor unit. (R$)** (`inputMode="decimal"`, vírgula), com subtotal calculado = valor unit. × quantidade
+- Rodapé com Total de peças, Peso total e **Valor total** do pedido, atualizado em tempo real.
+- Botão **Salvar precificação** grava os valores com `batchUpdateItemPricing(purchase.id, [{ itemId, totalValue, pricingSource: "catalogo" }])`, que já recalcula `purchases.total_brl`. Sem avanço automático de etapa (o avanço continua pelo card).
+- Botão do card muda para "Precificar Peças Conferidas" e o badge passa a mostrar a quantidade de peças conferidas + total.
 
 ## Detalhes técnicos
 
-- Nenhuma migração de banco: os status são texto livre em `purchases.status`; compras existentes em status antigos continuam válidas via lista de legado.
-- A precificação de peças continua usando `purchase_items` gravados na Conferência (código, referência, quantidade, peso do catálogo), sem recadastro.
-- `STAGE_ROLES` atualizado: Corte e Trituração seguem com perfil operacional; Precificação/Aprovação com admin.
+- Sem migração de banco: só muda a origem da leitura e o modo de gravação (update em vez de insert).
+- `getConferenciaItems` e `batchUpdateItemPricing` já existem em `src/lib/purchases.ts`; `addItemToPurchase` / `removeItemFromPurchase` deixam de ser usados neste painel.
+- Valores exibidos em formato brasileiro (`fmtBrl`, vírgula decimal), pesos com 4 casas.
