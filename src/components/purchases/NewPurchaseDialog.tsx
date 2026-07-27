@@ -454,7 +454,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <Package className="h-3 w-3" />
               {isCeramicoMode
                 ? "Peso Bruto Total Recebido (kg) *"
-                : "Total de Peças Recebidas (opcional)"}
+                : isPecaCreate
+                  ? "Total de Peças Recebidas (un) *"
+                  : "Total de Peças Recebidas (opcional)"}
             </Label>
             <div className="space-y-1">
               <Label className="text-[10px]">
@@ -474,8 +476,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 className="h-8 text-sm"
                 placeholder={isCeramicoMode ? "0,0000" : "0"}
               />
+              {isPecaCreate && bulkWeight <= 0 && (
+                <p className="text-[10px] text-destructive">Informe o total de peças recebidas.</p>
+              )}
             </div>
-            {bulkWeight > 0 && !isCeramicoMode && (
+            {bulkWeight > 0 && !isCeramicoMode && !isPecaCreate && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]">
                   <span className="text-muted-foreground">Classificado: {classifiedAmount} un</span>
@@ -500,8 +505,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             )}
           </div>
 
-          {/* Add item — hidden for ceramico (items added during conference) */}
-          {!isCeramicoMode && (
+          {/* Peças info message */}
+          {isPecaCreate && (
+            <div className="rounded-md bg-muted/30 border p-3 text-xs text-muted-foreground">
+              <p>Os itens (catálogo, categoria, quantidade e peso) serão registrados na etapa de <strong>Conferência</strong> após a criação da compra.</p>
+            </div>
+          )}
+
+          {/* Add item — hidden for ceramico and for peças na criação (itens vão para a conferência) */}
+          {!isCeramicoMode && !isPecaCreate && (
+
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
 
