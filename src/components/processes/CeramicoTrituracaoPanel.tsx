@@ -131,8 +131,9 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
   };
 
   const updateTare = (idx: number, val: string) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, "") } : l));
+    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
   };
+
 
   const pickPhoto = (idx: number) => fileInputRefs.current[idx]?.click();
 
