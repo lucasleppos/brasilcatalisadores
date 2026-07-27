@@ -20,13 +20,14 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
     { key: "confirm_trit_amostr", type: "note", label: "Confirmar trituração e amostragem concluídas", required: true },
   ],
   // Cerâmico: Separação foi removido do fluxo (a separação acontece durante a Conferência)
-  // Peças: Corte
+  // Peças: Corte — abertura das carcaças metálicas e pesagem real da cerâmica
   "Peças: Em Corte": [
-    { key: "photo_pos_corte", type: "photo", label: "Foto pós-corte", required: true },
-    { key: "weight_ceramica_extraida", type: "weight", label: "Peso cerâmica extraída (kg)", required: true },
+    { key: "weight_ceramica_extraida", type: "weight", label: "Peso real da cerâmica extraída (kg)", required: true },
+    { key: "photo_pos_corte", type: "photo", label: "Foto pós-corte (opcional)", required: false },
   ],
-  // Peças: Trituração
+  // Peças: Trituração (legado)
   "Peças: Em Trituração": [
+
     { key: "weight_pos_trituracao", type: "weight", label: "Peso pós-trituração (kg)", required: true },
     { key: "photo_amostra", type: "photo", label: "Foto da amostra preparada", required: true },
   ],

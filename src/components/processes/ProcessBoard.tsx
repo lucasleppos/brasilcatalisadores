@@ -25,21 +25,9 @@ interface ProcessGroup {
 const PROCESS_GROUPS: ProcessGroup[] = [
   { label: "Inclusão", statuses: ["Aguardando Inclusão"] },
   { label: "Conferência", statuses: ["Aguardando Conferência", "Em Conferência"] },
-  
-  { label: "Corte", statuses: ["Peças: Em Corte"] },
-  {
-    label: "Trit. / Homog. / Amostr.",
-    statuses: [
-      "Peças: Trituração e Amostragem",
-      "Peças: Em Trituração",
-      "Cerâmico: Em Trituração/Homogeneização",
-      "Peças: Em Amostragem",
-    ],
-  },
   {
     label: "Prep. Amostra / Análise",
     statuses: [
-      "Peças: Laboratório",
       "Cerâmico: Amostra Enviada ao Lab",
       "Cerâmico: Lab em Análise",
       "Cerâmico: Resultado Incluído",
@@ -49,6 +37,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
     label: "Precif. / Demonstrativo",
     statuses: [
       "Peças: Aguardando Demonstrativo",
+      "Peças: Laboratório",
       "Peças: Pesagem Realizada",
       "Peças: Peso Divergente",
     ],
@@ -62,7 +51,18 @@ const PROCESS_GROUPS: ProcessGroup[] = [
       "Cerâmico: Demonstrativo Contestado",
     ],
   },
+  { label: "Corte", statuses: ["Peças: Em Corte"] },
+  {
+    label: "Trit. / Homog. / Amostr.",
+    statuses: [
+      "Peças: Trituração e Amostragem",
+      "Peças: Em Trituração",
+      "Cerâmico: Em Trituração/Homogeneização",
+      "Peças: Em Amostragem",
+    ],
+  },
 ];
+
 
 /** Check if a user role can see a group (has permission on at least one status in the group) */
 function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {

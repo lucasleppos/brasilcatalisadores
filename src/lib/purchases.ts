@@ -31,6 +31,8 @@ const PECAS_STATUSES = [
   "Peças: Em Amostragem",
   "Peças: Peso Divergente",
   "Peças: Alocado ao Bag",
+  "Peças: Encerrado",
+
   "Concluído",
 ] as const;
 
@@ -106,6 +108,8 @@ export const STAGE_ROLES: Record<string, string[]> = {
   "Peças: Em Amostragem": ["operacional"],
   "Peças: Peso Divergente": ["admin", "super_admin"],
   "Peças: Alocado ao Bag": ["admin", "super_admin"],
+  "Peças: Encerrado": [],
+
   "Concluído": [],
   // Cerâmico
   "Cerâmico: Em Trituração/Homogeneização": ["operacional"],
@@ -136,17 +140,16 @@ export const STAGE_ROLES: Record<string, string[]> = {
 
 export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
-  "Peças: Trituração e Amostragem",
-  "Peças: Laboratório",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   // "Peças: Demonstrativo Contestado" is a loop state, not in linear sequence
-  "Peças: Aprovado - Aguardando Pagamento",
-  "Peças: Pagamento Realizado",
+  "Peças: Em Corte",
+  "Peças: Trituração e Amostragem",
   // "Peças: Peso Divergente" is a special state, not in linear sequence
   "Peças: Alocado ao Bag",
   "Concluído",
 ];
+
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
@@ -177,8 +180,14 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   if (current === "Cerâmico: Demonstrativo Contestado") return "Cerâmico: Em Trituração/Homogeneização";
   if (current === "Peças: Peso Divergente") return "Peças: Alocado ao Bag";
 
-  // Skip payment stages for Peças: go directly from approval to bag allocation
-  if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
+  // Peças: após aprovação (boleto) segue para Corte → Trituração/Amostragem → Bag
+  if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Em Corte";
+  if (current === "Peças: Em Corte") return "Peças: Trituração e Amostragem";
+  if (current === "Peças: Trituração e Amostragem") return "Peças: Alocado ao Bag";
+  // Legado: status que saíram do fluxo linear
+  if (current === "Peças: Laboratório") return "Peças: Aguardando Demonstrativo";
+  if (current === "Peças: Em Trituração" || current === "Peças: Em Amostragem") return "Peças: Alocado ao Bag";
+  if (current === "Peças: Aprovado - Aguardando Pagamento" || current === "Peças: Pagamento Realizado") return "Peças: Em Corte";
 
   // Skip intermediate ceramic stages and parallel sub-flows
   if (current === "Cerâmico: Em Trituração/Homogeneização") return "Cerâmico: Lab em Análise";
@@ -198,9 +207,10 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
 
   // Bifurcation: after "Em Conferência", jump to the correct flow
   if (current === "Em Conferência") {
-    if (materialFlow === "pecas") return "Peças: Trituração e Amostragem";
+    if (materialFlow === "pecas") return "Peças: Aguardando Demonstrativo";
     if (materialFlow === "ceramico") return "Cerâmico: Em Trituração/Homogeneização";
   }
+
 
   return flow[idx + 1];
 }
@@ -499,18 +509,22 @@ export async function updatePurchaseStatus(id: string, status: string) {
 }
 
 /**
- * Verifica se todos os grupos de conferência de uma compra cerâmica já estão
- * alocados em bags e, em caso positivo, avança para "Bag Alocado" / "Encerrado".
+ * Verifica se todos os itens de conferência de uma compra já estão alocados em
+ * bags e, em caso positivo, encerra a compra (cerâmico e peças).
  */
 export async function syncCeramicoAllocation(purchaseId: string): Promise<boolean> {
   const { data: purchase } = await supabase
     .from("purchases")
-    .select("status, op_status, material_flow")
+    .select("status, op_status, material_flow, status_history")
     .eq("id", purchaseId)
     .single();
   if (!purchase) return false;
-  if (purchase.material_flow !== "ceramico") return false;
-  if (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag") return false;
+
+  const isCeramico = purchase.material_flow === "ceramico";
+  const isPecas = purchase.material_flow === "pecas";
+  if (isCeramico && (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag")) return false;
+  if (isPecas && purchase.status !== "Peças: Alocado ao Bag") return false;
+  if (!isCeramico && !isPecas) return false;
 
   const { data: confItems } = await supabase
     .from("purchase_items")
@@ -527,8 +541,15 @@ export async function syncCeramicoAllocation(purchaseId: string): Promise<boolea
   const remaining = confItems.filter((i: any) => !allocatedSet.has(i.id));
   if (remaining.length > 0) return false;
 
+  if (isPecas) {
+    const history = [...((purchase.status_history as any[]) || []), { status: "Peças: Encerrado", date: new Date().toISOString() }];
+    await supabase.from("purchases").update({ status: "Peças: Encerrado", status_history: history }).eq("id", purchaseId);
+    return true;
+  }
+
   return await advanceOpStatus(purchaseId, "Alocando Bag");
 }
+
 
 /** Advance to next status automatically (used by workflow) */
 export async function advanceStage(id: string, currentStatus: string): Promise<boolean> {

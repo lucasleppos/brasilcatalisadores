@@ -31,22 +31,25 @@ export default function CompletedPage() {
   const reload = async () => {
     let all = await loadPurchases();
 
-    // Rede de segurança: compras cerâmicas com todos os grupos já alocados
-    // mas presas em "Alocando Bag" são encerradas automaticamente.
-    const pending = all.filter(p => p.materialFlow === "ceramico" && p.opStatus === "Alocando Bag");
+    // Rede de segurança: compras com todos os itens já alocados mas presas
+    // em "Alocando Bag" (cerâmico) ou "Alocado ao Bag" (peças) são encerradas.
+    const pending = all.filter(p =>
+      (p.materialFlow === "ceramico" && p.opStatus === "Alocando Bag") ||
+      (p.materialFlow === "pecas" && p.status === "Peças: Alocado ao Bag")
+    );
     if (pending.length > 0) {
       const results = await Promise.all(pending.map(p => syncCeramicoAllocation(p.id)));
       if (results.some(Boolean)) all = await loadPurchases();
     }
 
-    // Somente cerâmicos concluídos (Cerâmico: Encerrado, Concluído, ou op_status=Bag Alocado)
+    // Concluídos: cerâmico e peças encerrados
     const completed = all.filter(p =>
-      p.materialFlow === "ceramico" && (
-        p.status === "Cerâmico: Encerrado" ||
-        p.status === "Concluído" ||
-        p.opStatus === "Bag Alocado"
-      )
+      p.status === "Cerâmico: Encerrado" ||
+      p.status === "Peças: Encerrado" ||
+      p.status === "Concluído" ||
+      p.opStatus === "Bag Alocado"
     );
+
     setPurchases(completed);
 
     // Carregar bags alocados por compra
