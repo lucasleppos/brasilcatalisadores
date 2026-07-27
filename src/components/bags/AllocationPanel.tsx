@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
-import { advanceOpStatus } from "@/lib/purchases";
+import { syncCeramicoAllocation } from "@/lib/purchases";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -258,30 +258,8 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     setSaving(false);
     toast({ title: "Material alocado com sucesso" });
 
-    // Se cerâmico: verifica se todos os grupos de conferência da compra estão alocados
-    // e, em caso positivo, avança op_status para "Bag Alocado" (Encerra automaticamente)
-    const purchaseId = allocatingMaterial.purchaseId;
-    const { data: purchase } = await supabase
-      .from("purchases")
-      .select("status, op_status")
-      .eq("id", purchaseId)
-      .single();
-    if (purchase?.status === "Cerâmico: Aprovado" && purchase.op_status === "Alocando Bag") {
-      const { data: confItems } = await supabase
-        .from("purchase_items")
-        .select("id")
-        .eq("purchase_id", purchaseId)
-        .eq("category", "conferencia");
-      const { data: allocatedItems } = await supabase
-        .from("bag_items")
-        .select("purchase_item_id")
-        .eq("purchase_id", purchaseId);
-      const allocatedSet = new Set((allocatedItems || []).map((a: any) => a.purchase_item_id));
-      const remaining = (confItems || []).filter((i: any) => !allocatedSet.has(i.id));
-      if (remaining.length === 0) {
-        await advanceOpStatus(purchaseId, "Alocando Bag");
-      }
-    }
+    // Cerâmico: auto-encerra quando todos os grupos da compra estão alocados
+    await syncCeramicoAllocation(allocatingMaterial.purchaseId);
 
     setAllocatingMaterial(null);
     onAllocated();
