@@ -208,17 +208,22 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               <Card key={i} className="border-border/50">
                 <CardContent className="p-3 flex items-start justify-between">
                   <div className="space-y-0.5">
-                    <p className="text-sm font-mono">#{i + 1} — {p.code}</p>
-                    {p.catalogPartName ? (
+                    <p className="text-xs font-semibold text-muted-foreground">#{i + 1}</p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Código: </span>
+                      <span className="font-mono font-medium">{p.code}</span>
+                    </p>
+                    {p.catalogPartId ? (
                       <p className="text-xs text-green-700 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> {p.catalogPartName}
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>Referência: <span className="font-mono">{p.reference || p.catalogPartName}</span></span>
                       </p>
                     ) : (
                       <p className="text-xs text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" /> Não encontrada no catálogo
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">{fmtNum(p.weight, 3)} kg</p>
+                    <p className="text-xs text-muted-foreground">Peso: {fmtNum(p.weight, 3)} kg</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
                     <Trash2 className="h-3.5 w-3.5" />
@@ -236,9 +241,15 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <Label className="text-xs">Buscar peça no catálogo</Label>
             <PartSearch onSelect={handlePartSelect} />
             {selectedPart && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-green-600" /> {selectedPart.reference || selectedPart.code} — {selectedPart.brand} {selectedPart.vehicle}
-              </p>
+              <div className="rounded-md border bg-muted/30 p-2 space-y-0.5 text-xs">
+                <p className="flex items-center gap-1 font-medium text-green-700">
+                  <CheckCircle2 className="h-3 w-3" /> Peça selecionada
+                </p>
+                <p><span className="text-muted-foreground">Código: </span><span className="font-mono">{selectedPart.code || "—"}</span></p>
+                <p><span className="text-muted-foreground">Referência: </span><span className="font-mono">{selectedPart.reference || "—"}</span></p>
+                <p><span className="text-muted-foreground">Marca/Veículo: </span>{selectedPart.brand} {selectedPart.vehicle}</p>
+                <p><span className="text-muted-foreground">Peso catálogo: </span>{fmtNum(selectedPart.weight, 3)} kg</p>
+              </div>
             )}
           </div>
           {!selectedPart && (
@@ -253,7 +264,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </div>
           )}
           <div className="space-y-1.5">
-            <Label className="text-xs">Peso líquido (kg)</Label>
+            <Label className="text-xs">
+              Peso (kg){selectedPart && selectedPart.weight > 0 && (
+                <span className="ml-1 font-normal text-muted-foreground">· sugerido pelo catálogo</span>
+              )}
+            </Label>
             <Input
               inputMode="decimal"
               value={weight}

@@ -63,11 +63,12 @@ export default function PartSearch({ onSelect }: PartSearchProps) {
               onClick={() => handleSelect(part)}
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium">{part.code || part.reference}</span>
+                <span className="font-medium">Cód.: {part.code || "—"}</span>
                 {part.groupName && (
                   <Badge variant="outline" className="text-[10px]">{part.groupName}</Badge>
                 )}
               </div>
+              <div className="text-muted-foreground">Ref.: {part.reference || "—"}</div>
               <div className="text-muted-foreground">
                 {part.brand} {part.vehicle} — {part.weight} kg | Pt:{part.ptPpm} Pd:{part.pdPpm} Rh:{part.rhPpm}
               </div>
