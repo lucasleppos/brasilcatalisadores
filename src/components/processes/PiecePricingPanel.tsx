@@ -18,7 +18,8 @@ interface PiecePricingPanelProps {
 }
 
 interface StagedPart {
-  part: CatalogPart;
+  part: CatalogPart | null;
+  description: string;
   quantity: number;
   value: string;
 }
@@ -29,11 +30,22 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
 
-  const existingItems = getOriginalItems(purchase).filter(i => i.catalogPartId);
+  const existingItems = getOriginalItems(purchase).filter(
+    i => i.itemType === "peca" || i.itemType === "peca_sacola"
+  );
   const totalQty = existingItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
 
   const handleSelectPart = (part: CatalogPart) => {
-    setStaged({ part, quantity: 1, value: "" });
+    setStaged({
+      part,
+      description: part.code || part.reference || "",
+      quantity: 1,
+      value: "",
+    });
+  };
+
+  const startManual = () => {
+    setStaged({ part: null, description: "", quantity: 1, value: "" });
   };
 
   const handleAdd = async () => {
@@ -47,15 +59,20 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       toast.error("Informe a quantidade");
       return;
     }
+    if (!staged.part && !staged.description.trim()) {
+      toast.error("Informe a descrição do item");
+      return;
+    }
 
     setAdding(true);
     try {
       const ok = await addItemToPurchase(purchase.id, {
-        catalogPartId: staged.part.id,
+        catalogPartId: staged.part?.id ?? null,
         itemType: "peca",
         quantity: staged.quantity,
         totalValue: val * staged.quantity,
-        weight: staged.part.weight,
+        weight: staged.part?.weight,
+        category: staged.description.trim() || null,
       });
       if (ok) {
         toast.success("Peça adicionada");
