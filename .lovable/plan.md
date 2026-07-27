@@ -1,31 +1,25 @@
 ## Objetivo
 
-No fluxo de **Peça** e **Peça em Sacola**: trocar o campo de topo (hoje peso em kg) por **quantidade de peças (unidades)** e tornar o catálogo opcional em toda a jornada.
+Na Nova Compra, os fluxos **Peça** e **Peça em Sacola** passam a exigir apenas:
+fornecedor, foto do material, tipo de material e Total de Peças Recebidas (un).
+O bloco "Adicionar Item" (catálogo, categoria, quantidade, peso, valor) sai da criação e a classificação dos itens passa para a etapa de **Conferência** (a ser alterada em seguida).
 
-## 1. Nova compra — campo de topo em unidades
+## Alterações (nesta etapa: apenas a tela de compra)
 
-Em `NewPurchaseDialog.tsx`, o bloco "Material a Classificar (opcional)" hoje pede "Peso total recebido (kg)".
+Arquivo: `src/components/purchases/NewPurchaseDialog.tsx`
 
-- Para tipos **Peça** e **Peça em Sacola**: rótulo passa a "Total de Peças Recebidas (un)", entrada em número inteiro (sem casas decimais), placeholder "0".
-- A barra de progresso passa a comparar **soma das quantidades dos itens adicionados** (em vez de soma dos pesos) com o total declarado: "Classificado: X un / Restante: Y un", alerta quando exceder.
-- Para **Cerâmico** nada muda (segue peso bruto total em kg, obrigatório).
-- O valor continua sendo gravado no mesmo campo da compra (`bulk_weight`), agora interpretado como unidades quando o fluxo é de peças — sem migração de banco.
-
-Em `PurchaseDetail.tsx`, exibir esse valor como "Total de peças: N un" nos fluxos de peça e como "kg" no cerâmico.
-
-## 2. Catálogo opcional
-
-**Na criação da compra:** já é opcional; garantir que o item manual (categoria + quantidade + valor) permaneça válido e que a busca no catálogo continue apenas como atalho de preenchimento.
-
-**Na etapa "Precificar Peças" (`PiecePricingPanel.tsx`):** hoje só é possível adicionar item vindo do catálogo, e a lista exibida filtra apenas itens com `catalog_part_id`.
-
-- Adicionar a opção de **item manual**: campos descrição/categoria, quantidade e valor unitário, com botão "Adicionar" — sem exigir peça do catálogo.
-- A busca no catálogo continua disponível como atalho (preenche descrição/peso/PPM).
-- A lista "Peças Adicionadas" passa a mostrar **todos** os itens de peça do pedido (catálogo e manuais), com rótulo da descrição quando não houver código de catálogo.
-- Total do pedido e remoção de itens seguem funcionando para ambos os casos.
+1. Ocultar o bloco "Adicionar Item" e a tabela/resumo de itens quando o tipo for `peca` ou `peca_sacola` na criação (mesmo comportamento que já existe hoje para Cerâmico). Em modo de **edição** o bloco continua disponível, para não quebrar compras antigas.
+2. Tornar "Total de Peças Recebidas (un)" **obrigatório** nesses fluxos (rótulo com `*`, bloqueio do botão Criar Compra e mensagem de validação quando vazio ou zero).
+3. Remover a barra de progresso "Classificado / Restante" da criação (não há mais itens a classificar nesse momento); ela permanece apenas no modo edição.
+4. Ajustar `handleConfirm`: para `peca` / `peca_sacola` sem itens, criar a compra com um item marcador único do tipo escolhido (`{ itemType: 'peca' | 'peca_sacola', quantity: 1 }`), exatamente como já é feito no fluxo Cerâmico, gravando `bulk_weight` com o total de peças e anexando as fotos como evidência de Recebimento.
+5. Requisitos para habilitar "Criar Compra" nesses fluxos: fornecedor + ao menos 1 foto + total de peças > 0. Boleto Syge segue opcional.
 
 ## Detalhes técnicos
 
-- Arquivos: `src/components/purchases/NewPurchaseDialog.tsx`, `src/components/purchases/PurchaseDetail.tsx`, `src/components/processes/PiecePricingPanel.tsx`.
-- Itens manuais são gravados em `purchase_items` com `catalog_part_id = null`, `item_type = 'peca'`, usando `category` como descrição.
-- Nenhuma alteração de banco de dados é necessária.
+- O item marcador é necessário porque `determineMaterialFlow` deriva `material_flow` dos itens, e o `StageActionCard` decide entre painel de sacola e painel de peça via `hasSacolaItems` (`items.some(i => i.itemType === 'peca_sacola')`). Sem ele a compra ficaria sem fluxo.
+- Assim como no cerâmico, esse marcador deverá ser **removido ao salvar os itens reais na conferência**, para não gerar linha "1 pç pendente" no demonstrativo. Essa remoção entra na próxima alteração (etapa de Conferência).
+- `bulk_weight` (numeric) segue sendo o campo que guarda o total de peças recebidas no fluxo de peças; a exibição em `PurchaseDetail` já mostra "un" nesses fluxos.
+
+## Fora do escopo desta etapa
+
+A tela de Conferência (`SacolaConferenciaPanel` e o equivalente para Peça) — hoje o `SacolaConferenciaPanel` compara as peças conferidas com a quantidade declarada nos itens; ela passará a comparar com `bulkWeight` e a permitir cadastrar os itens (catálogo opcional, categoria, quantidade, peso). Isso será planejado logo após a aprovação desta alteração.
