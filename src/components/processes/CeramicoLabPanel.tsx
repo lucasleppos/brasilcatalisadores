@@ -160,7 +160,53 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
       (profs || []).forEach(p => { map[p.id] = p.full_name || ""; });
       setNames(map);
     }
+    return entries;
   };
+
+  // Carrega (ou cria uma única vez) o snapshot congelado da análise inicial
+  const loadBaselines = async (loteList: LabLote[], entries: HistoryEntry[]) => {
+    if (!contestDate || loteList.length === 0) {
+      setBaselines({});
+      return;
+    }
+    const { data: ev } = await supabase
+      .from("stage_evidence")
+      .select("task_key, value_text")
+      .eq("purchase_id", purchase.id)
+      .eq("stage", BASELINE_STAGE)
+      .like("task_key", "lab_baseline_%");
+
+    const map: Record<string, Baseline> = {};
+    (ev || []).forEach(e => {
+      const itemId = e.task_key.replace("lab_baseline_", "");
+      try {
+        const parsed = JSON.parse(e.value_text || "");
+        if (parsed && typeof parsed.pt === "number") {
+          map[itemId] = { pt: parsed.pt, pd: parsed.pd, rh: parsed.rh, n: parsed.n || 1 };
+        }
+      } catch { /* ignore */ }
+    });
+
+    const toInsert: any[] = [];
+    loteList.forEach(l => {
+      if (map[l.itemId]) return;
+      const snap = calcInitialSnapshot(l, entries);
+      if (!snap) return;
+      map[l.itemId] = snap;
+      toInsert.push({
+        purchase_id: purchase.id,
+        stage: BASELINE_STAGE,
+        task_key: baselineKey(l.itemId),
+        data_type: "text",
+        value_text: JSON.stringify({ ...snap, at: new Date().toISOString() }),
+      });
+    });
+    if (toInsert.length > 0) {
+      await supabase.from("stage_evidence").insert(toInsert);
+    }
+    setBaselines(map);
+  };
+
 
   const loadLotes = async () => {
     setLoading(true);
