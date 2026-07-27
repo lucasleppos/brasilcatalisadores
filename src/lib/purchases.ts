@@ -769,11 +769,12 @@ export async function deletePurchase(id: string) {
 
 /** Add a single item to an existing purchase and recalculate total */
 export async function addItemToPurchase(purchaseId: string, item: {
-  catalogPartId: string;
+  catalogPartId?: string | null;
   itemType: PurchaseItemType;
   quantity: number;
   totalValue: number;
   weight?: number;
+  category?: string | null;
 }): Promise<boolean> {
   const { error } = await supabase.from("purchase_items").insert({
     purchase_id: purchaseId,
@@ -781,7 +782,8 @@ export async function addItemToPurchase(purchaseId: string, item: {
     quantity: item.quantity,
     total_value: item.totalValue,
     weight: item.weight || null,
-    catalog_part_id: item.catalogPartId,
+    catalog_part_id: item.catalogPartId || null,
+    category: item.category || null,
   });
   if (error) return false;
 

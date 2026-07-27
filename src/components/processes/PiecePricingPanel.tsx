@@ -18,7 +18,8 @@ interface PiecePricingPanelProps {
 }
 
 interface StagedPart {
-  part: CatalogPart;
+  part: CatalogPart | null;
+  description: string;
   quantity: number;
   value: string;
 }
@@ -29,11 +30,22 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
 
-  const existingItems = getOriginalItems(purchase).filter(i => i.catalogPartId);
+  const existingItems = getOriginalItems(purchase).filter(
+    i => i.itemType === "peca" || i.itemType === "peca_sacola"
+  );
   const totalQty = existingItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
 
   const handleSelectPart = (part: CatalogPart) => {
-    setStaged({ part, quantity: 1, value: "" });
+    setStaged({
+      part,
+      description: part.code || part.reference || "",
+      quantity: 1,
+      value: "",
+    });
+  };
+
+  const startManual = () => {
+    setStaged({ part: null, description: "", quantity: 1, value: "" });
   };
 
   const handleAdd = async () => {
@@ -47,15 +59,20 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       toast.error("Informe a quantidade");
       return;
     }
+    if (!staged.part && !staged.description.trim()) {
+      toast.error("Informe a descrição do item");
+      return;
+    }
 
     setAdding(true);
     try {
       const ok = await addItemToPurchase(purchase.id, {
-        catalogPartId: staged.part.id,
+        catalogPartId: staged.part?.id ?? null,
         itemType: "peca",
         quantity: staged.quantity,
         totalValue: val * staged.quantity,
-        weight: staged.part.weight,
+        weight: staged.part?.weight,
+        category: staged.description.trim() || null,
       });
       if (ok) {
         toast.success("Peça adicionada");
@@ -126,20 +143,37 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
           <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 gap-0 border-t border-border">
             {/* Left column - Search & Staging */}
             <div className="p-4 space-y-3 border-r border-border overflow-auto">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Buscar no Catálogo</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Buscar no Catálogo (opcional)</p>
               <PartSearch onSelect={handleSelectPart} />
+
+              <Button variant="outline" size="sm" className="w-full" onClick={startManual}>
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar item manual (sem catálogo)
+              </Button>
 
               {staged && (
                 <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold">{staged.part.code || staged.part.reference}</p>
-                      <p className="text-xs text-muted-foreground">{staged.part.brand} · {staged.part.vehicle}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {staged.part.weight} kg | Pt:{staged.part.ptPpm} Pd:{staged.part.pdPpm} Rh:{staged.part.rhPpm}
-                      </p>
-                    </div>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStaged(null)}>
+                  <div className="flex justify-between items-start gap-2">
+                    {staged.part ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">{staged.part.code || staged.part.reference}</p>
+                        <p className="text-xs text-muted-foreground">{staged.part.brand} · {staged.part.vehicle}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {staged.part.weight} kg | Pt:{staged.part.ptPpm} Pd:{staged.part.pdPpm} Rh:{staged.part.rhPpm}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 flex-1">
+                        <label className="text-xs font-medium text-muted-foreground">Descrição do item *</label>
+                        <Input
+                          value={staged.description}
+                          onChange={(e) => setStaged({ ...staged, description: e.target.value })}
+                          placeholder="Ex: Colmeia avulsa, Fundo, Peça sem código..."
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setStaged(null)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -179,7 +213,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
 
               {!staged && (
                 <div className="text-center py-8 text-muted-foreground text-xs">
-                  Busque e selecione uma peça acima para precificar
+                  Busque uma peça no catálogo ou adicione um item manual
                 </div>
               )}
             </div>
@@ -207,7 +241,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">
-                              {item.catalogPartCode || item.catalogPartRef || item.itemType}
+                              {item.catalogPartCode || item.catalogPartRef || item.category || "Item manual"}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {item.quantity || 1}x · {fmtBrl((item.totalValue || 0) / (item.quantity || 1))}/un

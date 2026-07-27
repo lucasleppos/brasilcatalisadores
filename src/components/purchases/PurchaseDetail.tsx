@@ -104,9 +104,13 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
             <div className="rounded-md border p-3 space-y-1">
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
                 <Package className="h-3 w-3" />
-                Material a Classificar
+                {purchase.materialFlow === "ceramico" ? "Material a Classificar" : "Total de Peças Recebidas"}
               </p>
-              <p className="text-sm font-semibold">{fmt(purchase.bulkWeight, 4)} kg</p>
+              <p className="text-sm font-semibold">
+                {purchase.materialFlow === "ceramico"
+                  ? `${fmt(purchase.bulkWeight, 4)} kg`
+                  : `${purchase.bulkWeight} un`}
+              </p>
             </div>
           </>
         )}
