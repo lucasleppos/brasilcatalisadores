@@ -1,42 +1,39 @@
-## Objetivo
+## Problema
 
-No painel Laboratório — Cerâmico, quando a compra estiver em reamostragem/reanálise, exibir duas médias por grupo:
+Hoje a "Média inicial" não é um valor fixo: ela é reconstruída a cada render por `calcBaselineAverage` em `src/components/processes/CeramicoLabPanel.tsx`. Quando não existe registro de histórico para uma versão de análise, a função usa o valor **atual** da linha (`l.rows`) como se fosse o valor original. Resultado: ao digitar uma nova Análise 2 na reanálise, ela entra na média inicial e o bloco "Média inicial (2 análises)" muda junto com a reanálise — exatamente o que aparece no print.
 
-- **Média inicial** — congelada, referente aos PPMs existentes no momento da contestação (parâmetro de comparação).
-- **Média da reanálise** — calculada em tempo real com os valores atualmente preenchidos.
+## Solução
 
-Fora do modo reanálise, o card continua exatamente como hoje (uma única "Média").
+Congelar a média inicial em um snapshot gravado uma única vez, no momento em que o painel é aberto pela primeira vez em modo reanálise, e nunca mais recalculá-la a partir dos campos editáveis.
 
-## Como a média inicial é congelada
+### Onde guardar
 
-Não é preciso nova tabela. A base já registra todas as alterações em `lab_result_history` (valores antigos e novos, com data). O painel reconstrói o estado de cada linha no instante da contestação:
+Em `stage_evidence` (mesma tabela já usada pelo fluxo cerâmico), com:
+- `stage`: `analise_ceramico`
+- `task_key`: `lab_baseline_<purchase_item_id>`
+- `value_text`: JSON `{ pt, pd, rh, n, at }`
 
-1. Obter a data da contestação com `getContestInfo(purchase)` (já existe em `src/lib/purchases.ts`).
-2. Partir dos valores atuais de cada linha (`lab_results`) e "desfazer" em ordem inversa todos os registros de `lab_result_history` criados **após** essa data — o `old_*` do registro mais antigo pós-contestação vira o valor inicial; registros de `delete` restauram a linha; linhas criadas depois da contestação (sem histórico anterior) não entram na média inicial.
-3. A média inicial é a média simples das linhas assim reconstruídas, com a mesma regra atual (só linhas com Pt, Pd e Rh preenchidos).
+Assim o valor vive junto da compra, sobrevive a recarregamentos e não depende do histórico.
 
-Assim a média inicial nunca muda enquanto o operador digita, e reflete fielmente o resultado enviado ao fornecedor.
+### Comportamento
 
-## Interface
+1. Ao carregar `loadLotes`, se a compra estiver em reanálise (`getContestInfo(purchase)` retorna contestação):
+   - Buscar os snapshots existentes de `stage_evidence`.
+   - Para cada grupo sem snapshot, calcular a média das linhas **como estão nesse primeiro carregamento** (que ainda são os dados da análise inicial) e gravar o snapshot.
+   - Para grupos que já têm snapshot, apenas ler — nunca sobrescrever.
+2. A UI passa a exibir:
+   - **Média inicial** = valor do snapshot (imutável, tons neutros).
+   - **Média da reanálise** = `calcAverage` das linhas atuais (laranja).
+   - **Δ Pt / Δ Pd / Δ Rh** = reanálise − snapshot; se iguais, "Sem alteração em relação à análise inicial".
+3. Fora do modo reanálise, nada muda: exibe apenas a média única.
 
-Dentro do bloco de média de cada grupo, em modo reanálise:
+### Detalhes técnicos
 
-```text
-┌───────────────────────────────┬───────────────────────────────┐
-│ Média inicial (2 análises)    │ Média da reanálise (3 análises)│
-│ Pt 339 · Pd 2.228 · Rh 228    │ Pt 350 · Pd 2.300 · Rh 240     │
-└───────────────────────────────┴───────────────────────────────┘
-        Δ Pt +11 · Pd +72 · Rh +12   (verde/vermelho conforme sinal)
-```
+- Remover `calcBaselineAverage` (reconstrução por histórico) e o estado derivado dele; substituir por um estado `baselines: Record<string, {pt;pd;rh;n}>` carregado/gravado em `loadLotes`.
+- Gravar o snapshot com `upsert`/insert condicional para evitar corrida em duplo carregamento; a chave `task_key` por item garante unicidade lógica.
+- Salvamento de PPM (`persistRow`), histórico (`logHistory`) e precificação continuam usando a média atual — o snapshot é apenas exibição comparativa.
+- O snapshot continua fora do demonstrativo e do PDF.
 
-- Coluna esquerda em tom neutro/cinza (fixa), coluna direita destacada em laranja claro (cor já usada na reanálise).
-- Quando os valores forem idênticos, mostrar "sem alteração" no lugar do delta.
-- Grupos sem histórico pós-contestação exibem a mesma média nas duas colunas (nada foi reanalisado ainda).
-- O histórico colapsável "Histórico de análises" permanece como está.
+### Ressalva
 
-## Detalhes técnicos
-
-- Arquivo alterado: `src/components/processes/CeramicoLabPanel.tsx`.
-- Nova função pura `computeBaselineRows(rows, historyEntries, contestDate)` no mesmo arquivo, mais um `baselineAvg` por lote calculado uma única vez ao carregar (e recalculado após cada gravação, para acompanhar o histórico).
-- Nenhuma mudança de banco, nenhuma mudança no demonstrativo nem no PDF: a precificação continua usando a média atual (reanálise), que é o resultado válido.
-- Sem alteração em outros fluxos (peça/sacola).
+Para a compra que já está em reanálise agora, as linhas atuais já foram editadas; ao aplicar a mudança o snapshot será gerado a partir do que estiver salvo no momento. Se quiser, no mesmo passo posso semear o snapshot dessa compra usando o valor mais antigo registrado em `lab_result_history` para cada versão, recuperando a média original real.
