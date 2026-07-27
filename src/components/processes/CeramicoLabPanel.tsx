@@ -290,7 +290,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         });
       }
 
-      setLotes(items.map(item => {
+      const loteList: LabLote[] = items.map(item => {
         const existing = byItem[item.id] || [];
         const rows: AnalysisRow[] = [1, 2, 3].map(v => {
           const found = existing.find(r => r.versao === v);
@@ -303,9 +303,12 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
           rows,
           rescued: rescued.has(item.id),
         };
-      }));
+      });
+      setLotes(loteList);
 
-      await loadHistory();
+      const entries = await loadHistory();
+      await loadBaselines(loteList, entries);
+
     } finally {
       setLoading(false);
     }
