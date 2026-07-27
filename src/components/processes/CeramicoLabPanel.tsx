@@ -412,6 +412,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
+              const loteHistory = history.filter(h => h.itemId === l.itemId);
+              const historyOpen = !!openHistory[l.itemId];
               return (
                 <Card key={l.itemId} className={`border-border/50 ${registered ? "bg-green-500/5 border-green-300/50" : ""}`}>
                   <CardContent className="p-3 space-y-2">
@@ -426,6 +428,14 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                         </Badge>
                       )}
                     </div>
+
+                    {l.rescued && (
+                      <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Análise carregada do registro anterior — confirme ou altere
+                      </p>
+                    )}
+
 
                     <div className="space-y-1.5">
                       <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center text-[10px] text-muted-foreground pl-1">
