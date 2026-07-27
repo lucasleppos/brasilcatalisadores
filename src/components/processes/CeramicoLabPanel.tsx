@@ -446,6 +446,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
             <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
             {lotes.map((l, i) => {
               const avg = calcAverage(l);
+              const baselineAvg = calcBaselineAverage(l, history, contestDate);
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
@@ -526,16 +527,63 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                     </div>
 
                     {avg && (
-                      <div className="rounded-md border border-primary/30 bg-primary/5 p-2 mt-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold">Média{nFilled > 1 ? ` (${nFilled} análises)` : ""}</span>
+                      baselineAvg ? (
+                        <div className="mt-2 space-y-1.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-md border border-border/60 bg-muted/40 p-2">
+                              <span className="text-[11px] font-semibold text-muted-foreground">
+                                Média inicial{baselineAvg.n > 1 ? ` (${baselineAvg.n} análises)` : ""}
+                              </span>
+                              <div className="text-xs mt-1 space-y-0.5 text-muted-foreground">
+                                <div>Pt: <strong className="text-foreground">{fmtNum(baselineAvg.pt, 4)}</strong></div>
+                                <div>Pd: <strong className="text-foreground">{fmtNum(baselineAvg.pd, 4)}</strong></div>
+                                <div>Rh: <strong className="text-foreground">{fmtNum(baselineAvg.rh, 4)}</strong></div>
+                              </div>
+                            </div>
+                            <div className="rounded-md border border-orange-300/60 bg-orange-500/10 p-2">
+                              <span className="text-[11px] font-semibold text-orange-700">
+                                Média da reanálise{nFilled > 1 ? ` (${nFilled} análises)` : ""}
+                              </span>
+                              <div className="text-xs mt-1 space-y-0.5">
+                                <div>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></div>
+                                <div>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></div>
+                                <div>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></div>
+                              </div>
+                            </div>
+                          </div>
+                          {(() => {
+                            const d = {
+                              pt: avg.pt - baselineAvg.pt,
+                              pd: avg.pd - baselineAvg.pd,
+                              rh: avg.rh - baselineAvg.rh,
+                            };
+                            const unchanged = Math.abs(d.pt) < 0.0001 && Math.abs(d.pd) < 0.0001 && Math.abs(d.rh) < 0.0001;
+                            if (unchanged) {
+                              return <p className="text-[10px] text-muted-foreground text-center">Sem alteração em relação à análise inicial</p>;
+                            }
+                            const cls = (v: number) => v > 0 ? "text-green-600" : v < 0 ? "text-destructive" : "text-muted-foreground";
+                            const sig = (v: number) => `${v > 0 ? "+" : ""}${fmtNum(v, 4)}`;
+                            return (
+                              <p className="text-[10px] text-center flex justify-center gap-3">
+                                <span className={cls(d.pt)}>Δ Pt {sig(d.pt)}</span>
+                                <span className={cls(d.pd)}>Δ Pd {sig(d.pd)}</span>
+                                <span className={cls(d.rh)}>Δ Rh {sig(d.rh)}</span>
+                              </p>
+                            );
+                          })()}
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <span>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></span>
-                          <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
-                          <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
+                      ) : (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 p-2 mt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] font-semibold">Média{nFilled > 1 ? ` (${nFilled} análises)` : ""}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <span>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></span>
+                            <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
+                            <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
+                          </div>
                         </div>
-                      </div>
+                      )
                     )}
 
                     {loteHistory.length > 0 && (
