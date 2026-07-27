@@ -36,6 +36,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [manualCode, setManualCode] = useState("");
 
+  const isSacola = purchase.items.some(i => i.itemType === "peca_sacola");
+  const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
+
   // Load existing conferência items on open
   useEffect(() => {
     if (!open) return;
@@ -47,8 +50,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       .from("purchase_items")
       .select("id, item_type, weight, catalog_part_id, category")
       .eq("purchase_id", purchase.id)
-      .eq("item_type", "peca_sacola")
+      .eq("item_type", itemType)
       .eq("category", "conferencia");
+
 
     if (!data || data.length === 0) {
       setPieces([]);
