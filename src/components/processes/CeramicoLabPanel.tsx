@@ -500,6 +500,48 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                         </div>
                       </div>
                     )}
+
+                    {loteHistory.length > 0 && (
+                      <div className="rounded-md border border-border/60 bg-muted/30 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenHistory(prev => ({ ...prev, [l.itemId]: !prev[l.itemId] }))}
+                          className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold"
+                        >
+                          <span className="flex items-center gap-1">
+                            <History className="h-3 w-3" />
+                            Histórico de análises ({loteHistory.length})
+                          </span>
+                          <ChevronDown className={`h-3 w-3 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {historyOpen && (
+                          <div className="px-2 pb-2 space-y-1.5">
+                            {loteHistory.map(h => (
+                              <div key={h.id} className="text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                                <div className="flex justify-between">
+                                  <span className="font-medium text-foreground">Análise {h.versao}</span>
+                                  <span>{new Date(h.at).toLocaleString("pt-BR")}</span>
+                                </div>
+                                <div>
+                                  <span className="line-through">
+                                    Pt {fmtNum(h.oldPt ?? 0, 0)} · Pd {fmtNum(h.oldPd ?? 0, 0)} · Rh {fmtNum(h.oldRh ?? 0, 0)}
+                                  </span>
+                                  {" → "}
+                                  {h.action === "delete" ? (
+                                    <span className="text-destructive font-medium">removida</span>
+                                  ) : (
+                                    <span className="text-foreground font-medium">
+                                      Pt {fmtNum(h.newPt ?? 0, 0)} · Pd {fmtNum(h.newPd ?? 0, 0)} · Rh {fmtNum(h.newRh ?? 0, 0)}
+                                    </span>
+                                  )}
+                                </div>
+                                {h.by && names[h.by] && <div>por {names[h.by]}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -508,6 +550,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         )}
 
         <div className="space-y-3 pt-2 border-t border-border/40">
+
           <div className="flex items-center gap-2">
             <Progress value={totalCount > 0 ? (savedCount / totalCount) * 100 : 0} className="h-2 flex-1" />
             <span className={`text-xs font-semibold whitespace-nowrap ${isComplete ? "text-green-600" : "text-amber-600"}`}>
