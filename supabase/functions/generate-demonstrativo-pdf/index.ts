@@ -426,7 +426,8 @@ Deno.serve(async (req) => {
       });
       const groupAvgRows: { label: string; pt: number; pd: number; rh: number }[] = [...matchedRows, ...orphanRows];
 
-      if (groupAvgRows.length > 0 || latestLab) {
+      // Skip this section when the calculated-price block already printed Pt/Pd/Rh per group.
+      if (calcItems.length === 0 && (groupAvgRows.length > 0 || latestLab)) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text("Análise Laboratorial", margin, y);
