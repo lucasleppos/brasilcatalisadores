@@ -319,6 +319,12 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                       placeholder="0,000"
                       className="h-8 text-sm"
                     />
+                    {l.recovered && (
+                      <p className="text-[10px] text-amber-700">
+                        Tara carregada do registro anterior — confirme ou altere.
+                      </p>
+                    )}
+
                     <div className="flex justify-between text-[11px]">
                       <span className="text-muted-foreground">
                         Peso Líquido:{" "}
