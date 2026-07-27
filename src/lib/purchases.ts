@@ -490,7 +490,44 @@ export async function updatePurchaseStatus(id: string, status: string) {
     .select()
     .single();
 
+  // Se a compra já estava totalmente alocada em bags, encerra automaticamente
+  if (status === "Cerâmico: Aprovado") {
+    await syncCeramicoAllocation(id);
+  }
+
   return updated;
+}
+
+/**
+ * Verifica se todos os grupos de conferência de uma compra cerâmica já estão
+ * alocados em bags e, em caso positivo, avança para "Bag Alocado" / "Encerrado".
+ */
+export async function syncCeramicoAllocation(purchaseId: string): Promise<boolean> {
+  const { data: purchase } = await supabase
+    .from("purchases")
+    .select("status, op_status, material_flow")
+    .eq("id", purchaseId)
+    .single();
+  if (!purchase) return false;
+  if (purchase.material_flow !== "ceramico") return false;
+  if (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag") return false;
+
+  const { data: confItems } = await supabase
+    .from("purchase_items")
+    .select("id")
+    .eq("purchase_id", purchaseId)
+    .eq("category", "conferencia");
+  if (!confItems || confItems.length === 0) return false;
+
+  const { data: allocatedItems } = await supabase
+    .from("bag_items")
+    .select("purchase_item_id")
+    .eq("purchase_id", purchaseId);
+  const allocatedSet = new Set((allocatedItems || []).map((a: any) => a.purchase_item_id));
+  const remaining = confItems.filter((i: any) => !allocatedSet.has(i.id));
+  if (remaining.length > 0) return false;
+
+  return await advanceOpStatus(purchaseId, "Alocando Bag");
 }
 
 /** Advance to next status automatically (used by workflow) */
