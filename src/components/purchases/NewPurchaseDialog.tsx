@@ -445,31 +445,39 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           <div className="space-y-2 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold flex items-center gap-1">
               <Package className="h-3 w-3" />
-              {isCeramicoMode ? "Peso Bruto Total Recebido (kg) *" : "Material a Classificar (opcional)"}
+              {isCeramicoMode
+                ? "Peso Bruto Total Recebido (kg) *"
+                : "Total de Peças Recebidas (opcional)"}
             </Label>
             <div className="space-y-1">
               <Label className="text-[10px]">
-                {isCeramicoMode ? "Peso bruto total (desconto de tara e embalagens nas próximas etapas)" : "Peso total recebido (kg)"}
+                {isCeramicoMode
+                  ? "Peso bruto total (desconto de tara e embalagens nas próximas etapas)"
+                  : "Total de peças recebidas (un)"}
               </Label>
               <Input
                 type="text"
-                inputMode="decimal"
+                inputMode={isCeramicoMode ? "decimal" : "numeric"}
                 value={bulkWeightStr}
-                onChange={e => setBulkWeightStr(numFilter(e.target.value))}
+                onChange={e =>
+                  setBulkWeightStr(
+                    isCeramicoMode ? numFilter(e.target.value) : e.target.value.replace(/[^0-9]/g, "")
+                  )
+                }
                 className="h-8 text-sm"
-                placeholder="0,0000"
+                placeholder={isCeramicoMode ? "0,0000" : "0"}
               />
             </div>
             {bulkWeight > 0 && !isCeramicoMode && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">Classificado: {fmtNum(totalClassified, 4)} kg</span>
+                  <span className="text-muted-foreground">Classificado: {classifiedAmount} un</span>
                   <span className={`font-semibold ${bulkRemaining < 0 ? "text-destructive" : bulkRemaining === 0 ? "text-green-600" : "text-foreground"}`}>
-                    Restante: {fmtNum(bulkRemaining, 4)} kg
+                    Restante: {bulkRemaining} un
                   </span>
                 </div>
                 <Progress value={bulkProgress} className="h-2" />
-                {bulkRemaining === 0 && totalClassified > 0 && (
+                {bulkRemaining === 0 && classifiedAmount > 0 && (
                   <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-300 text-[10px] flex items-center gap-1 w-fit">
                     <CheckCircle2 className="h-3 w-3" />
                     Totalmente classificado
@@ -478,7 +486,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                 {bulkRemaining < 0 && (
                   <div className="flex items-center gap-1 text-[10px] text-destructive">
                     <AlertTriangle className="h-3 w-3" />
-                    Peso dos itens excede o material a classificar
+                    Quantidade dos itens excede o total recebido
                   </div>
                 )}
               </div>
