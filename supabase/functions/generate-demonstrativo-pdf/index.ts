@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       if (catalogFixedItems.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
-        doc.text("Peças — Preço Fixo (Catálogo)", margin, y);
+        doc.text(`${isCeramico ? "Material" : "Peças"} — Preço Fixo (Catálogo)`, margin, y);
         y += 7;
 
         // Table header
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
         const fixedCols = [10, 45, 30, contentWidth - 85];
         const fixedX = [margin];
         for (let i = 1; i < fixedCols.length; i++) fixedX.push(fixedX[i - 1] + fixedCols[i - 1]);
-        const fixedHeaders = ["#", "Peça", "Peso", "Valor"];
+        const fixedHeaders = ["#", isCeramico ? "Material" : "Peça", "Peso", "Valor"];
 
         doc.rect(margin, y, contentWidth, 7, "F");
         doc.setFont("helvetica", "bold");
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
-        doc.text("Peças — Preço Calculado (PPM Lab)", margin, y);
+        doc.text(`${isCeramico ? "Material" : "Peças"} — Preço Calculado (PPM Lab)`, margin, y);
         y += 7;
 
         // Fetch lab results for these items
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
         const calcCols = [10, 35, 25, 25, 25, 25, contentWidth - 145];
         const calcX = [margin];
         for (let i = 1; i < calcCols.length; i++) calcX.push(calcX[i - 1] + calcCols[i - 1]);
-        const calcHeaders = ["#", "Peça", "Peso", "Pt", "Pd", "Rh", "Valor"];
+        const calcHeaders = ["#", isCeramico ? "Material" : "Peça", "Peso", "Pt", "Pd", "Rh", "Valor"];
 
         doc.rect(margin, y, contentWidth, 7, "F");
         doc.setFont("helvetica", "bold");
@@ -426,7 +426,8 @@ Deno.serve(async (req) => {
       });
       const groupAvgRows: { label: string; pt: number; pd: number; rh: number }[] = [...matchedRows, ...orphanRows];
 
-      if (groupAvgRows.length > 0 || latestLab) {
+      // Skip this section when the calculated-price block already printed Pt/Pd/Rh per group.
+      if (calcItems.length === 0 && (groupAvgRows.length > 0 || latestLab)) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text("Análise Laboratorial", margin, y);
