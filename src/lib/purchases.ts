@@ -31,6 +31,8 @@ const PECAS_STATUSES = [
   "Peças: Em Amostragem",
   "Peças: Peso Divergente",
   "Peças: Alocado ao Bag",
+  "Peças: Encerrado",
+
   "Concluído",
 ] as const;
 
