@@ -1,26 +1,32 @@
-## Diagnóstico
+## Problema confirmado
 
-Verificado no banco: a única compra existente (`16/07/2026 - 01`) está com `status = "Cerâmico: Aprovado"` e `op_status = "Alocando Bag"` — por isso não aparece em **Concluídos**, cujo filtro exige `Cerâmico: Encerrado`, `Concluído` ou `op_status = "Bag Alocado"`.
+Nos dados da compra em teste (3 grupos: 13, 5 e 7 kg = 25 kg):
 
-Porém, os 3 grupos de conferência dessa compra **já estão alocados** no BAG-001 (`bag_items` tem os 3 `purchase_item_id`, 6 + 5 + 11 kg = 22 kg, igual ao peso do bag).
+| Campo | Grupo A | Grupo B | Grupo C |
+|---|---|---|---|
+| `weight` (bruto real) | 13 | 5 | 7 |
+| `weight_loss` (tara) | 0,333 | 0,133 | 0,222 |
+| `calc_input.grossWeight` | 12,667 | 4,867 | 6,778 |
+| `calc_input.tare` | 0 | 0 | 0 |
 
-Causa, pelo histórico de status: a compra chegou a "Bag Alocado" / "Cerâmico: Encerrado" em 16/07, foi **movida manualmente pelo admin** de volta para "Gerar Boleto de Aprovação" e reaprovada hoje. Ao reaprovar, `updatePurchaseStatus` sempre reseta `op_status = "Alocando Bag"`, mas a verificação de "todos os grupos alocados" só roda **no momento de uma nova alocação** (em `AllocationPanel`/`AllocateMaterialDialog`). Como não há mais nada a alocar, nada dispara e a compra fica presa fora do Bags e fora de Concluídos.
+A precificação já grava `calc_input.grossWeight` como peso **líquido** (bruto − tara) e `tare: 0`. Mas o demonstrativo (diálogo e PDF) trata `calc_input.grossWeight` como bruto e ainda subtrai `weight_loss`:
+
+- Bruto exibido: 24,3120 (na verdade é o líquido)
+- Líquido exibido: 23,6240 (tara descontada duas vezes)
+- Correto: bruto 25,0000 / tara 0,6880 / líquido 24,3120
 
 ## Correção
 
-**1. Centralizar a verificação (`src/lib/purchases.ts`)**
-- Criar `syncCeramicoAllocation(purchaseId)`: se a compra é cerâmica, está em "Cerâmico: Aprovado" com `op_status = "Alocando Bag"`, e todos os itens `category = "conferencia"` já constam em `bag_items`, então avança para "Bag Alocado" / "Cerâmico: Encerrado" (reaproveitando `advanceOpStatus`).
-- Chamar essa função ao final de `updatePurchaseStatus` quando o novo status for "Cerâmico: Aprovado" — assim, reaprovações de compras já alocadas se resolvem sozinhas.
+Usar a tabela `purchase_items` como fonte da verdade dos pesos no demonstrativo:
 
-**2. Reutilizar nos painéis de Bags**
-- `AllocationPanel.tsx` e `AllocateMaterialDialog.tsx` passam a chamar `syncCeramicoAllocation` em vez de repetir a consulta inline (mesmo comportamento, uma fonte só de verdade).
+- bruto = `item.weight`
+- tara = `item.weight_loss`
+- líquido = bruto − tara (nunca negativo)
+- Fallback apenas quando `weight` estiver vazio: usar `calc_input.grossWeight` como bruto e `calc_input.tare` como tara.
 
-**3. Destravar o registro atual**
-- Rodar uma atualização única no banco marcando essa compra como `op_status = "Bag Alocado"` e `status = "Cerâmico: Encerrado"`, já que a alocação está completa. Ela então aparece em Concluídos com o BAG-001 vinculado.
+## Arquivos afetados
 
-**4. Rede de segurança no módulo Concluídos**
-- Em `CompletedPage.tsx`, ao carregar, executar `syncCeramicoAllocation` para compras cerâmicas em "Alocando Bag" cujos grupos já estejam todos alocados, e recarregar a lista. Evita que qualquer movimentação manual futura deixe processos invisíveis.
+1. `src/components/processes/DemonstrativoViewDialog.tsx` — função `weights()` (linhas ~149-155): inverter a prioridade para `item.weight` / `item.weight_loss`.
+2. `supabase/functions/generate-demonstrativo-pdf/index.ts` — mesma lógica nos três pontos (linhas ~84, ~88-89 e ~326-327), extraída numa função auxiliar única para evitar divergência. Redeploy da função.
 
-## Observação
-
-Nenhuma mudança de schema, permissões ou rotas. O módulo Bags continua listando os materiais até o fechamento do bag.
+Nenhuma alteração de cálculo de preço: os valores em R$ continuam baseados no peso líquido, que é o que a precificação já usou (12,667 / 4,867 / 6,778) — apenas a exibição de bruto/tara/líquido é corrigida.
