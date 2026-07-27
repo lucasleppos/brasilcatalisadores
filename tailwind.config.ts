@@ -66,6 +66,11 @@ export default {
           light: "hsl(var(--gold-light))",
           dark: "hsl(var(--gold-dark))",
         },
+        reanalysis: {
+          DEFAULT: "hsl(var(--reanalysis))",
+          border: "hsl(var(--reanalysis-border))",
+          foreground: "hsl(var(--reanalysis-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
