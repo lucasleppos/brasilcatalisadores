@@ -346,45 +346,85 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           {/* Lotes list */}
           {lotes.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Lotes Conferidos</p>
+              <p className="text-xs font-medium text-muted-foreground">Lotes Conferidos (editáveis)</p>
               {lotes.map((l, i) => (
-                <Card key={i} className="border-border/50">
-                  <CardContent className="p-3 flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                      {l.photoUrl ? (
-                        <img
-                          src={l.photoUrl}
-                          alt=""
-                          className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
-                          onClick={() => window.open(l.photoUrl, "_blank")}
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
-                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="text-sm font-semibold truncate">#{i + 1} — {l.category}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Peso Bruto: {fmtNum(l.weightGross, 3)} kg
-                        </p>
-                        {l.labelCode && (
-                          <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
+                <Card key={l.id || `new-${i}`} className="border-border/50">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        {l.photoUrl ? (
+                          <img
+                            src={l.photoUrl}
+                            alt=""
+                            className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
+                            onClick={() => window.open(l.photoUrl, "_blank")}
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         )}
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <p className="text-[11px] font-semibold text-muted-foreground">#{i + 1}</p>
+                          <Input
+                            list="ceramico-categories"
+                            value={l.category}
+                            onChange={e => updateLote(i, { category: e.target.value })}
+                            placeholder="Grupo"
+                            className="h-7 text-xs"
+                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              inputMode="decimal"
+                              value={l.weightStr ?? fmtNum(l.weightGross, 3)}
+                              onChange={e => {
+                                const v = e.target.value.replace(/[^0-9.,]/g, "");
+                                const n = parseFloat(v.replace(",", "."));
+                                updateLote(i, { weightStr: v, weightGross: isNaN(n) ? 0 : n });
+                              }}
+                              placeholder="0,000"
+                              className="h-7 text-xs"
+                            />
+                            <span className="text-[10px] text-muted-foreground">kg bruto</span>
+                          </div>
+                          {l.labelCode && (
+                            <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="outline" size="icon" className="h-7 w-7"
+                          title="Imprimir etiqueta"
+                          onClick={() => handlePrintOne(i)}
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Remover grupo" onClick={() => handleRemove(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        title="Imprimir etiqueta"
-                        onClick={() => handlePrintOne(i)}
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      id={`edit-photo-${i}`}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleEditPhoto(i, f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      size="sm" variant="outline" className="w-full h-7 text-[11px]"
+                      disabled={uploadingPhoto}
+                      onClick={() => document.getElementById(`edit-photo-${i}`)?.click()}
+                    >
+                      <Camera className="h-3 w-3 mr-1" />
+                      {l.photoUrl ? "Trocar foto" : "Adicionar foto"}
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
