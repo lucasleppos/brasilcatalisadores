@@ -143,8 +143,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     }, 0);
   }, [items]);
 
-  const bulkRemaining = bulkWeight - totalClassified;
-  const bulkProgress = bulkWeight > 0 ? Math.min((totalClassified / bulkWeight) * 100, 100) : 0;
+  // For peça / peça em sacola the bulk field counts UNITS, not kilograms
+  const isUnitMode = addType === "peca" || addType === "peca_sacola";
+  const totalUnits = useMemo(
+    () => items.reduce((s, item) => s + (item.quantity || 0), 0),
+    [items]
+  );
+  const classifiedAmount = isUnitMode ? totalUnits : totalClassified;
+  const bulkRemaining = bulkWeight - classifiedAmount;
+  const bulkProgress = bulkWeight > 0 ? Math.min((classifiedAmount / bulkWeight) * 100, 100) : 0;
 
   const runCalcPreview = async () => {
     if (grossWeight <= 0) return;
