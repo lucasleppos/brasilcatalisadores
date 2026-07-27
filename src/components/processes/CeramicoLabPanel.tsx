@@ -496,7 +496,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
             <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
             {lotes.map((l, i) => {
               const avg = calcAverage(l);
-              const baselineAvg = calcBaselineAverage(l, history, contestDate);
+              const baselineAvg = contestDate ? (baselines[l.itemId] ?? null) : null;
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
