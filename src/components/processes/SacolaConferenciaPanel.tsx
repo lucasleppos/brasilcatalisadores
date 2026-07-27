@@ -180,7 +180,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Conferência — Peça em Sacola</DialogTitle>
+          <DialogTitle>{isSacola ? "Conferência — Peça em Sacola" : "Conferência — Peças"}</DialogTitle>
         </DialogHeader>
 
         {/* Purchase header */}
@@ -190,9 +190,10 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span className="font-mono text-muted-foreground">{purchase.purchaseNumber}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{purchase.items.reduce((s, i) => s + (i.quantity || 1), 0)} peças declaradas</span>
-            <span>{fmtNum(purchase.items.reduce((s, i) => s + (i.weight || 0), 0), 3)} kg</span>
+            <span>{declaredQty} peças declaradas</span>
+            <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
           </div>
+
         </div>
 
         {/* Pieces list */}
