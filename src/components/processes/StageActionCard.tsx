@@ -313,8 +313,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   );
 
   return (
-    <Card className="border-border/60">
+    <Card className={isReanalysis ? "border-reanalysis-border bg-reanalysis/40" : "border-border/60"}>
       <CardContent className="p-4 space-y-3">
+        {isReanalysis && contestInfo && (
+          <ReanalysisBanner purchase={purchase} contest={contestInfo} />
+        )}
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-0.5">
