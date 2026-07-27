@@ -212,12 +212,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
             {catalogFixedItems.length > 0 && (
               <div>
-                <p className="font-semibold mb-1">Peças — Preço Fixo (Catálogo)</p>
+                <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Fixo (Catálogo)</p>
                 <table className="w-full text-xs border">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-1 text-left">#</th>
-                      <th className="p-1 text-left">Peça</th>
+                      <th className="p-1 text-left">{isCeramico ? "Material" : "Peça"}</th>
                       <th className="p-1 text-left">Peso</th>
                       <th className="p-1 text-left">Valor</th>
                     </tr>
@@ -238,12 +238,12 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
             {calcItems.length > 0 && (
               <div>
-                <p className="font-semibold mb-1">Peças — Preço Calculado (PPM Lab)</p>
+                <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Calculado (PPM Lab)</p>
                 <table className="w-full text-xs border">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-1 text-left">#</th>
-                      <th className="p-1 text-left">Peça</th>
+                      <th className="p-1 text-left">{isCeramico ? "Material" : "Peça"}</th>
                       <th className="p-1 text-left">Peso</th>
                       <th className="p-1 text-left">Pt</th>
                       <th className="p-1 text-left">Pd</th>
