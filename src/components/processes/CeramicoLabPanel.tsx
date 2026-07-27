@@ -509,7 +509,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                           className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold"
                         >
                           <span className="flex items-center gap-1">
-                            <History className="h-3 w-3" />
+                            <HistoryIcon className="h-3 w-3" />
                             Histórico de análises ({loteHistory.length})
                           </span>
                           <ChevronDown className={`h-3 w-3 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
