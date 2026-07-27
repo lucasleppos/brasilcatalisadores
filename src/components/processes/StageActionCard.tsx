@@ -567,10 +567,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </AlertDialog>
           </div>
         ) : isSacolaConferencia ? (
-          /* Sacola: Iniciar Conferência button */
+          /* Peças / Sacola: incluir peças conferidas */
           <div className="space-y-2 pt-1 border-t border-border/40">
             <Button size="sm" className="w-full" onClick={() => setConferenciaOpen(true)}>
-              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+              <Search className="h-3 w-3 mr-1" /> Incluir Peças Conferidas
             </Button>
             <SacolaConferenciaPanel
               purchase={purchase}
