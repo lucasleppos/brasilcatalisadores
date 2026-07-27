@@ -136,17 +136,16 @@ export const STAGE_ROLES: Record<string, string[]> = {
 
 export const PECAS_FLOW: string[] = [
   ...COMMON_STATUSES,
-  "Peças: Trituração e Amostragem",
-  "Peças: Laboratório",
   "Peças: Aguardando Demonstrativo",
   "Peças: Gerar Boleto de Aprovação",
   // "Peças: Demonstrativo Contestado" is a loop state, not in linear sequence
-  "Peças: Aprovado - Aguardando Pagamento",
-  "Peças: Pagamento Realizado",
+  "Peças: Em Corte",
+  "Peças: Trituração e Amostragem",
   // "Peças: Peso Divergente" is a special state, not in linear sequence
   "Peças: Alocado ao Bag",
   "Concluído",
 ];
+
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
