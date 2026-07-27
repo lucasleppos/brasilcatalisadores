@@ -36,6 +36,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [manualCode, setManualCode] = useState("");
 
+  const isSacola = purchase.items.some(i => i.itemType === "peca_sacola");
+  const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
+
   // Load existing conferência items on open
   useEffect(() => {
     if (!open) return;
@@ -47,8 +50,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       .from("purchase_items")
       .select("id, item_type, weight, catalog_part_id, category")
       .eq("purchase_id", purchase.id)
-      .eq("item_type", "peca_sacola")
+      .eq("item_type", itemType)
       .eq("category", "conferencia");
+
 
     if (!data || data.length === 0) {
       setPieces([]);
@@ -106,30 +110,31 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(prev => prev.filter((_, i) => i !== index));
   };
 
+  /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
+  const persistPieces = async () => {
+    await supabase
+      .from("purchase_items")
+      .delete()
+      .eq("purchase_id", purchase.id)
+      .in("item_type", ["peca", "peca_sacola"]);
+
+    await supabase.from("purchase_items").insert(
+      pieces.map(p => ({
+        purchase_id: purchase.id,
+        item_type: itemType,
+        category: "conferencia",
+        quantity: 1,
+        weight: p.weight,
+        catalog_part_id: p.catalogPartId,
+      }))
+    );
+  };
+
   const handleSave = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
     setSaving(true);
     try {
-      // Delete old conferencia items
-      await supabase
-        .from("purchase_items")
-        .delete()
-        .eq("purchase_id", purchase.id)
-        .eq("item_type", "peca_sacola")
-        .eq("category", "conferencia");
-
-      // Insert all pieces
-      await supabase.from("purchase_items").insert(
-        pieces.map(p => ({
-          purchase_id: purchase.id,
-          item_type: "peca_sacola" as const,
-          category: "conferencia",
-          quantity: 1,
-          weight: p.weight,
-          catalog_part_id: p.catalogPartId,
-        }))
-      );
-
+      await persistPieces();
       toast.success("Conferência salva");
       onOpenChange(false);
     } catch {
@@ -139,11 +144,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
   };
 
-  const declaredQty = purchase.items
-    .filter(i => i.itemType === "peca_sacola")
-    .reduce((s, i) => s + (i.quantity || 1), 0);
+  // Meta = total de peças declaradas na criação da compra (unidades)
+  const declaredQty = purchase.bulkWeight && purchase.bulkWeight > 0
+    ? Math.round(purchase.bulkWeight)
+    : purchase.items
+        .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
+        .reduce((s, i) => s + (i.quantity || 1), 0);
 
-  const isComplete = pieces.length === declaredQty;
+  const isComplete = declaredQty > 0 && pieces.length === declaredQty;
 
   const handleFinish = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
@@ -153,26 +161,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
     setSaving(true);
     try {
-      // Save first
-      await supabase
-        .from("purchase_items")
-        .delete()
-        .eq("purchase_id", purchase.id)
-        .eq("item_type", "peca_sacola")
-        .eq("category", "conferencia");
-
-      await supabase.from("purchase_items").insert(
-        pieces.map(p => ({
-          purchase_id: purchase.id,
-          item_type: "peca_sacola" as const,
-          category: "conferencia",
-          quantity: 1,
-          weight: p.weight,
-          catalog_part_id: p.catalogPartId,
-        }))
-      );
-
-      // Advance stage
+      await persistPieces();
       await advanceStage(purchase.id, purchase.status);
       toast.success("Conferência encerrada");
       onOpenChange(false);
@@ -184,13 +173,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
   };
 
+
   const totalWeight = pieces.reduce((s, p) => s + p.weight, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Conferência — Peça em Sacola</DialogTitle>
+          <DialogTitle>{isSacola ? "Conferência — Peça em Sacola" : "Conferência — Peças"}</DialogTitle>
         </DialogHeader>
 
         {/* Purchase header */}
@@ -200,9 +190,10 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span className="font-mono text-muted-foreground">{purchase.purchaseNumber}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{purchase.items.reduce((s, i) => s + (i.quantity || 1), 0)} peças declaradas</span>
-            <span>{fmtNum(purchase.items.reduce((s, i) => s + (i.weight || 0), 0), 3)} kg</span>
+            <span>{declaredQty} peças declaradas</span>
+            <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
           </div>
+
         </div>
 
         {/* Pieces list */}

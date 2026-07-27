@@ -91,7 +91,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
-  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas" && hasSacolaItems;
+  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas";
   const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
@@ -567,10 +567,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             </AlertDialog>
           </div>
         ) : isSacolaConferencia ? (
-          /* Sacola: Iniciar Conferência button */
+          /* Peças / Sacola: incluir peças conferidas */
           <div className="space-y-2 pt-1 border-t border-border/40">
             <Button size="sm" className="w-full" onClick={() => setConferenciaOpen(true)}>
-              <Search className="h-3 w-3 mr-1" /> Iniciar Conferência
+              <Search className="h-3 w-3 mr-1" /> Incluir Peças Conferidas
             </Button>
             <SacolaConferenciaPanel
               purchase={purchase}
