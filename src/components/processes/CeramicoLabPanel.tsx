@@ -72,23 +72,20 @@ const calcAverage = (l: LabLote) => {
   return { pt, pd, rh, n: filled.length };
 };
 
-// Reconstrói o estado das análises no momento da contestação, desfazendo o
-// histórico posterior a essa data. Retorna a média inicial (congelada).
-const calcBaselineAverage = (
-  l: LabLote,
-  history: HistoryEntry[],
-  contestDate: string | null,
-) => {
-  if (!contestDate) return null;
-  const cut = new Date(contestDate).getTime();
-  const after = history
-    .filter(h => h.itemId === l.itemId && new Date(h.at).getTime() >= cut)
-    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  if (after.length === 0) return null;
+interface Baseline { pt: number; pd: number; rh: number; n: number }
 
+const BASELINE_STAGE = "analise_ceramico";
+const baselineKey = (itemId: string) => `lab_baseline_${itemId}`;
+
+// Snapshot da análise inicial (antes da contestação): para cada versão usa o
+// valor mais antigo registrado no histórico (valor original) ou, se nunca foi
+// alterado, o valor atual da linha.
+const calcInitialSnapshot = (l: LabLote, history: HistoryEntry[]): Baseline | null => {
   const values: { pt: number; pd: number; rh: number }[] = [];
   [1, 2, 3].forEach(v => {
-    const first = after.find(h => h.versao === v);
+    const first = history
+      .filter(h => h.itemId === l.itemId && h.versao === v)
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
     if (first) {
       if (first.oldPt === null && first.oldPd === null && first.oldRh === null) return;
       values.push({ pt: first.oldPt ?? 0, pd: first.oldPd ?? 0, rh: first.oldRh ?? 0 });
@@ -99,7 +96,6 @@ const calcBaselineAverage = (
       values.push({ pt: parseNum(row.pt), pd: parseNum(row.pd), rh: parseNum(row.rh) });
     }
   });
-
   if (values.length === 0) return null;
   return {
     pt: values.reduce((s, r) => s + r.pt, 0) / values.length,
@@ -108,6 +104,7 @@ const calcBaselineAverage = (
     n: values.length,
   };
 };
+
 
 interface CeramicoLabPanelProps {
   purchase: Purchase;
