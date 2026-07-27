@@ -165,7 +165,7 @@ export default function ProcessBoard() {
       </div>
 
       <ProcessKPIs
-        totalCount={filtered.length}
+        totalCount={boardPurchases.length}
         activeCount={activeCount}
         completedCount={completedCount}
         totalValue={totalValue}
