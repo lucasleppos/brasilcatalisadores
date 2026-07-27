@@ -21,7 +21,9 @@ interface Lote {
   labelCode: string;
   tareStr: string;
   packagePhotoUrl: string;
+  recovered?: boolean;
 }
+
 
 interface Props {
   purchase: Purchase;
