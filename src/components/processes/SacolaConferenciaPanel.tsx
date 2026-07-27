@@ -3,9 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
@@ -18,9 +17,9 @@ interface ConferenciaPiece {
   id?: string;
   code: string;
   reference: string | null;
-  catalogPartId: string | null;
-  catalogPartName: string | null;
-  weight: number;
+  catalogPartId: string;
+  unitWeight: number;
+  quantity: number;
 }
 
 interface SacolaConferenciaPanelProps {
@@ -32,15 +31,13 @@ interface SacolaConferenciaPanelProps {
 
 export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, onCompleted }: SacolaConferenciaPanelProps) {
   const [pieces, setPieces] = useState<ConferenciaPiece[]>([]);
-  const [weight, setWeight] = useState("");
+  const [qty, setQty] = useState("1");
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
-  const [manualCode, setManualCode] = useState("");
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola");
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
 
-  // Load existing conferência items on open
   useEffect(() => {
     if (!open) return;
     loadExistingPieces();
@@ -49,61 +46,71 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, catalog_part_id, category")
+      .select("id, item_type, weight, quantity, catalog_part_id, category")
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
       .eq("category", "conferencia");
 
-
-    if (!data || data.length === 0) {
+    const rows = (data || []).filter(d => d.catalog_part_id);
+    if (rows.length === 0) {
       setPieces([]);
       return;
     }
 
-    // Fetch catalog info for parts
-    const catalogIds = data.filter(d => d.catalog_part_id).map(d => d.catalog_part_id!);
-    let catalogMap: Record<string, { code: string; reference: string }> = {};
-    if (catalogIds.length > 0) {
-      const { data: parts } = await supabase
-        .from("catalog_parts")
-        .select("id, code, reference")
-        .in("id", catalogIds);
-      (parts || []).forEach(p => { catalogMap[p.id] = { code: p.code, reference: p.reference }; });
-    }
+    const catalogIds = rows.map(d => d.catalog_part_id!);
+    const catalogMap: Record<string, { code: string; reference: string }> = {};
+    const { data: parts } = await supabase
+      .from("catalog_parts")
+      .select("id, code, reference")
+      .in("id", catalogIds);
+    (parts || []).forEach(p => { catalogMap[p.id] = { code: p.code, reference: p.reference }; });
 
-    setPieces(data.map(d => ({
-      id: d.id,
-      code: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].code : "",
-      reference: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].reference : null,
-      catalogPartId: d.catalog_part_id,
-      catalogPartName: d.catalog_part_id && catalogMap[d.catalog_part_id] ? catalogMap[d.catalog_part_id].reference : null,
-      weight: Number(d.weight) || 0,
-    })));
+    setPieces(rows.map(d => {
+      const q = Math.max(1, Number(d.quantity) || 1);
+      const info = catalogMap[d.catalog_part_id!];
+      return {
+        id: d.id,
+        code: info?.code || "",
+        reference: info?.reference || null,
+        catalogPartId: d.catalog_part_id!,
+        unitWeight: (Number(d.weight) || 0) / q,
+        quantity: q,
+      };
+    }));
   };
 
   const handlePartSelect = (part: CatalogPart) => {
     setSelectedPart(part);
-    setManualCode(part.code || part.reference);
-    if (part.weight > 0) setWeight(fmtNum(part.weight, 3));
+    setQty("1");
   };
 
   const handleAdd = () => {
-    const w = parseFloat(weight.replace(/\./g, "").replace(",", "."));
-    const code = selectedPart ? (selectedPart.code || selectedPart.reference) : manualCode.trim();
-    if (!code) { toast.error("Informe o código da peça"); return; }
-    if (isNaN(w) || w <= 0) { toast.error("Informe o peso"); return; }
+    if (!selectedPart) { toast.error("Selecione uma peça do catálogo"); return; }
+    const q = parseInt(qty, 10);
+    if (isNaN(q) || q < 1) { toast.error("Informe a quantidade"); return; }
 
-    setPieces(prev => [...prev, {
-      code,
-      reference: selectedPart ? selectedPart.reference : null,
-      catalogPartId: selectedPart?.id || null,
-      catalogPartName: selectedPart ? (selectedPart.reference || selectedPart.code) : null,
-      weight: w,
-    }]);
+    setPieces(prev => {
+      const idx = prev.findIndex(p => p.catalogPartId === selectedPart.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + q };
+        return next;
+      }
+      return [...prev, {
+        code: selectedPart.code || selectedPart.reference,
+        reference: selectedPart.reference,
+        catalogPartId: selectedPart.id,
+        unitWeight: Number(selectedPart.weight) || 0,
+        quantity: q,
+      }];
+    });
 
     setSelectedPart(null);
-    setManualCode("");
-    setWeight("");
+    setQty("1");
+  };
+
+  const changeQty = (index: number, delta: number) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, quantity: Math.max(1, p.quantity + delta) } : p));
   };
 
   const handleRemove = async (index: number) => {
@@ -127,8 +134,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         purchase_id: purchase.id,
         item_type: itemType,
         category: "conferencia",
-        quantity: 1,
-        weight: p.weight,
+        quantity: p.quantity,
+        weight: p.unitWeight * p.quantity,
         catalog_part_id: p.catalogPartId,
       }))
     );
@@ -155,12 +162,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
 
-  const isComplete = declaredQty > 0 && pieces.length === declaredQty;
+  const totalQty = pieces.reduce((s, p) => s + p.quantity, 0);
+  const totalWeight = pieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
+  const isComplete = declaredQty > 0 && totalQty === declaredQty;
 
   const handleFinish = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
     if (!isComplete) {
-      toast.error(`Faltam peças: ${pieces.length}/${declaredQty} conferidas`);
+      toast.error(`Faltam peças: ${totalQty}/${declaredQty} conferidas`);
       return;
     }
     setSaving(true);
@@ -176,9 +185,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       setSaving(false);
     }
   };
-
-
-  const totalWeight = pieces.reduce((s, p) => s + p.weight, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,7 +203,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span>{declaredQty} peças declaradas</span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
           </div>
-
         </div>
 
         {/* Pieces list */}
@@ -205,29 +210,36 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Peças Conferidas</p>
             {pieces.map((p, i) => (
-              <Card key={i} className="border-border/50">
-                <CardContent className="p-3 flex items-start justify-between">
+              <Card key={p.catalogPartId} className="border-border/50">
+                <CardContent className="p-3 flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
                     <p className="text-xs font-semibold text-muted-foreground">#{i + 1}</p>
                     <p className="text-sm">
                       <span className="text-muted-foreground">Código: </span>
                       <span className="font-mono font-medium">{p.code}</span>
                     </p>
-                    {p.catalogPartId ? (
-                      <p className="text-xs text-green-700 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>Referência: <span className="font-mono">{p.reference || p.catalogPartName}</span></span>
-                      </p>
-                    ) : (
-                      <p className="text-xs text-amber-600 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" /> Não encontrada no catálogo
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">Peso: {fmtNum(p.weight, 3)} kg</p>
+                    <p className="text-xs text-green-700 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Referência: <span className="font-mono">{p.reference || "—"}</span></span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Peso unit.: {fmtNum(p.unitWeight, 3)} kg · Total: {fmtNum(p.unitWeight * p.quantity, 3)} kg
+                    </p>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => changeQty(i, -1)}>
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-semibold">{p.quantity}</span>
+                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => changeQty(i, 1)}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -252,51 +264,38 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               </div>
             )}
           </div>
-          {!selectedPart && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Ou código manual (se não encontrar)</Label>
-              <Input
-                value={manualCode}
-                onChange={e => setManualCode(e.target.value)}
-                placeholder="Ex: ABC-123"
-                className="h-8 text-sm"
-              />
-            </div>
-          )}
           <div className="space-y-1.5">
-            <Label className="text-xs">
-              Peso (kg){selectedPart && selectedPart.weight > 0 && (
-                <span className="ml-1 font-normal text-muted-foreground">· sugerido pelo catálogo</span>
-              )}
-            </Label>
+            <Label className="text-xs">Quantidade (un)</Label>
             <Input
-              inputMode="decimal"
-              value={weight}
-              onChange={e => setWeight(e.target.value.replace(/[^0-9.,]/g, ""))}
-              placeholder="0,000"
+              inputMode="numeric"
+              value={qty}
+              onChange={e => setQty(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="1"
               className="h-8 text-sm"
             />
           </div>
-          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!selectedPart && !manualCode.trim()}>
+          <Button size="sm" variant="secondary" className="w-full" onClick={handleAdd} disabled={!selectedPart || !qty || parseInt(qty, 10) < 1}>
             <Plus className="h-3 w-3 mr-1" /> Adicionar Peça
           </Button>
+          <p className="text-[11px] text-muted-foreground">
+            Somente peças do catálogo podem ser incluídas. O peso é carregado automaticamente do cadastro.
+          </p>
         </div>
 
         {/* Summary + Actions */}
         <div className="space-y-3 pt-2 border-t border-border/40">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total:</span>
-            <span className="font-semibold">{pieces.length} peças | {fmtNum(totalWeight, 3)} kg</span>
+            <span className="font-semibold">{totalQty} peças | {fmtNum(totalWeight, 3)} kg</span>
           </div>
 
-          {/* Progress indicator */}
           <div className="flex items-center gap-2">
-            <Progress value={declaredQty > 0 ? (pieces.length / declaredQty) * 100 : 0} className="h-2 flex-1" />
+            <Progress value={declaredQty > 0 ? (totalQty / declaredQty) * 100 : 0} className="h-2 flex-1" />
             <span className={`text-xs font-semibold whitespace-nowrap ${isComplete ? "text-green-600" : "text-amber-600"}`}>
-              {pieces.length}/{declaredQty} peças
+              {totalQty}/{declaredQty} peças
             </span>
           </div>
-          {!isComplete && pieces.length > 0 && (
+          {!isComplete && totalQty > 0 && (
             <p className="text-xs text-amber-600 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               Confira todas as {declaredQty} peças para encerrar
@@ -310,7 +309,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </Button>
             <Button className="flex-1" onClick={handleFinish} disabled={saving || !isComplete}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-              Encerrar ({pieces.length}/{declaredQty})
+              Encerrar ({totalQty}/{declaredQty})
             </Button>
           </div>
         </div>
