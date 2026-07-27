@@ -30,6 +30,8 @@ interface CeramicoLote {
   id?: string;
   category: string;
   weightGross: number;
+  /** draft text while editing the weight input */
+  weightStr?: string;
   photoUrl: string;
   labelCode?: string;
 }
