@@ -1,27 +1,37 @@
 ## Objetivo
 
-Dois ajustes no demonstrativo (PDF e visualização em tela) para o fluxo de material cerâmico.
+Quando um demonstrativo é contestado e o processo volta para trás, o card deve ficar visualmente destacado como "EM REAMOSTRAGEM E REANÁLISE", exibir o motivo da contestação e permitir que o operador reedite todos os dados já lançados (grupos, pesos, TARA, fotos e análises), percorrendo novamente as etapas até a aprovação.
 
-## 1. Remover o bloco "Análise Laboratorial" do PDF
+## 1. Detectar o modo reanálise
 
-Hoje o PDF imprime a tabela de Pt/Pd/Rh por grupo duas vezes na prática: uma dentro do bloco "Preço Calculado (PPM Lab)" e outra na seção "Análise Laboratorial" no rodapé.
+Criar um helper em `src/lib/purchases.ts` (`isInReanalysis(purchase)` + `getContestInfo(purchase)`), que varre o histórico de status de trás para frente e identifica se existe um registro de contestação posterior à última passagem pela etapa de aprovação. Retorna também o motivo e a data da contestação, que já ficam gravados na observação do histórico.
 
-Ação: suprimir a seção "Análise Laboratorial" (tabela por grupo e a variante de resumo geral Pt/Pd/Rh) sempre que o bloco de preço calculado com PPM já tiver sido impresso. Nos casos em que esse bloco não existe, a seção continua sendo exibida para não perder a informação.
+O modo permanece ativo em todas as etapas do retorno (Conferência, Trituração/Homogeneização, Análise, Precificação) e é encerrado quando o processo chega novamente à etapa de Aprovação/Boleto.
 
-A visualização em tela (diálogo) permanece como está, salvo indicação contrária.
+## 2. Aparência do card
 
-## 2. Trocar "Peça/Peças" por "Material" no fluxo cerâmico
+Em `src/components/processes/StageActionCard.tsx`, quando em reanálise:
 
-No fluxo cerâmico, os rótulos passam a ser:
+- Borda e fundo do card em laranja claro (tokens novos no design system, sem cores hardcoded).
+- Faixa no topo com o selo "EM REAMOSTRAGEM E REANÁLISE".
+- Bloco de destaque com: motivo da contestação, data e etapa de destino.
+- Resumo dos dados já registrados (grupos conferidos com peso bruto, TARA, peso líquido e médias de análise), para o operador ver o que existe antes de alterar.
 
-- Título do bloco: "Material — Preço Fixo (Catálogo)" e "Material — Preço Calculado (PPM Lab)"
-- Cabeçalho de coluna: "Peça" → "Material"
-- Rótulo de tipo de item: mantém "Cerâmico" (já usado)
+## 3. Reedição dos dados
 
-No fluxo de peças, os textos atuais permanecem inalterados.
+- **Conferência**: o painel de conferência cerâmica já carrega os grupos existentes; passa a permitir editar peso bruto, categoria e foto de cada grupo, além de adicionar e remover grupos (conforme decidido). Ao remover um grupo, as análises e evidências vinculadas a ele são apagadas junto, com aviso de confirmação.
+- **Ponto crítico a corrigir**: hoje o salvamento da conferência apaga e recria todos os itens do processo, o que zera a TARA e desvincula as análises de laboratório. Passa a atualizar os grupos existentes pelo id e só inserir/excluir o que mudou, preservando TARA, análises e alocações.
+- **Trituração/Homogeneização**: já recarrega TARA e foto por grupo; mantém o comportamento de edição.
+- **Análise**: o painel de laboratório já recarrega até 3 análises por grupo; mantém edição e recálculo automático da média.
+
+## 4. Fluxo de retorno
+
+O processo percorre novamente as etapas normalmente (Conferência → Trituração → Análise → Precificação → Aprovação), com os botões de avanço de sempre. Ao voltar à etapa de aprovação, o destaque laranja e o selo somem, um novo demonstrativo é gerado com os valores atualizados e o motivo da contestação anterior permanece registrado no histórico do processo.
 
 ## Detalhes técnicos
 
-- `supabase/functions/generate-demonstrativo-pdf/index.ts`: condicionar a seção de análise laboratorial à ausência do bloco de preço calculado; usar rótulos dinâmicos baseados na flag `isCeramico` já existente.
-- `src/components/processes/DemonstrativoViewDialog.tsx`: aplicar os mesmos rótulos dinâmicos ("Material") quando `isCeramico`.
-- Redeploy da edge function após a alteração.
+- `src/lib/purchases.ts`: helpers `isInReanalysis` / `getContestInfo` a partir de `status_history`.
+- `src/components/processes/StageActionCard.tsx`: estilo condicional do card, selo, bloco de motivo e resumo dos dados já lançados.
+- `src/components/processes/CeramicoConferenciaPanel.tsx`: edição inline dos grupos e persistência incremental (update/insert/delete por id) em vez de apagar tudo.
+- `src/index.css` / `tailwind.config.ts`: token semântico para o estado de reanálise (laranja claro).
+- Sem alteração de banco de dados nem da edge function de PDF.

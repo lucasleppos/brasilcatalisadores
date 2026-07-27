@@ -30,6 +30,8 @@ interface CeramicoLote {
   id?: string;
   category: string;
   weightGross: number;
+  /** draft text while editing the weight input */
+  weightStr?: string;
   photoUrl: string;
   labelCode?: string;
 }
@@ -124,61 +126,112 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     setPhotoUrl("");
   };
 
+  const updateLote = (index: number, patch: Partial<CeramicoLote>) => {
+    setLotes(prev => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  };
+
+  const handleEditPhoto = async (index: number, file: File) => {
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadStagePhoto(purchase.id, file);
+      if (url) updateLote(index, { photoUrl: url });
+      else toast.error("Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const deleteItemData = async (itemId: string) => {
+    await supabase.from("lab_results").delete().eq("purchase_item_id", itemId);
+    await supabase.from("purchase_items").delete().eq("id", itemId);
+    await supabase.from("stage_evidence").delete()
+      .eq("purchase_id", purchase.id)
+      .in("task_key", [
+        `lote_cat_${itemId}`, `photo_lote_${itemId}`, `label_${itemId}`,
+        `tare_${itemId}`, `photo_embalagem_${itemId}`,
+      ]);
+  };
+
   const handleRemove = async (index: number) => {
     const lote = lotes[index];
     if (lote.id) {
-      await supabase.from("purchase_items").delete().eq("id", lote.id);
-      await supabase.from("stage_evidence").delete()
-        .eq("purchase_id", purchase.id)
-        .in("task_key", [`lote_cat_${lote.id}`, `photo_lote_${lote.id}`, `label_${lote.id}`]);
+      const ok = window.confirm(
+        "Remover este grupo? As análises de laboratório e evidências vinculadas a ele também serão excluídas."
+      );
+      if (!ok) return;
+      await deleteItemData(lote.id);
     }
     setLotes(prev => prev.filter((_, i) => i !== index));
   };
 
-  /** Persist all lotes + evidences. Returns saved lotes with ids + label codes. */
+  /**
+   * Persist all lotes incrementally (update by id / insert new / delete removed),
+   * preserving TARA, lab results and allocations of existing groups.
+   */
   const persistAll = async (): Promise<CeramicoLote[] | null> => {
-    await supabase
+    const { data: existing } = await supabase
       .from("purchase_items")
-      .delete()
+      .select("id")
       .eq("purchase_id", purchase.id)
       .eq("item_type", "ceramico");
 
-    await supabase
-      .from("stage_evidence")
-      .delete()
-      .eq("purchase_id", purchase.id)
-      .eq("stage", "conferencia_ceramico");
-
-    const { data: inserted, error } = await supabase.from("purchase_items").insert(
-      lotes.map(l => ({
-        purchase_id: purchase.id,
-        item_type: "ceramico" as const,
-        category: "conferencia",
-        quantity: 1,
-        weight: l.weightGross,
-        weight_loss: 0,
-      }))
-    ).select("id");
-
-    if (error || !inserted) return null;
+    const keepIds = new Set(lotes.filter(l => l.id).map(l => l.id as string));
+    const toDelete = (existing || []).map(e => e.id).filter(id => !keepIds.has(id));
+    for (const id of toDelete) {
+      await deleteItemData(id);
+    }
 
     const saved: CeramicoLote[] = [];
-    for (let i = 0; i < inserted.length; i++) {
-      const id = inserted[i].id;
-      const code = buildLabelCode(purchase.purchaseNumber, purchase.date, i + 1);
+    for (let i = 0; i < lotes.length; i++) {
+      const l = lotes[i];
+      let id = l.id;
+
+      if (id) {
+        const { error } = await supabase
+          .from("purchase_items")
+          .update({ weight: l.weightGross })
+          .eq("id", id);
+        if (error) return null;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("purchase_items")
+          .insert({
+            purchase_id: purchase.id,
+            item_type: "ceramico" as const,
+            category: "conferencia",
+            quantity: 1,
+            weight: l.weightGross,
+            weight_loss: 0,
+          })
+          .select("id")
+          .single();
+        if (error || !inserted) return null;
+        id = inserted.id;
+      }
+
+      const code = l.labelCode || buildLabelCode(purchase.purchaseNumber, purchase.date, i + 1);
+
+      await supabase
+        .from("stage_evidence")
+        .delete()
+        .eq("purchase_id", purchase.id)
+        .eq("stage", "conferencia_ceramico")
+        .in("task_key", [`lote_cat_${id}`, `label_${id}`, `photo_lote_${id}`]);
+
       const rows: any[] = [
-        { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `lote_cat_${id}`, data_type: "text", value_text: lotes[i].category },
+        { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `lote_cat_${id}`, data_type: "text", value_text: l.category },
         { purchase_id: purchase.id, stage: "conferencia_ceramico", task_key: `label_${id}`, data_type: "text", value_text: code },
       ];
-      if (lotes[i].photoUrl) {
+      if (l.photoUrl) {
         rows.push({
           purchase_id: purchase.id, stage: "conferencia_ceramico",
-          task_key: `photo_lote_${id}`, data_type: "photo", file_url: lotes[i].photoUrl,
+          task_key: `photo_lote_${id}`, data_type: "photo", file_url: l.photoUrl,
         });
       }
       await supabase.from("stage_evidence").insert(rows);
-      saved.push({ ...lotes[i], id, labelCode: code });
+      saved.push({ ...l, id, labelCode: code });
     }
+
     setLotes(saved);
     return saved;
   };
@@ -186,6 +239,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   const handleSave = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
     if (lotes.some(l => !l.photoUrl)) { toast.error("Todos os lotes devem ter foto"); return; }
+    if (lotes.some(l => !l.category.trim() || l.weightGross <= 0)) { toast.error("Todos os lotes precisam de grupo e peso bruto"); return; }
     setSaving(true);
     try {
       const ok = await persistAll();
@@ -206,6 +260,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   const handleFinish = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
     if (lotes.some(l => !l.photoUrl)) { toast.error("Todos os lotes devem ter foto"); return; }
+    if (lotes.some(l => !l.category.trim() || l.weightGross <= 0)) { toast.error("Todos os lotes precisam de grupo e peso bruto"); return; }
     if (!withinTolerance) {
       toast.error(`Saldo fora da tolerância de ${(TOLERANCE_PCT * 100).toFixed(0)}%. Ajuste os pesos antes de encerrar.`);
       return;
@@ -295,45 +350,85 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           {/* Lotes list */}
           {lotes.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Lotes Conferidos</p>
+              <p className="text-xs font-medium text-muted-foreground">Lotes Conferidos (editáveis)</p>
               {lotes.map((l, i) => (
-                <Card key={i} className="border-border/50">
-                  <CardContent className="p-3 flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                      {l.photoUrl ? (
-                        <img
-                          src={l.photoUrl}
-                          alt=""
-                          className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
-                          onClick={() => window.open(l.photoUrl, "_blank")}
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
-                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="text-sm font-semibold truncate">#{i + 1} — {l.category}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Peso Bruto: {fmtNum(l.weightGross, 3)} kg
-                        </p>
-                        {l.labelCode && (
-                          <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
+                <Card key={l.id || `new-${i}`} className="border-border/50">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        {l.photoUrl ? (
+                          <img
+                            src={l.photoUrl}
+                            alt=""
+                            className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
+                            onClick={() => window.open(l.photoUrl, "_blank")}
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         )}
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <p className="text-[11px] font-semibold text-muted-foreground">#{i + 1}</p>
+                          <Input
+                            list="ceramico-categories"
+                            value={l.category}
+                            onChange={e => updateLote(i, { category: e.target.value })}
+                            placeholder="Grupo"
+                            className="h-7 text-xs"
+                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              inputMode="decimal"
+                              value={l.weightStr ?? fmtNum(l.weightGross, 3)}
+                              onChange={e => {
+                                const v = e.target.value.replace(/[^0-9.,]/g, "");
+                                const n = parseFloat(v.replace(",", "."));
+                                updateLote(i, { weightStr: v, weightGross: isNaN(n) ? 0 : n });
+                              }}
+                              placeholder="0,000"
+                              className="h-7 text-xs"
+                            />
+                            <span className="text-[10px] text-muted-foreground">kg bruto</span>
+                          </div>
+                          {l.labelCode && (
+                            <p className="text-[10px] font-mono text-muted-foreground truncate">{l.labelCode}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="outline" size="icon" className="h-7 w-7"
+                          title="Imprimir etiqueta"
+                          onClick={() => handlePrintOne(i)}
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Remover grupo" onClick={() => handleRemove(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        title="Imprimir etiqueta"
-                        onClick={() => handlePrintOne(i)}
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      id={`edit-photo-${i}`}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleEditPhoto(i, f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      size="sm" variant="outline" className="w-full h-7 text-[11px]"
+                      disabled={uploadingPhoto}
+                      onClick={() => document.getElementById(`edit-photo-${i}`)?.click()}
+                    >
+                      <Camera className="h-3 w-3 mr-1" />
+                      {l.photoUrl ? "Trocar foto" : "Adicionar foto"}
+                    </Button>
                   </CardContent>
                 </Card>
               ))}

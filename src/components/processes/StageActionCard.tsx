@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo } from "@/lib/purchases";
+import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
 import PurchaseSummary from "./PurchaseSummary";
@@ -96,6 +97,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
   const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
+  const contestInfo = getContestInfo(purchase);
+  const isReanalysis = contestInfo !== null;
 
   // Block approval/PDF stages if Boleto Syge is missing
   const missingErp = !purchase.erpNumber?.trim();
@@ -310,8 +313,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   );
 
   return (
-    <Card className="border-border/60">
+    <Card className={isReanalysis ? "border-reanalysis-border bg-reanalysis/40" : "border-border/60"}>
       <CardContent className="p-4 space-y-3">
+        {isReanalysis && contestInfo && (
+          <ReanalysisBanner purchase={purchase} contest={contestInfo} />
+        )}
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-0.5">

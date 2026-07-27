@@ -48,6 +48,11 @@
     --gold: 38 60% 45%;
     --gold-light: 38 50% 65%;
     --gold-dark: 38 65% 35%;
+
+    /* Reamostragem / Reanálise (laranja claro) */
+    --reanalysis: 28 95% 92%;
+    --reanalysis-border: 28 85% 72%;
+    --reanalysis-foreground: 24 75% 32%;
   }
 }
 
