@@ -282,19 +282,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         bulkWeight,
       });
 
-      if (bulkWeight <= 0) {
-        toast({ title: "Informe o peso total recebido", variant: "destructive" });
-        return;
-      }
-      const newPurchase = await createPurchase({
-        supplierId: supplier.id,
-        supplierName: supplier.name,
-        buyer: supplier.buyer || "",
-        items: [{ id: crypto.randomUUID(), itemType: "ceramico" as PurchaseItemType, quantity: 1 }],
-        notes,
-        erpNumber,
-        bulkWeight,
-      });
+
 
       if (newPurchase) {
         for (const url of photos) {
