@@ -1,25 +1,42 @@
-## Diagnóstico (verificado no banco)
+## Objetivo
 
-Na compra `27/07/2026 - 01` as análises existem (Pt 200 / Pd 1160 / Rh 180, Pt 222 / Pd 1111 / Rh 199, Pt 222 / Pd 3333 / Rh 222, Pt 333 / Pd 2222 / Rh 333) mas estão vinculadas a IDs de itens antigos (`d1258972…`, `d9ba9809…`, `6ada9a96…`) que não existem mais — os itens atuais são `5d59601e` (13 kg), `e4dce3af` (5 kg) e `3a033bd3` (7 kg). Por isso o painel de Laboratório abre com todos os campos vazios, exatamente o mesmo tipo de órfão já resolvido para a TARA.
+No painel Laboratório — Cerâmico, quando a compra estiver em reamostragem/reanálise, exibir duas médias por grupo:
 
-## 1. Carregar os PPMs anteriores na reanálise
+- **Média inicial** — congelada, referente aos PPMs existentes no momento da contestação (parâmetro de comparação).
+- **Média da reanálise** — calculada em tempo real com os valores atualmente preenchidos.
 
-Em `CeramicoLabPanel`:
+Fora do modo reanálise, o card continua exatamente como hoje (uma única "Média").
 
-- Continuar lendo por `purchase_item_id`, que funciona nos processos novos.
-- Fallback de resgate: quando nenhum lote atual encontra análise por ID e existem análises órfãs, associá-las aos lotes atuais por ordem de criação (mesma regra usada na TARA), preservando as versões 1/2/3 de cada lote.
-- Ao resgatar, re-apontar os registros para o `purchase_item_id` atual, eliminando o órfão de vez.
-- Os valores ficam totalmente editáveis; grupos não reanalisados simplesmente permanecem como estão.
-- Marcação discreta no lote resgatado: "análise carregada do registro anterior — confirme ou altere".
+## Como a média inicial é congelada
 
-## 2. Histórico de alterações da análise
+Não é preciso nova tabela. A base já registra todas as alterações em `lab_result_history` (valores antigos e novos, com data). O painel reconstrói o estado de cada linha no instante da contestação:
 
-- Nova tabela `lab_result_history` no banco: compra, item, versão, Pt/Pd/Rh anteriores, quem alterou e quando (com regras de acesso iguais às demais tabelas do processo).
-- Sempre que uma linha de análise já salva for alterada (ou apagada) com valores diferentes, o sistema grava automaticamente os valores anteriores no histórico antes de sobrescrever.
-- No card de cada grupo, quando houver histórico, aparece um bloco recolhível "Histórico de análises" listando em ordem cronológica: data/hora, autor, valores anteriores → valores novos, e a média resultante de cada momento.
-- O histórico aparece **somente** dentro do painel de Análise/Reanálise. Nada muda em `DemonstrativoViewDialog` nem na função de PDF.
+1. Obter a data da contestação com `getContestInfo(purchase)` (já existe em `src/lib/purchases.ts`).
+2. Partir dos valores atuais de cada linha (`lab_results`) e "desfazer" em ordem inversa todos os registros de `lab_result_history` criados **após** essa data — o `old_*` do registro mais antigo pós-contestação vira o valor inicial; registros de `delete` restauram a linha; linhas criadas depois da contestação (sem histórico anterior) não entram na média inicial.
+3. A média inicial é a média simples das linhas assim reconstruídas, com a mesma regra atual (só linhas com Pt, Pd e Rh preenchidos).
+
+Assim a média inicial nunca muda enquanto o operador digita, e reflete fielmente o resultado enviado ao fornecedor.
+
+## Interface
+
+Dentro do bloco de média de cada grupo, em modo reanálise:
+
+```text
+┌───────────────────────────────┬───────────────────────────────┐
+│ Média inicial (2 análises)    │ Média da reanálise (3 análises)│
+│ Pt 339 · Pd 2.228 · Rh 228    │ Pt 350 · Pd 2.300 · Rh 240     │
+└───────────────────────────────┴───────────────────────────────┘
+        Δ Pt +11 · Pd +72 · Rh +12   (verde/vermelho conforme sinal)
+```
+
+- Coluna esquerda em tom neutro/cinza (fixa), coluna direita destacada em laranja claro (cor já usada na reanálise).
+- Quando os valores forem idênticos, mostrar "sem alteração" no lugar do delta.
+- Grupos sem histórico pós-contestação exibem a mesma média nas duas colunas (nada foi reanalisado ainda).
+- O histórico colapsável "Histórico de análises" permanece como está.
 
 ## Detalhes técnicos
 
-- Migração: criar `public.lab_result_history` com GRANTs, RLS e políticas alinhadas a `lab_results`.
-- `src/components/processes/CeramicoLabPanel.tsx`: fallback posicional de resgate no `loadLotes`, re-vinculação de `purchase_item_id`, gravação de snapshot no `persistRow` antes de update/delete, e novo bloco de histórico por lote (colapsável).
+- Arquivo alterado: `src/components/processes/CeramicoLabPanel.tsx`.
+- Nova função pura `computeBaselineRows(rows, historyEntries, contestDate)` no mesmo arquivo, mais um `baselineAvg` por lote calculado uma única vez ao carregar (e recalculado após cada gravação, para acompanhar o histórico).
+- Nenhuma mudança de banco, nenhuma mudança no demonstrativo nem no PDF: a precificação continua usando a média atual (reanálise), que é o resultado válido.
+- Sem alteração em outros fluxos (peça/sacola).

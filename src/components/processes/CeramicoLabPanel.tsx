@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, getContestInfo } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 
@@ -72,6 +72,43 @@ const calcAverage = (l: LabLote) => {
   return { pt, pd, rh, n: filled.length };
 };
 
+// Reconstrói o estado das análises no momento da contestação, desfazendo o
+// histórico posterior a essa data. Retorna a média inicial (congelada).
+const calcBaselineAverage = (
+  l: LabLote,
+  history: HistoryEntry[],
+  contestDate: string | null,
+) => {
+  if (!contestDate) return null;
+  const cut = new Date(contestDate).getTime();
+  const after = history
+    .filter(h => h.itemId === l.itemId && new Date(h.at).getTime() >= cut)
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  if (after.length === 0) return null;
+
+  const values: { pt: number; pd: number; rh: number }[] = [];
+  [1, 2, 3].forEach(v => {
+    const first = after.find(h => h.versao === v);
+    if (first) {
+      if (first.oldPt === null && first.oldPd === null && first.oldRh === null) return;
+      values.push({ pt: first.oldPt ?? 0, pd: first.oldPd ?? 0, rh: first.oldRh ?? 0 });
+      return;
+    }
+    const row = l.rows.find(r => r.versao === v);
+    if (row && isRowFilled(row)) {
+      values.push({ pt: parseNum(row.pt), pd: parseNum(row.pd), rh: parseNum(row.rh) });
+    }
+  });
+
+  if (values.length === 0) return null;
+  return {
+    pt: values.reduce((s, r) => s + r.pt, 0) / values.length,
+    pd: values.reduce((s, r) => s + r.pd, 0) / values.length,
+    rh: values.reduce((s, r) => s + r.rh, 0) / values.length,
+    n: values.length,
+  };
+};
+
 interface CeramicoLabPanelProps {
   purchase: Purchase;
   open: boolean;
@@ -87,6 +124,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const contestDate = getContestInfo(purchase)?.date ?? null;
+
 
   useEffect(() => {
     if (!open) return;
@@ -409,6 +448,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
             <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
             {lotes.map((l, i) => {
               const avg = calcAverage(l);
+              const baselineAvg = calcBaselineAverage(l, history, contestDate);
               const nSaved = savedRowCount(l);
               const nFilled = filledRowCount(l);
               const registered = nSaved >= 1;
@@ -489,16 +529,63 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                     </div>
 
                     {avg && (
-                      <div className="rounded-md border border-primary/30 bg-primary/5 p-2 mt-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold">Média{nFilled > 1 ? ` (${nFilled} análises)` : ""}</span>
+                      baselineAvg ? (
+                        <div className="mt-2 space-y-1.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-md border border-border/60 bg-muted/40 p-2">
+                              <span className="text-[11px] font-semibold text-muted-foreground">
+                                Média inicial{baselineAvg.n > 1 ? ` (${baselineAvg.n} análises)` : ""}
+                              </span>
+                              <div className="text-xs mt-1 space-y-0.5 text-muted-foreground">
+                                <div>Pt: <strong className="text-foreground">{fmtNum(baselineAvg.pt, 4)}</strong></div>
+                                <div>Pd: <strong className="text-foreground">{fmtNum(baselineAvg.pd, 4)}</strong></div>
+                                <div>Rh: <strong className="text-foreground">{fmtNum(baselineAvg.rh, 4)}</strong></div>
+                              </div>
+                            </div>
+                            <div className="rounded-md border border-orange-300/60 bg-orange-500/10 p-2">
+                              <span className="text-[11px] font-semibold text-orange-700">
+                                Média da reanálise{nFilled > 1 ? ` (${nFilled} análises)` : ""}
+                              </span>
+                              <div className="text-xs mt-1 space-y-0.5">
+                                <div>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></div>
+                                <div>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></div>
+                                <div>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></div>
+                              </div>
+                            </div>
+                          </div>
+                          {(() => {
+                            const d = {
+                              pt: avg.pt - baselineAvg.pt,
+                              pd: avg.pd - baselineAvg.pd,
+                              rh: avg.rh - baselineAvg.rh,
+                            };
+                            const unchanged = Math.abs(d.pt) < 0.0001 && Math.abs(d.pd) < 0.0001 && Math.abs(d.rh) < 0.0001;
+                            if (unchanged) {
+                              return <p className="text-[10px] text-muted-foreground text-center">Sem alteração em relação à análise inicial</p>;
+                            }
+                            const cls = (v: number) => v > 0 ? "text-green-600" : v < 0 ? "text-destructive" : "text-muted-foreground";
+                            const sig = (v: number) => `${v > 0 ? "+" : ""}${fmtNum(v, 4)}`;
+                            return (
+                              <p className="text-[10px] text-center flex justify-center gap-3">
+                                <span className={cls(d.pt)}>Δ Pt {sig(d.pt)}</span>
+                                <span className={cls(d.pd)}>Δ Pd {sig(d.pd)}</span>
+                                <span className={cls(d.rh)}>Δ Rh {sig(d.rh)}</span>
+                              </p>
+                            );
+                          })()}
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <span>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></span>
-                          <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
-                          <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
+                      ) : (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 p-2 mt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] font-semibold">Média{nFilled > 1 ? ` (${nFilled} análises)` : ""}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <span>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></span>
+                            <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
+                            <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
+                          </div>
                         </div>
-                      </div>
+                      )
                     )}
 
                     {loteHistory.length > 0 && (
