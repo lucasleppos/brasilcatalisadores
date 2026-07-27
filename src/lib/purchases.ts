@@ -505,18 +505,22 @@ export async function updatePurchaseStatus(id: string, status: string) {
 }
 
 /**
- * Verifica se todos os grupos de conferência de uma compra cerâmica já estão
- * alocados em bags e, em caso positivo, avança para "Bag Alocado" / "Encerrado".
+ * Verifica se todos os itens de conferência de uma compra já estão alocados em
+ * bags e, em caso positivo, encerra a compra (cerâmico e peças).
  */
 export async function syncCeramicoAllocation(purchaseId: string): Promise<boolean> {
   const { data: purchase } = await supabase
     .from("purchases")
-    .select("status, op_status, material_flow")
+    .select("status, op_status, material_flow, status_history")
     .eq("id", purchaseId)
     .single();
   if (!purchase) return false;
-  if (purchase.material_flow !== "ceramico") return false;
-  if (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag") return false;
+
+  const isCeramico = purchase.material_flow === "ceramico";
+  const isPecas = purchase.material_flow === "pecas";
+  if (isCeramico && (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag")) return false;
+  if (isPecas && purchase.status !== "Peças: Alocado ao Bag") return false;
+  if (!isCeramico && !isPecas) return false;
 
   const { data: confItems } = await supabase
     .from("purchase_items")
@@ -533,8 +537,15 @@ export async function syncCeramicoAllocation(purchaseId: string): Promise<boolea
   const remaining = confItems.filter((i: any) => !allocatedSet.has(i.id));
   if (remaining.length > 0) return false;
 
+  if (isPecas) {
+    const history = [...((purchase.status_history as any[]) || []), { status: "Peças: Encerrado", date: new Date().toISOString() }];
+    await supabase.from("purchases").update({ status: "Peças: Encerrado", status_history: history }).eq("id", purchaseId);
+    return true;
+  }
+
   return await advanceOpStatus(purchaseId, "Alocando Bag");
 }
+
 
 /** Advance to next status automatically (used by workflow) */
 export async function advanceStage(id: string, currentStatus: string): Promise<boolean> {
