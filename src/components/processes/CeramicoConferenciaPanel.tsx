@@ -239,6 +239,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   const handleSave = async () => {
     if (lotes.length === 0) { toast.error("Adicione pelo menos um lote"); return; }
     if (lotes.some(l => !l.photoUrl)) { toast.error("Todos os lotes devem ter foto"); return; }
+    if (lotes.some(l => !l.category.trim() || l.weightGross <= 0)) { toast.error("Todos os lotes precisam de grupo e peso bruto"); return; }
     setSaving(true);
     try {
       const ok = await persistAll();
