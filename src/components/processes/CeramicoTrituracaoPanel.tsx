@@ -21,7 +21,9 @@ interface Lote {
   labelCode: string;
   tareStr: string;
   packagePhotoUrl: string;
+  recovered?: boolean;
 }
+
 
 interface Props {
   purchase: Purchase;
@@ -48,10 +50,11 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
     try {
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, weight_loss")
+        .select("id, weight, weight_loss, created_at")
         .eq("purchase_id", purchase.id)
         .eq("item_type", "ceramico")
-        .eq("category", "conferencia");
+        .eq("category", "conferencia")
+        .order("created_at", { ascending: true });
 
       if (!items || items.length === 0) {
         setLotes([]);
@@ -66,9 +69,10 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
           .eq("stage", "conferencia_ceramico"),
         supabase
           .from("stage_evidence")
-          .select("task_key, value_numeric, file_url")
+          .select("task_key, value_numeric, file_url, created_at")
           .eq("purchase_id", purchase.id)
-          .eq("stage", STAGE_KEY),
+          .eq("stage", STAGE_KEY)
+          .order("created_at", { ascending: true }),
       ]);
 
       const catMap: Record<string, string> = {};
@@ -80,33 +84,56 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
         else if (e.task_key.startsWith("label_")) labelMap[e.task_key.replace("label_", "")] = e.value_text || "";
       });
 
+      const currentIds = new Set(items.map(i => i.id));
       const tareMap: Record<string, number> = {};
       const pkgPhotoMap: Record<string, string> = {};
+      // Evidências de taras/fotos que apontam para itens que não existem mais
+      // (ocorre quando o processo voltou por contestação em versões anteriores).
+      const orphanTares: { key: string; tare: number }[] = [];
+      const orphanPhotos: Record<string, string> = {};
+
       (tritEv || []).forEach(e => {
-        if (e.task_key.startsWith("tare_")) tareMap[e.task_key.replace("tare_", "")] = Number(e.value_numeric) || 0;
-        else if (e.task_key.startsWith("photo_embalagem_")) pkgPhotoMap[e.task_key.replace("photo_embalagem_", "")] = e.file_url || "";
+        if (e.task_key.startsWith("tare_")) {
+          const id = e.task_key.replace("tare_", "");
+          if (currentIds.has(id)) tareMap[id] = Number(e.value_numeric) || 0;
+          else orphanTares.push({ key: id, tare: Number(e.value_numeric) || 0 });
+        } else if (e.task_key.startsWith("photo_embalagem_")) {
+          const id = e.task_key.replace("photo_embalagem_", "");
+          if (currentIds.has(id)) pkgPhotoMap[id] = e.file_url || "";
+          else orphanPhotos[id] = e.file_url || "";
+        }
       });
 
-      setLotes(items.map(it => {
-        const savedTare = tareMap[it.id] ?? (Number(it.weight_loss) || 0);
+      // Resgate posicional apenas quando nenhum lote atual tem tara e as quantidades batem
+      const noneMatched = Object.keys(tareMap).length === 0 && items.every(i => !(Number(i.weight_loss) > 0));
+      const useOrphans = noneMatched && orphanTares.length === items.length;
+
+      setLotes(items.map((it, idx) => {
+        const orphan = useOrphans ? orphanTares[idx] : undefined;
+        const savedTare = tareMap[it.id] ?? (Number(it.weight_loss) || 0) ?? 0;
+        const tare = savedTare > 0 ? savedTare : (orphan?.tare || 0);
+        const recovered = !!orphan && savedTare <= 0 && tare > 0;
         return {
           itemId: it.id,
           category: catMap[it.id] || "Lote",
           weightGross: Number(it.weight) || 0,
           confPhotoUrl: photoMap[it.id] || "",
           labelCode: labelMap[it.id] || "",
-          tareStr: savedTare > 0 ? String(savedTare).replace(".", ",") : "",
-          packagePhotoUrl: pkgPhotoMap[it.id] || "",
+          tareStr: tare > 0 ? String(tare).replace(".", ",") : "",
+          packagePhotoUrl: pkgPhotoMap[it.id] || (orphan ? orphanPhotos[orphan.key] || "" : ""),
+          recovered,
         };
       }));
+
     } finally {
       setLoading(false);
     }
   };
 
   const updateTare = (idx: number, val: string) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, "") } : l));
+    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
   };
+
 
   const pickPhoto = (idx: number) => fileInputRefs.current[idx]?.click();
 
@@ -292,6 +319,12 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                       placeholder="0,000"
                       className="h-8 text-sm"
                     />
+                    {l.recovered && (
+                      <p className="text-[10px] text-amber-700">
+                        Tara carregada do registro anterior — confirme ou altere.
+                      </p>
+                    )}
+
                     <div className="flex justify-between text-[11px]">
                       <span className="text-muted-foreground">
                         Peso Líquido:{" "}
