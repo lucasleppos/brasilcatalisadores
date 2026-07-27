@@ -819,6 +819,48 @@ export async function registerItemRealWeight(itemId: string, weightReal: number)
   return !error;
 }
 
+// ===== Reamostragem / Reanálise (após contestação) =====
+
+export interface ContestInfo {
+  motivo: string;
+  date: string;
+  destino: string;
+}
+
+/**
+ * Returns contest info when the purchase is currently walking back through the
+ * flow after a contested demonstrativo (reamostragem/reanálise). Returns null
+ * once the process reaches the approval stage again.
+ */
+export function getContestInfo(purchase: Purchase): ContestInfo | null {
+  const hist = (purchase.statusHistory || []) as { status: string; date: string; note?: string }[];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const h = hist[i];
+    const note = h.note || "";
+    if (note.startsWith("Contestado:")) {
+      const body = note.replace(/^Contestado:\s*/, "");
+      const motivo = body.split("→")[0].trim();
+      return { motivo, date: h.date, destino: h.status };
+    }
+    const s = h.status || "";
+    // Reached the approval stage (or later) without a pending contest → not in reanalysis
+    if (
+      s.includes("Gerar Boleto de Aprovação") ||
+      s.includes("Aprovado") ||
+      s === "Aprovação do Fornecedor" ||
+      s.includes("Encerrado") ||
+      s === "Concluído"
+    ) {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function isInReanalysis(purchase: Purchase): boolean {
+  return getContestInfo(purchase) !== null;
+}
+
 // ===== Status Labels & Colors =====
 
 export const STATUS_LABELS: Record<string, string> = {
