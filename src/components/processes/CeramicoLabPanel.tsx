@@ -243,6 +243,40 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     }));
   };
 
+  const logHistory = async (
+    itemId: string,
+    versao: number,
+    action: "update" | "delete",
+    oldVals: { pt: number; pd: number; rh: number },
+    newVals: { pt: number; pd: number; rh: number } | null,
+  ) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("lab_result_history").insert({
+      purchase_id: purchase.id,
+      purchase_item_id: itemId,
+      versao,
+      old_pt_ppm: oldVals.pt,
+      old_pd_ppm: oldVals.pd,
+      old_rh_ppm: oldVals.rh,
+      new_pt_ppm: newVals?.pt ?? null,
+      new_pd_ppm: newVals?.pd ?? null,
+      new_rh_ppm: newVals?.rh ?? null,
+      action,
+      changed_by: user?.id ?? null,
+    });
+    await loadHistory();
+  };
+
+  const fetchCurrent = async (id: string) => {
+    const { data } = await supabase
+      .from("lab_results")
+      .select("pt_ppm, pd_ppm, rh_ppm")
+      .eq("id", id)
+      .maybeSingle();
+    if (!data) return null;
+    return { pt: Number(data.pt_ppm) || 0, pd: Number(data.pd_ppm) || 0, rh: Number(data.rh_ppm) || 0 };
+  };
+
   const persistRow = async (loteIdx: number, versao: number) => {
     const lote = lotes[loteIdx];
     const row = lote.rows.find(r => r.versao === versao);
@@ -253,7 +287,9 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
       if (row.id) {
         setSavingRow(`${lote.itemId}-${versao}`);
         try {
+          const prevVals = await fetchCurrent(row.id);
           await supabase.from("lab_results").delete().eq("id", row.id);
+          if (prevVals) await logHistory(lote.itemId, versao, "delete", prevVals, null);
           setLotes(prev => prev.map((l, i) => i !== loteIdx ? l : {
             ...l,
             rows: l.rows.map(r => r.versao === versao ? { ...r, id: null } : r),
@@ -276,10 +312,18 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (row.id) {
+        const prevVals = await fetchCurrent(row.id);
+        const changed = prevVals && (prevVals.pt !== pt || prevVals.pd !== pd || prevVals.rh !== rh);
         await supabase
           .from("lab_results")
           .update({ pt_ppm: pt, pd_ppm: pd, rh_ppm: rh })
           .eq("id", row.id);
+        if (changed && prevVals) {
+          await logHistory(lote.itemId, versao, "update", prevVals, { pt, pd, rh });
+        }
+        if (lote.rescued) {
+          setLotes(prev => prev.map((l, i) => i !== loteIdx ? l : { ...l, rescued: false }));
+        }
       } else {
         const { data, error } = await supabase
           .from("lab_results")
