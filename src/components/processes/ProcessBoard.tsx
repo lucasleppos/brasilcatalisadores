@@ -114,6 +114,12 @@ export default function ProcessBoard() {
 
   const isAdmin = role === "super_admin" || role === "admin";
 
+  // Compras que pertencem ao board de Processos (exclui fase paralela → Bags/Concluídos)
+  const boardPurchases = useMemo(
+    () => filtered.filter((p) => !isInParallelPhase(p)),
+    [filtered]
+  );
+
   // Which groups this user can see
   const visibleGroups = useMemo(() => {
     if (!canAdvance) return [];
@@ -125,11 +131,7 @@ export default function ProcessBoard() {
     const map: Record<string, Purchase[]> = {};
     visibleGroups.forEach((g) => { map[g.label] = []; });
 
-    filtered.forEach((p) => {
-      // Fase pós-aprovação do Cerâmico → tratada nos módulos Bags e Concluídos
-      if (isInParallelPhase(p)) return;
-
-      // Normal: find group by status match
+    boardPurchases.forEach((p) => {
       for (const g of visibleGroups) {
         if (g.statuses.includes(p.status)) {
           map[g.label].push(p);
@@ -139,7 +141,7 @@ export default function ProcessBoard() {
     });
 
     return map;
-  }, [filtered, visibleGroups]);
+  }, [boardPurchases, visibleGroups]);
 
   const pendingCount = useMemo(() =>
     visibleGroups.reduce((sum, g) => sum + (tasksByGroup[g.label]?.length || 0), 0)
@@ -150,9 +152,10 @@ export default function ProcessBoard() {
   , [visibleGroups, tasksByGroup]);
 
   // KPIs
-  const totalValue = filtered.reduce((sum, p) => sum + p.totalBrl, 0);
-  const activeCount = filtered.filter((p) => !isPurchaseClosed(p)).length;
-  const completedCount = filtered.filter((p) => isPurchaseClosed(p)).length;
+  const totalValue = boardPurchases.reduce((sum, p) => sum + p.totalBrl, 0);
+  const activeCount = boardPurchases.filter((p) => !isPurchaseClosed(p)).length;
+  const completedCount = boardPurchases.filter((p) => isPurchaseClosed(p)).length;
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -162,7 +165,7 @@ export default function ProcessBoard() {
       </div>
 
       <ProcessKPIs
-        totalCount={filtered.length}
+        totalCount={boardPurchases.length}
         activeCount={activeCount}
         completedCount={completedCount}
         totalValue={totalValue}

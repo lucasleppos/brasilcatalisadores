@@ -1,22 +1,27 @@
-## Correções
+## Problema
 
-### 1. Sidebar — Concluídos não aparece
-As permissões no banco já estão corretas (`concluidos.access = true` para `super_admin`, `admin` e `operacional`), e o item já existe em `AppSidebar.tsx`. A causa provável é o cache do React Query (`staleTime: 5 min` em `usePermissions`), que mantém o perfil de permissões antigo (sem o módulo `concluidos`) até expirar.
+O board de Processos mostra "Total Compras 1" e "Em Produção 1", mas nenhuma aba tem pedidos.
 
-**Ação:** em `src/lib/permissions.ts`, forçar refetch quando o perfil não contiver o módulo `concluidos` (bump da `queryKey` para incluir uma versão, ex.: `["permissions", role, "v2"]`). Isso garante que qualquer sessão ativa recarregue as permissões atualizadas na próxima renderização, sem precisar de logout.
+Verificado no banco: existe exatamente 1 compra, com `status = "Cerâmico: Aprovado"` e `op_status = "Alocando Bag"`. Ou seja, ela está na **fase paralela** (`isInParallelPhase`), que desde a última alteração deixou de aparecer nas colunas de Processos e passou a ser tratada nos módulos **Bags** e **Concluídos**.
 
-Também garantir que os papéis `comprador`, `laboratorio` e `visualizador` — que hoje têm `access:false` — permaneçam sem acesso (nenhuma mudança para eles).
+O agrupamento em `tasksByGroup` já descarta essas compras (`if (isInParallelPhase(p)) return;`), mas os KPIs (`ProcessKPIs`) continuam calculados sobre `filtered`, que inclui tudo. Daí a divergência.
 
-### 2. Processos — remover abas "Bags" e "Concluídos"
-Como o fluxo pós-aprovação agora vive nos módulos **Bags** (alocação) e **Concluídos** (consulta), essas duas colunas do board de Processos ficam redundantes.
+## Correção
 
-**Ação em `src/components/processes/ProcessBoard.tsx`:**
-- Remover os grupos `"Bags"` (linhas 65-69) e `"Concluídos"` (linhas 70-73) de `PROCESS_GROUPS`.
-- No `tasksByGroup` (linhas 132-161), remover o bloco que envia itens para essas colunas quando `isInParallelPhase(p)` — esses itens já são tratados nos módulos dedicados e devem simplesmente sumir do board de Processos.
-- Ajustar `pendingCount` (linhas 163-167) removendo o filtro `g.label !== "Concluídos"` (não é mais necessário).
+Em `src/components/processes/ProcessBoard.tsx`:
+
+- Criar um conjunto derivado `boardPurchases` = `filtered` sem as compras em fase paralela (`isInParallelPhase`) — mesma regra já usada no agrupamento.
+- Alimentar os KPIs com esse conjunto:
+  - `totalCount` = compras do board
+  - `activeCount` (Em Produção) = não encerradas do board
+  - `completedCount` (Finalizadas) = encerradas do board
+  - `totalValue` = soma do board
+- Usar `boardPurchases` também dentro de `tasksByGroup`, removendo a checagem duplicada.
+
+Com isso, o cenário atual mostra 0 em todos os KPIs, coerente com as abas vazias, e a compra segue visível em Bags.
+
+## Observação
+
+Os filtros de fornecedor/comprador/período continuam iguais; a lista de opções de fornecedores/compradores permanece baseada em todas as compras, para não sumirem filtros úteis.
 
 Nada muda no banco, nas rotas ou nos módulos Bags/Concluídos.
-
-### Arquivos alterados
-- `src/lib/permissions.ts` — bump da queryKey.
-- `src/components/processes/ProcessBoard.tsx` — remoção das duas colunas e da lógica associada.
