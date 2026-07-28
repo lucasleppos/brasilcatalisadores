@@ -1,45 +1,19 @@
 ## Objetivo
 
-Deixar o Demonstrativo (visualização) e o PDF do fluxo de **Peças / Peça em Sacola** com o mesmo layout da tela de Precificação de Peças — porém **sem exibir PPM (Pt/Pd/Rh) e sem exibir margem**. O fluxo Cerâmico continua exatamente como está hoje.
+Na tela **Precificação de Peças**, remover o fluxo de justificativa e aprovação de alteração de preço. O usuário continua vendo o valor calculado pelo catálogo (referência) e pode simplesmente digitar outro valor, que é gravado direto.
 
-## Prévia do novo bloco (fluxo Peças)
+## O que muda (`src/components/processes/PiecePricingPanel.tsx`)
 
-```text
-PEÇA                                   QTD / PESO     VALOR UNIT. (R$)      SUBTOTAL
----------------------------------------------------------------------------------
-Código: B39                                  3 un              R$ 903,78   R$ 2.711,34
-Referência: SKDM5GR                     3,4800 kg
----------------------------------------------------------------------------------
-Código: 52090492AB                           3 un            R$ 2.162,07   R$ 6.486,21
-Referência: 810295                      3,8700 kg
----------------------------------------------------------------------------------
-Total de peças: 6 un                                    Peso total: 7,3500 kg
+- Remover o campo de justificativa (Textarea) que aparece quando o valor digitado diverge do calculado.
+- Remover o bloco amarelo "aguardando aprovação" com os botões de aprovar/rejeitar.
+- Remover o rodapé "X alteração(ões) aguardando aprovação" e a linha "Valor a ser gravado (sem ajustes pendentes)".
+- Remover o bloco "Histórico de alterações de valor".
+- Remover a leitura e a escrita em `price_override_log`, os estados `overrides`/`justifications` e as funções `pendingFor`, `approvedFor`, `reviewOverride`, `isDiverged`, `effectiveUnit`, `loadOverrides`.
+- Ao salvar: gravar exatamente o valor digitado (`valor unit. × quantidade`) em `purchase_items.total_value`, com `pricing_source` = `catalogo` quando igual ao calculado e `manual` quando o usuário alterou.
+- Manter: coluna "Calculado unit." (referência do catálogo), botão "Recalcular" (repõe os valores calculados), Pt/Pd/Rh + margem por item, e o resumo Total de peças / Peso total / Valor total.
+- O valor inicial de cada linha passa a ser: valor já salvo no item, ou o calculado pelo catálogo quando ainda não há valor.
 
-                                                   VALOR TOTAL:  R$ 9.197,55
-```
+## Observações
 
-Sem a linha "Pt … · Pd … · Rh … ppm · margem …%" e sem a coluna "Calculado unit.".
-
-## O que muda
-
-**1. Visualização (`DemonstrativoViewDialog.tsx`)**
-- Quando o fluxo NÃO for cerâmico, substituir a tabela genérica atual ("Tipo / Qtd-Peso / Valor Unit. / Valor Total") por uma tabela no formato da precificação:
-  - Coluna **Peça**: duas linhas — `Código: <code>` e `Referência: <reference>` (vindo de `catalog_parts`).
-  - Coluna **Qtd / Peso**: `<quantidade> un` e, abaixo, o peso total do item em kg (4 casas).
-  - Coluna **Valor unit. (R$)** e **Subtotal**.
-- Rodapé do bloco: `Total de peças: X un` e `Peso total: Y kg`, mantendo o `VALOR TOTAL` já existente.
-- Não exibir Pt/Pd/Rh nem margem em nenhum ponto do fluxo de peças; o bloco "Análise Laboratorial" continua restrito ao cerâmico.
-- Para peças, o resumo inferior passa a mostrar "Total de peças" e "Peso total" (sem bruto/líquido, que só faz sentido no cerâmico).
-
-**2. PDF (`supabase/functions/generate-demonstrativo-pdf/index.ts`)**
-- Espelhar o mesmo layout: no fluxo de peças, uma única tabela com colunas `#`, `Peça (Código / Referência)`, `Qtd / Peso`, `Valor unit.`, `Subtotal`.
-- Remover, para peças, as colunas Pt/Pd/Rh do bloco "Preço Calculado" e qualquer menção a margem.
-- Rodapé com `Total de peças`, `Peso total` e `VALOR TOTAL`, mantendo cabeçalho (Nº pedido, fornecedor, comprador, data, fluxo, Boleto Syge) e observações.
-- Cerâmico permanece com bruto/tara/líquido e sem alterações.
-
-## Detalhes técnicos
-
-- Os itens usados são os de `category = "conferencia"` (mesma fonte da tela de precificação), com fallback para todos os itens não-placeholder.
-- Código e referência vêm do mapa de `catalog_parts` já carregado nos dois lados; itens sem catálogo mostram "Manual" na linha de código.
-- Valor unitário exibido = `total_value / quantity`; subtotal = `total_value`. Nenhum recálculo com PPM/margem é feito na exibição.
-- Nenhuma mudança de banco de dados.
+- Nenhuma alteração de banco: a tabela `price_override_log` permanece existente, apenas deixa de ser usada. Posso removê-la depois, se preferir.
+- Nenhuma mudança no demonstrativo nem no PDF.
