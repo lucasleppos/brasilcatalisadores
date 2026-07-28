@@ -302,7 +302,8 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                   )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
 
