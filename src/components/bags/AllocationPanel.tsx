@@ -354,49 +354,86 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <p className="text-sm">Nenhum material disponível para alocação no momento.</p>
           </div>
         ) : (
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Valor (R$)</TableHead>
-                  <TableHead className="text-right">Pt</TableHead>
-                  <TableHead className="text-right">Pd</TableHead>
-                  <TableHead className="text-right">Rh</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {availableMaterials.map((m) => (
-                  <TableRow key={m.purchaseItemId}>
-                    <TableCell className="font-medium">{m.supplierName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{m.itemType}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {m.weight.toFixed(1)}
-                      {m.isRealWeight && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-right">
-                      {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">{m.ptPpm}</TableCell>
-                    <TableCell className="text-right">{m.pdPpm}</TableCell>
-                    <TableCell className="text-right">{m.rhPpm}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" onClick={() => handleAllocateClick(m)}>
-                        <ArrowRight className="h-4 w-4 mr-1" /> Alocar
-                      </Button>
-                    </TableCell>
+          <>
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/50 px-4 py-2">
+                <p className="text-sm">
+                  <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? "item selecionado" : "itens selecionados"} ·{" "}
+                  {selectedWeight.toFixed(1)} kg · R$ {selectedValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
+                  <Button size="sm" onClick={() => handleAllocateClick(selectedMaterials)}>
+                    <ArrowRight className="h-4 w-4 mr-1" /> Alocar selecionados
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={toggleAll}
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Peso (kg)</TableHead>
+                    <TableHead className="text-right">Valor (R$)</TableHead>
+                    <TableHead className="text-right">Pt</TableHead>
+                    <TableHead className="text-right">Pd</TableHead>
+                    <TableHead className="text-right">Rh</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {availableMaterials.map((m) => (
+                    <TableRow
+                      key={m.purchaseItemId}
+                      data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
+                      className="cursor-pointer"
+                      onClick={() => toggleOne(m.purchaseItemId)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(m.purchaseItemId)}
+                          onCheckedChange={() => toggleOne(m.purchaseItemId)}
+                          aria-label="Selecionar material"
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{m.supplierName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{m.itemType}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {m.weight.toFixed(1)}
+                        {m.isRealWeight && (
+                          <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">{m.ptPpm}</TableCell>
+                      <TableCell className="text-right">{m.pdPpm}</TableCell>
+                      <TableCell className="text-right">{m.rhPpm}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" onClick={() => handleAllocateClick([m])}>
+                          <ArrowRight className="h-4 w-4 mr-1" /> Alocar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+
           </div>
         )}
       </section>
