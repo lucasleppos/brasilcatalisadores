@@ -15,6 +15,7 @@ const STAGE_KEY = "trituracao_sacola";
 
 interface TritPiece {
   itemId: string;
+  seq: number;
   code: string;
   reference: string | null;
   quantity: number;
@@ -45,7 +46,8 @@ export default function SacolaTrituracaoPanel({ purchase, open, onOpenChange, on
     try {
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, quantity, catalog_part_id")
+        .select("id, weight, quantity, catalog_part_id, seq, created_at")
+        .order("created_at", { ascending: true })
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
         .eq("category", "conferencia");
@@ -77,10 +79,11 @@ export default function SacolaTrituracaoPanel({ purchase, open, onOpenChange, on
           .map(e => e.task_key.replace("triturada_", ""))
       );
 
-      setPieces(items.map(item => {
+      setPieces(items.map((item, idx) => {
         const cp = item.catalog_part_id ? catalogMap[item.catalog_part_id] : null;
         return {
           itemId: item.id,
+          seq: Number((item as { seq?: number | null }).seq) || idx + 1,
           code: cp ? cp.code : "Manual",
           reference: cp ? cp.reference : null,
           quantity: Number(item.quantity) || 1,
@@ -211,7 +214,7 @@ export default function SacolaTrituracaoPanel({ purchase, open, onOpenChange, on
                   <div className="flex items-center gap-3">
                     <Checkbox checked={p.done} onCheckedChange={() => toggle(i)} aria-label={`Peça ${p.code} triturada`} />
                     <div className="flex-1 space-y-0.5">
-                      <p className="text-sm font-mono">#{i + 1} — Código: {p.code}</p>
+                      <p className="text-sm font-mono">#{p.seq} — Código: {p.code}</p>
                       {p.reference && (
                         <p className="text-xs text-muted-foreground">Referência: {p.reference}</p>
                       )}

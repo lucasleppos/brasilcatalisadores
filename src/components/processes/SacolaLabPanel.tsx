@@ -15,6 +15,7 @@ import { analysisCheck, marginColor, ANALYSIS_MARGIN_PCT } from "@/lib/sacola-va
 
 interface LabPiece {
   itemId: string;
+  seq: number;
   code: string;
   catalogPartName: string | null;
   catPt: number;
@@ -52,7 +53,8 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, catalog_part_id, category")
+        .select("id, weight, catalog_part_id, category, seq, created_at")
+        .order("created_at", { ascending: true })
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
         .eq("category", "conferencia");
@@ -106,6 +108,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
         const lr = labMap[item.id];
         return {
           itemId: item.id,
+          seq: Number((item as { seq?: number | null }).seq) || _idx + 1,
           code: cp ? cp.code : "Manual",
           catalogPartName: cp ? cp.reference : null,
           catPt: cp?.pt || 0,
@@ -254,7 +257,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="space-y-0.5">
-                      <p className="text-sm font-mono">#{i + 1} — {p.code}</p>
+                      <p className="text-sm font-mono">#{p.seq} — {p.code}</p>
                       {p.catalogPartName && (
                         <p className="text-xs text-muted-foreground">{p.catalogPartName}</p>
                       )}
