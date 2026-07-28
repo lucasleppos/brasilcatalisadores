@@ -101,7 +101,9 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
   const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
+  const isPecasTrituracao = purchase.status === "Peças: Trituração e Amostragem";
   const contestInfo = getContestInfo(purchase);
+
   const isReanalysis = contestInfo !== null;
 
   // Block approval/PDF stages if Boleto Syge is missing
