@@ -103,7 +103,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
         }
       });
 
-      setPieces(items.map(item => {
+      setPieces(items.map((item, _idx) => {
         const cp = item.catalog_part_id ? catalogMap[item.catalog_part_id] : null;
         const lr = labMap[item.id];
         return {

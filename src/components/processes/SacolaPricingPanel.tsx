@@ -174,7 +174,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         return calculate(input, settings).finalValueBrl;
       };
 
-      setPieces(items.map(item => {
+      setPieces(items.map((item, _idx) => {
         const cp = item.catalog_part_id ? catalogMap[item.catalog_part_id] : null;
         const lr = labMap[item.id];
         const existingSource = (item as any).pricing_source as string | null;
