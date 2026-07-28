@@ -169,14 +169,24 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         const existingValue = Number(item.total_value) || 0;
         const weight = Number(item.weight) || 0;
 
-        const catSuggested = cp ? suggest(weight, cp.ptPpm, cp.pdPpm, cp.rhPpm) : 0;
+        const catWeight = cp?.weight || 0;
+        // Valor de catálogo usa peso e PPM do cadastro; valor de calculadora usa o real
+        const catSuggested = cp ? suggest(catWeight, cp.ptPpm, cp.pdPpm, cp.rhPpm) : 0;
         const labSuggested = lr ? suggest(weight, lr.pt, lr.pd, lr.rh) : 0;
+
+        const wChk = weightCheck(catWeight, weight);
+        const aChk = analysisCheck(
+          { pt: cp?.ptPpm || 0, pd: cp?.pdPpm || 0, rh: cp?.rhPpm || 0 },
+          { pt: lr?.pt || 0, pd: lr?.pd || 0, rh: lr?.rh || 0 },
+        );
+        const suggested = cp ? suggestPricingSource(wChk, aChk) : "calculadora";
 
         return {
           itemId: item.id,
           code: cp ? cp.code : "Manual",
           reference: cp ? cp.reference : null,
           weight,
+          catWeight,
           quantity: Number(item.quantity) || 1,
           catalogPartId: item.catalog_part_id,
           catPt: cp?.ptPpm || 0,
@@ -187,7 +197,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
           labRh: lr?.rh || 0,
           valueCatalog: existingSource === "catalogo" && existingValue > 0 ? toStr(existingValue) : toStr(catSuggested),
           valueCalc: existingSource === "calculadora" && existingValue > 0 ? toStr(existingValue) : toStr(labSuggested),
-          pricingSource: (existingSource as "catalogo" | "calculadora") || (labSuggested > 0 ? "calculadora" : null),
+          pricingSource: (existingSource as "catalogo" | "calculadora") || suggested,
         };
       }));
     } finally {
