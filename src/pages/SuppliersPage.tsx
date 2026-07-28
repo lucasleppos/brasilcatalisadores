@@ -140,7 +140,8 @@ export default function SuppliersPage() {
                     {!hideEmail && <TableCell className="text-sm">{s.email}</TableCell>}
                     <TableCell className="text-sm">{s.branch}</TableCell>
                     <TableCell className="text-sm">{s.buyer}</TableCell>
-                    {!hideMargin && <TableCell className="text-sm text-right">{s.margin}%</TableCell>}
+                    {!hideMargin && <TableCell className="text-sm text-right">{s.marginPecas}%</TableCell>}
+                    {!hideMargin && <TableCell className="text-sm text-right">{s.marginCeramico}%</TableCell>}
                     <TableCell>
                       <div className="flex gap-1">
                         {canEdit && (
