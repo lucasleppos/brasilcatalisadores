@@ -58,7 +58,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       .select("id, item_type, weight, quantity, catalog_part_id, category")
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
-      .eq("category", "conferencia");
+      .in("category", ["conferencia", EXCLUDED_CATEGORY]);
 
     const rows = (data || []).filter(d => d.catalog_part_id);
     if (rows.length === 0) {
@@ -85,9 +85,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         unitWeight: (Number(d.weight) || 0) / q,
         catalogWeight: info?.weight || 0,
         quantity: q,
+        excluded: d.category === EXCLUDED_CATEGORY,
       };
     }));
   };
+
 
   const handlePartSelect = (part: CatalogPart) => {
     setSelectedPart(part);
