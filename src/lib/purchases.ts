@@ -360,7 +360,7 @@ export function getItemLabel(purchase: Purchase): string {
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
   // Only sum original items (exclude conference-generated ones which have no value yet)
-  const original = items.filter(i => i.category !== "conferencia");
+  const original = items.filter(i => i.category !== "conferencia" && i.category !== EXCLUDED_CATEGORY);
   return original.reduce((sum, q) => {
     if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
       return sum + (q.totalValue || 0);
