@@ -10,7 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
-import { fmtNum } from "@/lib/utils";
+import { fmtNum, parseNum } from "@/lib/utils";
+import { analysisCheck, marginColor, ANALYSIS_MARGIN_PCT } from "@/lib/sacola-validation";
 
 interface LabPiece {
   itemId: string;
