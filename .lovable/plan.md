@@ -1,29 +1,45 @@
-## Problema
+## Objetivo
 
-Hoje o painel "Precificação de Peças" abre com todos os valores em R$ 0,00: ele só exibe `total_value` dos itens da conferência, que nunca foi calculado. A conferência grava apenas `catalog_part_id`, quantidade e peso — os PPMs do catálogo existem (`catalog_parts.pt_ppm/pd_ppm/rh_ppm`), mas não são usados. Além disso, `suppliers` tem uma única coluna `margin`, usada como desconto do cliente tanto no cerâmico quanto (implicitamente) nas peças.
+Deixar o Demonstrativo (visualização) e o PDF do fluxo de **Peças / Peça em Sacola** com o mesmo layout da tela de Precificação de Peças — porém **sem exibir PPM (Pt/Pd/Rh) e sem exibir margem**. O fluxo Cerâmico continua exatamente como está hoje.
 
-## O que será feito
+## Prévia do novo bloco (fluxo Peças)
 
-### 1. Duas margens por fornecedor
-- Migração: adicionar `margin_pecas` e `margin_ceramico` em `suppliers` (numeric, default 15) e copiar o valor atual de `margin` para as duas (conforme escolhido). A coluna `margin` fica como legado.
-- `src/lib/suppliers.ts`, `SupplierForm.tsx`, `SupplierImport.tsx` e `SuppliersPage.tsx`: dois campos "Margem Peças (%)" e "Margem Cerâmico (%)".
-- `CeramicoPricingPanel.tsx` passa a ler `margin_ceramico`.
+```text
+PEÇA                                   QTD / PESO     VALOR UNIT. (R$)      SUBTOTAL
+---------------------------------------------------------------------------------
+Código: B39                                  3 un              R$ 903,78   R$ 2.711,34
+Referência: SKDM5GR                     3,4800 kg
+---------------------------------------------------------------------------------
+Código: 52090492AB                           3 un            R$ 2.162,07   R$ 6.486,21
+Referência: 810295                      3,8700 kg
+---------------------------------------------------------------------------------
+Total de peças: 6 un                                    Peso total: 7,3500 kg
 
-### 2. Cálculo automático na precificação de peças
-Em `PiecePricingPanel.tsx`, ao abrir:
-- Busca `catalog_parts` (peso, Pt/Pd/Rh ppm) dos itens conferidos e as cotações de `settings`.
-- Para cada linha, roda `calculate()` de `src/lib/calculator.ts` com peso bruto = peso unitário × quantidade, tara 0, PPMs do catálogo e `clientDiscount = margin_pecas` do fornecedor.
-- Preenche **Valor unit. (R$)** = valor final BRL ÷ quantidade, com subtotal e total do pedido em tempo real.
-- Linha mostra os PPMs usados e a margem aplicada, para conferência.
-- "Salvar precificação" grava `total_value` + `calc_input`/`calc_result` por item (via `batchUpdateItemPricing`), alimentando demonstrativo e PDF.
+                                                   VALOR TOTAL:  R$ 9.197,55
+```
 
-### 3. Alteração manual com justificativa e aprovação
-- Valor unitário continua editável, mas ao divergir do calculado o sistema exige **justificativa** (mín. 10 caracteres) antes de salvar.
-- Nova tabela `price_override_log` (purchase_id, purchase_item_id, valor calculado, valor informado, justificativa, autor, data, status pendente/aprovado/rejeitado) com RLS + GRANTs.
-- O item ajustado ganha badge "Valor ajustado — aguardando aprovação"; a compra não avança de Precif./Demonstrativo enquanto houver override pendente.
-- Aprovação/rejeição feita por quem tem a ação `aprovar_preco` no módulo `compras` (Super Admin já incluso), em um bloco dentro do próprio painel, com histórico visível de todas as alterações do pedido.
+Sem a linha "Pt … · Pd … · Rh … ppm · margem …%" e sem a coluna "Calculado unit.".
+
+## O que muda
+
+**1. Visualização (`DemonstrativoViewDialog.tsx`)**
+- Quando o fluxo NÃO for cerâmico, substituir a tabela genérica atual ("Tipo / Qtd-Peso / Valor Unit. / Valor Total") por uma tabela no formato da precificação:
+  - Coluna **Peça**: duas linhas — `Código: <code>` e `Referência: <reference>` (vindo de `catalog_parts`).
+  - Coluna **Qtd / Peso**: `<quantidade> un` e, abaixo, o peso total do item em kg (4 casas).
+  - Coluna **Valor unit. (R$)** e **Subtotal**.
+- Rodapé do bloco: `Total de peças: X un` e `Peso total: Y kg`, mantendo o `VALOR TOTAL` já existente.
+- Não exibir Pt/Pd/Rh nem margem em nenhum ponto do fluxo de peças; o bloco "Análise Laboratorial" continua restrito ao cerâmico.
+- Para peças, o resumo inferior passa a mostrar "Total de peças" e "Peso total" (sem bruto/líquido, que só faz sentido no cerâmico).
+
+**2. PDF (`supabase/functions/generate-demonstrativo-pdf/index.ts`)**
+- Espelhar o mesmo layout: no fluxo de peças, uma única tabela com colunas `#`, `Peça (Código / Referência)`, `Qtd / Peso`, `Valor unit.`, `Subtotal`.
+- Remover, para peças, as colunas Pt/Pd/Rh do bloco "Preço Calculado" e qualquer menção a margem.
+- Rodapé com `Total de peças`, `Peso total` e `VALOR TOTAL`, mantendo cabeçalho (Nº pedido, fornecedor, comprador, data, fluxo, Boleto Syge) e observações.
+- Cerâmico permanece com bruto/tara/líquido e sem alterações.
 
 ## Detalhes técnicos
-- Sem alteração no fluxo de etapas; só leitura/gravação de valores.
-- Formato brasileiro mantido (vírgula decimal, `type="text"` + `inputMode="decimal"`, pesos com 4 casas).
-- Recalcular disponível por botão, para o caso de cotações atualizadas.
+
+- Os itens usados são os de `category = "conferencia"` (mesma fonte da tela de precificação), com fallback para todos os itens não-placeholder.
+- Código e referência vêm do mapa de `catalog_parts` já carregado nos dois lados; itens sem catálogo mostram "Manual" na linha de código.
+- Valor unitário exibido = `total_value / quantity`; subtotal = `total_value`. Nenhum recálculo com PPM/margem é feito na exibição.
+- Nenhuma mudança de banco de dados.

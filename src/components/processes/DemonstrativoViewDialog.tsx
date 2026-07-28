@@ -210,7 +210,47 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               <div><span className="font-semibold">Boleto Syge:</span> {purchase.erpNumber || "—"}</div>
             </div>
 
-            {catalogFixedItems.length > 0 && (
+            {!isCeramico && (
+              <div>
+                <table className="w-full text-xs border">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="p-2 text-left">Peça</th>
+                      <th className="p-2 text-right">Qtd / Peso</th>
+                      <th className="p-2 text-right">Valor unit. (R$)</th>
+                      <th className="p-2 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemsForTotal.map((it) => {
+                      const cp = it.catalog_part_id ? catalogParts[it.catalog_part_id] : null;
+                      const qty = Number(it.quantity) || 1;
+                      const tv = Number(it.total_value) || 0;
+                      const w = Number(it.weight) || 0;
+                      return (
+                        <tr key={it.id} className="border-t">
+                          <td className="p-2 align-top">
+                            <div>Código: {cp?.code || "Manual"}</div>
+                            {cp?.reference && (
+                              <div className="text-muted-foreground">Referência: {cp.reference}</div>
+                            )}
+                          </td>
+                          <td className="p-2 align-top text-right">
+                            <div>{qty} un</div>
+                            {w > 0 && <div className="text-muted-foreground">{fmtNum(w, 4)} kg</div>}
+                          </td>
+                          <td className="p-2 align-top text-right">{tv > 0 ? fmtBrl(tv / qty) : "—"}</td>
+                          <td className="p-2 align-top text-right font-medium">{tv > 0 ? fmtBrl(tv) : "Pendente"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {isCeramico && catalogFixedItems.length > 0 && (
+
               <div>
                 <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Fixo (Catálogo)</p>
                 <table className="w-full text-xs border">
@@ -236,7 +276,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {calcItems.length > 0 && (
+            {isCeramico && calcItems.length > 0 && (
               <div>
                 <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Calculado (PPM Lab)</p>
                 <table className="w-full text-xs border">
@@ -271,7 +311,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {regularItems.length > 0 && (
+            {isCeramico && regularItems.length > 0 && (
               <div>
                 {hasSacolaBlocks && <p className="font-semibold mb-1">Demais Itens</p>}
                 <table className="w-full text-xs border">
@@ -391,13 +431,20 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
             <div className="border-t pt-3 grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
-                {isCeramico ? totalGrupos : totalPecas}
+                {isCeramico ? totalGrupos : `${totalPecas} un`}
               </div>
-              <div className="space-y-0.5">
-                <div><span className="font-semibold">Peso bruto total:</span> {fmtNum(totalBrutoKg, 4)} kg</div>
-                <div><span className="font-semibold">Peso líquido total:</span> {fmtNum(totalLiquidoKg, 4)} kg</div>
+              <div className="space-y-0.5 text-right">
+                {isCeramico ? (
+                  <>
+                    <div><span className="font-semibold">Peso bruto total:</span> {fmtNum(totalBrutoKg, 4)} kg</div>
+                    <div><span className="font-semibold">Peso líquido total:</span> {fmtNum(totalLiquidoKg, 4)} kg</div>
+                  </>
+                ) : (
+                  <div><span className="font-semibold">Peso total:</span> {fmtNum(totalBrutoKg, 4)} kg</div>
+                )}
               </div>
             </div>
+
 
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="text-lg font-bold">VALOR TOTAL:</span>
