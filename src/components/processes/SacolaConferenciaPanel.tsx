@@ -471,10 +471,20 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </div>
           )}
           {isSacola && outOfMargin > 0 && (
-            <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {outOfMargin} peça(s) fora da margem de {WEIGHT_MARGIN_PCT}% — serão pagas pelo peso/análise reais
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {outOfMargin} peça(s) fora da margem de {WEIGHT_MARGIN_PCT}%
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] border-amber-400 text-amber-700 hover:bg-amber-500/10"
+                onClick={excludeAllOutOfMargin}
+              >
+                <ArrowDownToLine className="h-3 w-3 mr-1" /> Separar todas do fluxo
+              </Button>
+            </div>
           )}
 
           <div className="flex items-center gap-2">
