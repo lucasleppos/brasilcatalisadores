@@ -460,19 +460,27 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         )}
       </section>
 
-      {/* Allocate Dialog - simplified, material pre-selected */}
-      <Dialog open={!!allocatingMaterial} onOpenChange={(open) => { if (!open) setAllocatingMaterial(null); }}>
+      {/* Allocate Dialog - suporta 1 ou N materiais */}
+      <Dialog open={allocatingMaterials.length > 0} onOpenChange={(open) => { if (!open) setAllocatingMaterials([]); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Alocar ao Bag</DialogTitle>
+            <DialogTitle>
+              {allocatingMaterials.length > 1 ? `Alocar ${allocatingMaterials.length} materiais ao Bag` : "Alocar ao Bag"}
+            </DialogTitle>
           </DialogHeader>
-          {allocatingMaterial && (
+          {allocatingMaterials.length > 0 && (
             <div className="space-y-4">
-              <div className="text-sm p-3 rounded-md bg-muted space-y-1">
-                <div>Fornecedor: <strong>{allocatingMaterial.supplierName}</strong></div>
-                <div>Peso: <strong>{allocatingMaterial.weight.toFixed(2)} kg</strong></div>
-                <div>Valor: <strong>R$ {allocatingMaterial.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong></div>
-                <div>PPMs: Pt {allocatingMaterial.ptPpm} | Pd {allocatingMaterial.pdPpm} | Rh {allocatingMaterial.rhPpm}</div>
+              <div className="text-sm rounded-md bg-muted p-3 space-y-1 max-h-48 overflow-y-auto">
+                {allocatingMaterials.map((m) => (
+                  <div key={m.purchaseItemId} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{m.supplierName} · {m.itemType}</span>
+                    <span className="shrink-0 font-medium">{m.weight.toFixed(2)} kg</span>
+                  </div>
+                ))}
+                <div className="border-t pt-1 mt-1 flex items-center justify-between font-semibold">
+                  <span>Total</span>
+                  <span>{allocatingWeight.toFixed(2)} kg · R$ {allocatingValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
 
               <div>
@@ -491,11 +499,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
               {selectedBag && (
                 <div className="text-xs text-muted-foreground">
-                  Peso após alocação: {(selectedBag.totalWeight + allocatingMaterial.weight).toFixed(1)} / {selectedBag.maxWeight} kg
-                  {isNearLimit(selectedBag, allocatingMaterial.weight) && (
+                  Peso após alocação: {(selectedBag.totalWeight + allocatingWeight).toFixed(1)} / {selectedBag.maxWeight} kg
+                  {isNearLimit(selectedBag, allocatingWeight) && (
                     <Badge className="ml-2 bg-yellow-100 text-yellow-800">Acima do limite</Badge>
                   )}
-                  {isOverWeight(selectedBag, allocatingMaterial.weight) && (
+                  {isOverWeight(selectedBag, allocatingWeight) && (
                     <Badge className="ml-2 bg-destructive text-destructive-foreground">Excede margem de 5%</Badge>
                   )}
                 </div>
@@ -503,7 +511,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAllocatingMaterial(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAllocatingMaterials([])}>Cancelar</Button>
             <Button onClick={handleConfirmAllocate} disabled={!selectedBagId || saving}>
               {saving ? "Alocando..." : "Alocar"}
             </Button>
@@ -517,7 +525,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção: Peso acima do limite</AlertDialogTitle>
             <AlertDialogDescription>
-              O bag ficará com {selectedBag && allocatingMaterial ? (selectedBag.totalWeight + allocatingMaterial.weight).toFixed(1) : "?"} kg,
+              O bag ficará com {selectedBag ? (selectedBag.totalWeight + allocatingWeight).toFixed(1) : "?"} kg,
               ultrapassando o limite de {selectedBag?.maxWeight || 1000} kg. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -529,6 +537,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
