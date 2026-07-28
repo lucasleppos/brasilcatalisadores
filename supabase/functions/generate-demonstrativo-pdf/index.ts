@@ -328,7 +328,7 @@ Deno.serve(async (req) => {
     };
 
     // === Regular items (non-sacola or items without pricing_source) ===
-    if (regularItems.length > 0) {
+    if (isCeramico && regularItems.length > 0) {
       if (hasSacolaBlocks) {
         doc.setDrawColor(200);
         doc.line(margin, y, pageWidth - margin, y);
