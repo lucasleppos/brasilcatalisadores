@@ -288,6 +288,42 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                     </div>
                   </div>
 
+                  {check.hasBase && (
+                    <div className="rounded-md border bg-muted/20 p-2 space-y-1">
+                      <div className="grid grid-cols-4 gap-1 text-[11px]">
+                        <span className="text-muted-foreground"></span>
+                        <span className="text-muted-foreground text-center">Catálogo</span>
+                        <span className="text-muted-foreground text-center">Lab</span>
+                        <span className="text-muted-foreground text-center">Δ%</span>
+
+                        <span className="font-medium">Pt</span>
+                        <span className="text-center">{fmtNum(p.catPt, 0)}</span>
+                        <span className="text-center">{fmtNum(labPt, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(ptChk)}`}>{ptChk.label}</span>
+
+                        <span className="font-medium">Pd</span>
+                        <span className="text-center">{fmtNum(p.catPd, 0)}</span>
+                        <span className="text-center">{fmtNum(labPd, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(pdChk)}`}>{pdChk.label}</span>
+
+                        <span className="font-medium">Rh</span>
+                        <span className="text-center">{fmtNum(p.catRh, 0)}</span>
+                        <span className="text-center">{fmtNum(labRh, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(rhChk)}`}>{rhChk.label}</span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${check.withinMargin
+                          ? "text-green-700 border-green-300 bg-green-500/10"
+                          : "text-destructive border-destructive/40 bg-destructive/10"}`}
+                      >
+                        {check.withinMargin
+                          ? `Análise dentro da margem (${ANALYSIS_MARGIN_PCT}%) — Δ total ${check.label}`
+                          : `Fora da margem de análise (${ANALYSIS_MARGIN_PCT}%) — Δ total ${check.label}`}
+                      </Badge>
+                    </div>
+                  )}
+
                   {!p.saved && (
                     <Button
                       size="sm"
