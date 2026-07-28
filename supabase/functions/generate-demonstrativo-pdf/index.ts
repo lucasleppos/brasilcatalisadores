@@ -559,10 +559,14 @@ Deno.serve(async (req) => {
     y += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas}`, margin, y);
+    doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas} un`, margin, y);
     y += 5;
-    doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
-    doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);
+    if (isCeramico) {
+      doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
+      doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);
+    } else {
+      doc.text(`Peso total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
+    }
     y += 8;
 
     doc.line(margin, y, pageWidth - margin, y);
