@@ -64,13 +64,21 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
 
       // Fetch catalog info
       const catalogIds = items.filter(d => d.catalog_part_id).map(d => d.catalog_part_id!);
-      let catalogMap: Record<string, { code: string; reference: string }> = {};
+      let catalogMap: Record<string, { code: string; reference: string; pt: number; pd: number; rh: number }> = {};
       if (catalogIds.length > 0) {
         const { data: parts } = await supabase
           .from("catalog_parts")
-          .select("id, code, reference")
+          .select("id, code, reference, pt_ppm, pd_ppm, rh_ppm")
           .in("id", catalogIds);
-        (parts || []).forEach(p => { catalogMap[p.id] = { code: p.code, reference: p.reference }; });
+        (parts || []).forEach(p => {
+          catalogMap[p.id] = {
+            code: p.code,
+            reference: p.reference,
+            pt: Number(p.pt_ppm) || 0,
+            pd: Number(p.pd_ppm) || 0,
+            rh: Number(p.rh_ppm) || 0,
+          };
+        });
       }
 
       // Fetch existing lab results for this purchase (by purchase_item_id)
