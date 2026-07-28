@@ -317,9 +317,19 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                             <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
                           </div>
                           {outside && (
-                            <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Fora da margem de peso ({WEIGHT_MARGIN_PCT}%)
-                            </Badge>
+                            <div className="space-y-1">
+                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
+                                <AlertTriangle className="h-3 w-3 mr-1" /> Fora da margem de peso ({WEIGHT_MARGIN_PCT}%)
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] border-amber-400 text-amber-700 hover:bg-amber-500/10"
+                                onClick={() => setExcluded(i, true)}
+                              >
+                                <ArrowDownToLine className="h-3 w-3 mr-1" /> Separar do fluxo
+                              </Button>
+                            </div>
                           )}
                         </div>
                       ) : (
