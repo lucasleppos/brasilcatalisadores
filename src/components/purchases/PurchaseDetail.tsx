@@ -72,7 +72,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           <div>
             <p className="text-xs text-muted-foreground">Fluxo</p>
             <Badge variant="outline" className={purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}>
-              {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "pecas" ? "Peças" : "Legado"}
+              {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "sacola" ? "Peça em Sacola" : purchase.materialFlow === "pecas" ? "Peças" : "Legado"}
             </Badge>
           </div>
           <div>
