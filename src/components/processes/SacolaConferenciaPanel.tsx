@@ -269,7 +269,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span className="font-mono text-muted-foreground">{purchase.purchaseNumber}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{declaredQty} peças declaradas</span>
+            <span>
+              {excludedQty > 0
+                ? `${baseDeclaredQty} declaradas · ${excludedQty} separadas · ${declaredQty} no fluxo`
+                : `${declaredQty} peças declaradas`}
+            </span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
           </div>
         </div>
