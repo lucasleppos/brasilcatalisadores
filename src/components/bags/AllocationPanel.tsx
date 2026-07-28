@@ -9,19 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
-import { syncCeramicoAllocation } from "@/lib/purchases";
+import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
 
 interface AvailableMaterial {
   purchaseId: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
+  isRealWeight?: boolean;
   paidValue: number;
   ptPpm: number;
   pdPpm: number;
   rhPpm: number;
   itemType: string;
 }
+
 
 interface InProcessMaterial {
   purchaseId: string;
@@ -162,6 +164,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
+    // Peso real pós-trituração (peças), rateado por item de conferência
+    const realWeights = await getRealWeightsByItem(purchaseIds);
+
     const available: AvailableMaterial[] = [];
     (items || []).forEach((item: any) => {
       if (allocatedIds.has(item.id)) return;
@@ -170,11 +175,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
       const result = item.calc_result as any;
       const input = item.calc_input as any;
+      const realWeight = realWeights.get(item.id);
       available.push({
         purchaseId: item.purchase_id,
         purchaseItemId: item.id,
         supplierName: purchase.supplier_name,
-        weight: Number(item.weight) || (result?.netWeightKg || 0),
+        weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+        isRealWeight: realWeight != null,
         paidValue: Number(item.total_value) || (result?.finalValueBrl || 0),
         ptPpm: input?.ptPpm || 0,
         pdPpm: input?.pdPpm || 0,
@@ -185,6 +192,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     setAvailableMaterials(available);
   };
+
 
   const loadInProcessMaterials = async () => {
     const { data: purchases } = await supabase
@@ -331,7 +339,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {m.weight.toFixed(1)}
+                      {m.isRealWeight && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right">
                       {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </TableCell>
