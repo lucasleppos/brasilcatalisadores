@@ -119,7 +119,7 @@ export async function addEvidence(params: {
       value_numeric: params.valueNumeric ?? null,
       value_text: params.valueText ?? null,
       file_url: params.fileUrl ?? null,
-      created_by: user?.id ?? null,
+      created_by: userId,
     })
     .select()
     .single();
