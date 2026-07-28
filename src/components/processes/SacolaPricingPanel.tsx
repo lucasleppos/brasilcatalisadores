@@ -13,6 +13,15 @@ import { calculate, CalculatorInput } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+import {
+  weightCheck,
+  analysisCheck,
+  marginColor,
+  suggestPricingSource,
+  decisionReason,
+  WEIGHT_MARGIN_PCT,
+  ANALYSIS_MARGIN_PCT,
+} from "@/lib/sacola-validation";
 
 const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
