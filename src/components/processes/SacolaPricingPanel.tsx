@@ -115,7 +115,6 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
             rhPpm: Number(p.rh_ppm) || 0,
           };
         });
-        });
       }
 
       // Fetch lab results by purchase_item_id
