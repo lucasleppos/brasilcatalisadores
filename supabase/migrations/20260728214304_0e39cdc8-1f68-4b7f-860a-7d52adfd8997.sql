@@ -1,0 +1,1 @@
+ALTER TABLE public.purchase_items ADD COLUMN IF NOT EXISTS seq integer;
