@@ -149,7 +149,8 @@ export default function CompletedPage() {
                       <TableCell className="text-sm text-right font-semibold">{fmtBrl(p.totalBrl)}</TableCell>
                       <TableCell className="text-sm">
                         {bags.length === 0 ? (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">Aguardando alocação</span>
+
                         ) : (
                           <div className="flex flex-wrap gap-1">
                             {bags.map(b => (
