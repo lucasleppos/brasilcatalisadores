@@ -20,9 +20,10 @@ interface StageChecklistProps {
   purchaseId: string;
   status: string;
   onChecklistChange: (canAdvance: boolean) => void;
+  onEvidenceAdded?: () => void;
 }
 
-export default function StageChecklist({ purchaseId, status, onChecklistChange }: StageChecklistProps) {
+export default function StageChecklist({ purchaseId, status, onChecklistChange, onEvidenceAdded }: StageChecklistProps) {
   const [evidences, setEvidences] = useState<StageEvidence[]>([]);
   const [labAnalyses, setLabAnalyses] = useState<LabAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,23 +34,32 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange }
   const requirements = STAGE_REQUIREMENTS[status] || [];
   const isAnalysisStage = requirements.some(r => r.type === "analysis");
 
+  // keep callbacks in refs so effects never depend on their identity (avoids render loops)
+  const changeRef = useRef(onChecklistChange);
+  changeRef.current = onChecklistChange;
+  const addedRef = useRef(onEvidenceAdded);
+  addedRef.current = onEvidenceAdded;
+
   useEffect(() => {
     if (!purchaseId) return;
+    let active = true;
     setLoading(true);
     Promise.all([
       loadEvidences(purchaseId),
       loadLabAnalyses(purchaseId),
     ]).then(([ev, la]) => {
+      if (!active) return;
       setEvidences(ev);
       setLabAnalyses(la);
       setLoading(false);
     });
+    return () => { active = false; };
   }, [purchaseId]);
 
   useEffect(() => {
     const { canAdvance } = canAdvanceStage(status, evidences, labAnalyses);
-    onChecklistChange(canAdvance);
-  }, [evidences, labAnalyses, status, onChecklistChange]);
+    changeRef.current(canAdvance);
+  }, [evidences, labAnalyses, status]);
 
   if (requirements.length === 0 || isAnalysisStage) return null;
   if (loading) return <div className="flex items-center gap-1 text-xs text-muted-foreground py-2"><Loader2 className="h-3 w-3 animate-spin" />Carregando checklist...</div>;
