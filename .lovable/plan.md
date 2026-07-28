@@ -1,28 +1,21 @@
 ## Objetivo
 
-Na etapa **Peças: Trituração e Amostragem**, trocar o checklist "Confirmar trituração e amostragem concluídas" por um campo obrigatório de **Peso após trituração (kg)**, e usar esse peso para mostrar a perda total do processo antes da alocação no bag.
+No card **Peças: Trituração e Amostragem**, o bloco superior mostra apenas a sequência de pesagens (conferência → corte → trituração), mantendo o campo "Peso após trituração" como está. As linhas de perda (corte, trituração, total em kg/%) saem da tela do operacional — ficarão para um relatório futuro.
 
 ## O que muda
 
-1. **Campo da etapa**
-   - Remove a tarefa de confirmação por observação.
-   - Adiciona: `Peso após trituração (kg)` — obrigatório, tipo peso (mesmo componente já usado no Corte, com teclado decimal e formato brasileiro).
-   - Opcional: `Foto do material triturado (opcional)` — não bloqueia o avanço. (Confirme se quer isso; posso deixar de fora.)
-   - O botão "Concluir Peças: Trituração e Amostragem" só libera após o peso ser registrado.
+1. **Bloco de pesagens** (hoje "Perda do processo")
+   - Renomear para "Pesagens do processo".
+   - Linha 1: `Peso conferido (peças)` — soma dos itens conferidos (catálogo).
+   - Linha 2: `Peso após corte (cerâmica extraída)` — valor registrado na etapa de Corte.
+   - Linha 3: `Peso após trituração` — exibe "pendente" enquanto não registrado e o valor depois de salvo.
+   - Remover: "Perda no corte", "Perda na trituração" e "Perda total".
 
-2. **Resumo de perda do processo** (novo bloco no card desta etapa)
-   - Peso conferido (peças conferidas na Conferência)
-   - Peso da cerâmica extraída (registrado no Corte)
-   - Peso após trituração (novo campo)
-   - Perda de corte = conferido − extraída; Perda de trituração = extraída − pós-trituração; **Perda total** em kg e %.
-   - Só exibe as linhas cujos pesos existem; valores em 4 casas decimais, padrão brasileiro.
-
-3. **Persistência**
-   - O peso é gravado em `stage_evidence` (`task_key: weight_pos_trituracao`, tipo peso), sem migração de banco.
-   - Registros antigos que já usaram `weight_pos_trituracao` no fluxo legado continuam válidos.
+2. **Peso do corte não aparecendo**
+   - Na compra em teste (Boleto 4444) o peso de corte existe no banco (7 kg registrado em "Peças: Em Corte"), mas o card mostra só o peso conferido. A causa ainda não está confirmada; o primeiro passo da implementação é reproduzir o card e verificar o carregamento das evidências, corrigindo o que impedir a exibição.
 
 ## Detalhes técnicos
 
-- `src/lib/stage-tasks.ts`: substituir a entrada de `"Peças: Trituração e Amostragem"` pelo requisito de peso (e foto opcional).
-- `src/components/processes/StageActionCard.tsx`: renderizar o bloco de resumo de perda acima do `StageChecklist` quando o status for `Peças: Trituração e Amostragem`, lendo as evidências já carregadas (`weight_ceramica_extraida`) e os itens conferidos.
-- Nenhuma alteração no PDF/demonstrativo nem no fluxo de cerâmico.
+- `src/components/processes/PecasLossSummary.tsx`: remover cálculos e linhas de perda, manter as três linhas de peso (com estado "pendente"), ajustar título.
+- Validar a leitura de `stage_evidence` (`weight_ceramica_extraida`) no card via preview antes de encerrar.
+- Nenhuma mudança de banco, de PDF ou do checklist da etapa.
