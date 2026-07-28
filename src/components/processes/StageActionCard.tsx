@@ -23,6 +23,8 @@ import SacolaLabPanel from "./SacolaLabPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoTrituracaoPanel from "./CeramicoTrituracaoPanel";
+import PecasLossSummary from "./PecasLossSummary";
+
 import CeramicoLabPanel from "./CeramicoLabPanel";
 import CeramicoPricingPanel from "./CeramicoPricingPanel";
 import { STAGE_REQUIREMENTS } from "@/lib/stage-tasks";
@@ -64,6 +66,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [viewDemoOpen, setViewDemoOpen] = useState(false);
   const [erpInput, setErpInput] = useState("");
   const [savingErp, setSavingErp] = useState(false);
+  const [lossRefresh, setLossRefresh] = useState(0);
+
 
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
@@ -97,7 +101,9 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
   const isCeramicoPricing = purchase.status === "Cerâmico: Em Precificação" && purchase.materialFlow === "ceramico";
+  const isPecasTrituracao = purchase.status === "Peças: Trituração e Amostragem";
   const contestInfo = getContestInfo(purchase);
+
   const isReanalysis = contestInfo !== null;
 
   // Block approval/PDF stages if Boleto Syge is missing
@@ -670,12 +676,16 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               <PiecePricingPanel purchase={purchase} onCompleted={onCompleted} />
             )}
 
+            {/* Peças: Trituração e Amostragem — resumo de perda do processo */}
+            {isPecasTrituracao && <PecasLossSummary purchase={purchase} refreshKey={lossRefresh} />}
+
             {/* Stage Checklist */}
             <StageChecklist
               purchaseId={purchase.id}
               status={purchase.status}
-              onChecklistChange={handleChecklistChange}
+              onChecklistChange={(ready) => { handleChecklistChange(ready); if (isPecasTrituracao) setLossRefresh(k => k + 1); }}
             />
+
 
             {needsErp && missingErp && ErpInlineInput}
 

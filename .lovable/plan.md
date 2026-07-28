@@ -1,20 +1,28 @@
-## Problema
+## Objetivo
 
-No card do processo (etapa de Corte, e demais etapas do fluxo de Peças), a linha de itens mostra "0 peças".
+Na etapa **Peças: Trituração e Amostragem**, trocar o checklist "Confirmar trituração e amostragem concluídas" por um campo obrigatório de **Peso após trituração (kg)**, e usar esse peso para mostrar a perda total do processo antes da alocação no bag.
 
-Causa confirmada em `src/lib/purchases.ts`: `getItemLabel()` para o fluxo de peças usa `getOriginalItemCount()`, que soma apenas itens **originais** (`category !== "conferencia"`). Como na Conferência o item placeholder criado na compra é removido e as peças reais são gravadas com `category = "conferencia"`, não sobra nenhum item original → contagem 0.
+## O que muda
 
-## Correção
+1. **Campo da etapa**
+   - Remove a tarefa de confirmação por observação.
+   - Adiciona: `Peso após trituração (kg)` — obrigatório, tipo peso (mesmo componente já usado no Corte, com teclado decimal e formato brasileiro).
+   - Opcional: `Foto do material triturado (opcional)` — não bloqueia o avanço. (Confirme se quer isso; posso deixar de fora.)
+   - O botão "Concluir Peças: Trituração e Amostragem" só libera após o peso ser registrado.
 
-Ajustar `getItemLabel()` (fluxo peças / peça em sacola) para usar, nesta ordem:
+2. **Resumo de perda do processo** (novo bloco no card desta etapa)
+   - Peso conferido (peças conferidas na Conferência)
+   - Peso da cerâmica extraída (registrado no Corte)
+   - Peso após trituração (novo campo)
+   - Perda de corte = conferido − extraída; Perda de trituração = extraída − pós-trituração; **Perda total** em kg e %.
+   - Só exibe as linhas cujos pesos existem; valores em 4 casas decimais, padrão brasileiro.
 
-1. Soma de `quantity` dos itens de conferência (`getConferenciaItems`) quando existirem — é a quantidade real conferida;
-2. Senão, `getOriginalItemCount()` (compras antigas / antes da conferência);
-3. Senão, `bulkWeight` (total de peças declarado na criação da compra), evitando o "0".
+3. **Persistência**
+   - O peso é gravado em `stage_evidence` (`task_key: weight_pos_trituracao`, tipo peso), sem migração de banco.
+   - Registros antigos que já usaram `weight_pos_trituracao` no fluxo legado continuam válidos.
 
-Também exibir o peso quando disponível, no formato `12 peças · 3,450 kg`, usando a soma dos pesos dos itens de conferência (opcional, mas útil na etapa de Corte).
+## Detalhes técnicos
 
-## Detalhe técnico
-
-- Arquivo único: `src/lib/purchases.ts`, função `getItemLabel`.
-- Nenhuma mudança de schema, de fluxo ou de outros componentes: `StageActionCard` e `PurchaseSummary` já consomem `getItemLabel`, então a correção propaga automaticamente para todas as etapas.
+- `src/lib/stage-tasks.ts`: substituir a entrada de `"Peças: Trituração e Amostragem"` pelo requisito de peso (e foto opcional).
+- `src/components/processes/StageActionCard.tsx`: renderizar o bloco de resumo de perda acima do `StageChecklist` quando o status for `Peças: Trituração e Amostragem`, lendo as evidências já carregadas (`weight_ceramica_extraida`) e os itens conferidos.
+- Nenhuma alteração no PDF/demonstrativo nem no fluxo de cerâmico.
