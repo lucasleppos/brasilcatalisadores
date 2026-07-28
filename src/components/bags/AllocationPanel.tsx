@@ -251,19 +251,19 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     setInProcessMaterials(result);
   };
 
-  const handleAllocateClick = (material: AvailableMaterial) => {
-    setAllocatingMaterial(material);
+  const handleAllocateClick = (materials: AvailableMaterial[]) => {
+    setAllocatingMaterials(materials);
     setSelectedBagId("");
   };
 
   const handleConfirmAllocate = async () => {
-    if (!allocatingMaterial || !selectedBag) return;
+    if (allocatingMaterials.length === 0 || !selectedBag) return;
 
-    if (isOverWeight(selectedBag, allocatingMaterial.weight)) {
+    if (isOverWeight(selectedBag, allocatingWeight)) {
       toast({ title: "Peso ultrapassa o limite de 5% acima do máximo!", variant: "destructive" });
       return;
     }
-    if (isNearLimit(selectedBag, allocatingMaterial.weight)) {
+    if (isNearLimit(selectedBag, allocatingWeight)) {
       setShowWeightWarning(true);
       return;
     }
@@ -272,29 +272,43 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   };
 
   const doAllocate = async () => {
-    if (!allocatingMaterial || !selectedBag) return;
+    if (allocatingMaterials.length === 0 || !selectedBag) return;
     setSaving(true);
-    await allocateItem({
-      bagId: selectedBag.id,
-      purchaseId: allocatingMaterial.purchaseId,
-      purchaseItemId: allocatingMaterial.purchaseItemId,
-      weight: allocatingMaterial.weight,
-      paidValue: allocatingMaterial.paidValue,
-      estimatedPtPpm: allocatingMaterial.ptPpm,
-      estimatedPdPpm: allocatingMaterial.pdPpm,
-      estimatedRhPpm: allocatingMaterial.rhPpm,
-      supplierName: allocatingMaterial.supplierName,
-    });
-    setSaving(false);
-    toast({ title: "Material alocado com sucesso" });
+
+    let ok = 0;
+    for (const m of allocatingMaterials) {
+      const res = await allocateItem({
+        bagId: selectedBag.id,
+        purchaseId: m.purchaseId,
+        purchaseItemId: m.purchaseItemId,
+        weight: m.weight,
+        paidValue: m.paidValue,
+        estimatedPtPpm: m.ptPpm,
+        estimatedPdPpm: m.pdPpm,
+        estimatedRhPpm: m.rhPpm,
+        supplierName: m.supplierName,
+      });
+      if (res) ok++;
+    }
 
     // Cerâmico: auto-encerra quando todos os grupos da compra estão alocados
-    await syncCeramicoAllocation(allocatingMaterial.purchaseId);
+    const purchaseIds = [...new Set(allocatingMaterials.map(m => m.purchaseId))];
+    for (const pid of purchaseIds) await syncCeramicoAllocation(pid);
 
-    setAllocatingMaterial(null);
+    setSaving(false);
+    if (ok === allocatingMaterials.length) {
+      toast({ title: ok > 1 ? `${ok} materiais alocados com sucesso` : "Material alocado com sucesso" });
+    } else {
+      toast({ title: `${ok} de ${allocatingMaterials.length} materiais alocados`, variant: "destructive" });
+    }
+
+    const allocatedSet = new Set(allocatingMaterials.map(m => m.purchaseItemId));
+    setSelectedIds(prev => new Set([...prev].filter(id => !allocatedSet.has(id))));
+    setAllocatingMaterials([]);
     onAllocated();
     loadData();
   };
+
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Carregando materiais...</p>;
