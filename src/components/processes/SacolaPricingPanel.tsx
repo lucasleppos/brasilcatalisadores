@@ -258,7 +258,13 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
       }));
 
       await batchUpdateItemPricing(purchase.id, updates);
-      toast.success("Precificação confirmada");
+      // Precificação confirmada → segue para Aprovação (PDF + Boleto Syge)
+      if (purchase.status === "Peças: Aguardando Demonstrativo") {
+        await advanceStage(purchase.id, purchase.status);
+        toast.success("Precificação confirmada — enviado para Aprovação");
+      } else {
+        toast.success("Precificação confirmada");
+      }
       onOpenChange(false);
       onCompleted();
     } catch {
