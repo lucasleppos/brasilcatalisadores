@@ -1,14 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, Search, Eye } from "lucide-react";
+import { CheckCircle2, Search, Eye, ChevronRight, ChevronDown } from "lucide-react";
 import { Purchase, loadPurchases, getItemLabel, getStatusColor, syncCeramicoAllocation } from "@/lib/purchases";
 import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
+import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
 
 interface BagAllocation {
@@ -23,6 +24,16 @@ export default function CompletedPage() {
   const [search, setSearch] = useState("");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
 
   useEffect(() => {
     reload();
@@ -118,6 +129,7 @@ export default function CompletedPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8" />
                 <TableHead>Nº Pedido</TableHead>
                 <TableHead>Boleto Syge</TableHead>
                 <TableHead>Fornecedor</TableHead>
@@ -132,48 +144,69 @@ export default function CompletedPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-sm text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhum material concluído encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map(p => {
                   const bags = bagAllocations[p.id] || [];
+                  const isExpanded = expandedIds.has(p.id);
                   return (
-                    <TableRow key={p.id}>
-                      <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
-                      <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
-                      <TableCell className="text-sm">{getItemLabel(p)}</TableCell>
-                      <TableCell className="text-sm text-right font-semibold">{fmtBrl(p.totalBrl)}</TableCell>
-                      <TableCell className="text-sm">
-                        {bags.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Aguardando alocação</span>
-
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {bags.map(b => (
-                              <Badge key={b.bagNumber} variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300 text-xs">
-                                {b.bagNumber}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <Fragment key={p.id}>
+                      <TableRow className={isExpanded ? "border-b-0" : undefined}>
+                        <TableCell className="pr-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => toggleExpanded(p.id)}
+                            aria-label={isExpanded ? "Recolher detalhes" : "Expandir detalhes"}
+                          >
+                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
+                        <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
+                        <TableCell className="text-sm">{getItemLabel(p)}</TableCell>
+                        <TableCell className="text-sm text-right font-semibold">{fmtBrl(p.totalBrl)}</TableCell>
+                        <TableCell className="text-sm">
+                          {bags.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">Aguardando alocação</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {bags.map(b => (
+                                <Badge key={b.bagNumber} variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300 text-xs">
+                                  {b.bagNumber}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
+                            {p.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={10} className="p-3 pt-0">
+                            <CompletedDetailRow purchase={p} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   );
                 })
+
               )}
             </TableBody>
           </Table>

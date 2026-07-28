@@ -1,30 +1,41 @@
-## Situação atual (verificada no banco)
+## Objetivo
 
-A compra de peças `27/07/2026 - 02` (Syge 4444) está com status **"Peças: Alocado ao Bag"** — a trituração já foi concluída e o fluxo avançou corretamente. O problema é como esse status é tratado nas telas:
+No módulo **Concluídos**, permitir expandir cada compra para ver, item a item (grupo cerâmico ou peça), o peso, o valor e **em qual bag** cada um foi alocado.
 
-- **Processos**: "Peças: Alocado ao Bag" não pertence a nenhuma aba do quadro, mas continua entrando na contagem dos KPIs → é ele que aparece como "Em Produção: 1".
-- **Concluídos**: a página só lista `Peças: Encerrado`, `Cerâmico: Encerrado`, `Concluído` ou `op_status = Bag Alocado`. Como os itens ainda não foram alocados em bag, a compra não aparece em lugar nenhum.
-- **Bags**: a compra já é elegível (status listado, filial matriz, 2 itens de conferência de 3 un cada), mas o peso oferecido para alocação vem do catálogo (3,48 kg + 3,87 kg), e não do peso real após trituração.
+## Prévia (como vai ficar)
 
-## Alterações propostas
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ▸  28/07/2026-01  3333  Cleusa de Fatima  Marcos  15,000 kg  R$ 14.607,89 …  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ▾  27/07/2026-02  4444  Cleusa de Fatima  Marcos  6 peças    R$ 6.449,28  …  │
+│   ┌────────────────────────────────────────────────────────────────────────┐ │
+│   │ Detalhamento dos materiais                                             │ │
+│   │ Material              Qtd   Peso alocado   Valor        Bag   Alocado  │ │
+│   │ Cód. 1234 · Ref. AB    3 un   3,450 kg (real) R$ 3.100,00 BAG-002 27/07│ │
+│   │ Cód. 5678 · Ref. CD    3 un   3,450 kg (real) R$ 3.349,28 BAG-002 27/07│ │
+│   │ ─────────────────────────────────────────────────────────────────────  │ │
+│   │ Total: 6 un · 6,900 kg · R$ 6.449,28        Bags: BAG-002              │ │
+│   └────────────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
 
-1. **Tirar peças pós-trituração do quadro de Processos** (`src/lib/purchases.ts`)
-   - Estender `isInParallelPhase` para incluir peças com status "Peças: Alocado ao Bag", igual ao cerâmico com `op_status = Alocando Bag`.
-   - Efeito: o KPI "Em Produção" deixa de contar essa compra e ela some das abas de Processos.
+Para cerâmico as linhas mostram **Grupo 01 / Grupo 02 …** com peso bruto, tara, peso líquido e o bag correspondente. Itens ainda não alocados aparecem com badge âmbar **"Aguardando alocação"** na coluna Bag.
 
-2. **Mostrar a compra em Concluídos** (`src/pages/CompletedPage.tsx`)
-   - Incluir no filtro as compras com status "Peças: Alocado ao Bag" (e cerâmicos em "Alocando Bag"), exibindo na coluna Bag(s) o indicador "Aguardando alocação" enquanto não houver bag vinculado.
-   - Manter a rotina `syncCeramicoAllocation`, que muda o status para "Peças: Encerrado" assim que todos os itens de conferência forem alocados — aí a linha passa a mostrar os bags.
+## Alterações
 
-3. **Usar o peso após trituração na alocação do bag** (`src/components/bags/AllocationPanel.tsx`)
-   - Para compras de peças, ler a evidência `weight_pos_trituracao` (registrada na etapa de Trit./Homog./Amostr.) em `stage_evidence`.
-   - Quando existir, esse peso passa a ser o peso disponível para alocação, em vez do peso de catálogo dos itens de conferência.
-   - Como a compra tem vários itens de conferência e apenas um peso real de trituração, o peso real será **rateado proporcionalmente** entre os itens (na proporção do peso de catálogo de cada um), garantindo que a soma alocada ao bag seja exatamente o peso após trituração.
-   - Na tabela de materiais disponíveis, indicar que o peso exibido é o peso real pós-trituração; se a evidência não existir, mantém-se o peso de catálogo como hoje.
+1. **`src/pages/CompletedPage.tsx`**
+   - Nova coluna inicial com botão chevron (`ChevronRight`/`ChevronDown`) por linha; estado `expandedIds: Set<string>`.
+   - Ao expandir pela primeira vez, carrega sob demanda os `purchase_items` da compra e os `bag_items` correspondentes (join com `bags` para número/rótulo), com cache em memória.
+   - Renderiza uma `TableRow` extra com `colSpan` contendo a tabela de detalhamento.
 
-4. **Validação em tela**
-   - Conferir que a compra de peças aparece em "Materiais Disponíveis" com o peso real, alocar em um bag e confirmar que o status vira "Peças: Encerrado" e a compra aparece em Concluídos com o bag vinculado.
+2. **Novo componente `src/components/purchases/CompletedDetailRow.tsx`**
+   - Recebe a compra e renderiza o detalhamento: rótulo do material (Código/Referência para peças, Grupo N para cerâmico), quantidade, peso alocado (com marcação "(real)" quando vier do peso pós-trituração), valor pago, badge do bag e data de alocação.
+   - Linha de totais no rodapé e lista consolidada de bags.
+   - Usa os helpers já existentes (`getItemLabel`, `fmtBrl`, formatação BR com 3–4 casas).
+
+3. Sem mudanças de banco e sem alteração das regras de negócio — apenas leitura e apresentação.
 
 ## Detalhe técnico
 
-Nenhuma migração de banco é necessária — o peso de trituração já é persistido em `stage_evidence` (`task_key = weight_pos_trituracao`). Arquivos afetados: `src/lib/purchases.ts`, `src/pages/CompletedPage.tsx` e `src/components/bags/AllocationPanel.tsx`.
+Os dados vêm de `purchase_items` (peso, `weight_loss` = tara, `calc_result`, `catalog_part_id`) e de `bag_items` (peso alocado, `paid_value`, `allocated_at`) unidos a `bags` (`bag_number`, `bag_label`). A correspondência é por `bag_items.purchase_item_id`.
