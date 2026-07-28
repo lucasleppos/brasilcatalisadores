@@ -210,7 +210,47 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               <div><span className="font-semibold">Boleto Syge:</span> {purchase.erpNumber || "—"}</div>
             </div>
 
-            {catalogFixedItems.length > 0 && (
+            {!isCeramico && (
+              <div>
+                <table className="w-full text-xs border">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="p-2 text-left">Peça</th>
+                      <th className="p-2 text-right">Qtd / Peso</th>
+                      <th className="p-2 text-right">Valor unit. (R$)</th>
+                      <th className="p-2 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemsForTotal.map((it) => {
+                      const cp = it.catalog_part_id ? catalogParts[it.catalog_part_id] : null;
+                      const qty = Number(it.quantity) || 1;
+                      const tv = Number(it.total_value) || 0;
+                      const w = Number(it.weight) || 0;
+                      return (
+                        <tr key={it.id} className="border-t">
+                          <td className="p-2 align-top">
+                            <div>Código: {cp?.code || "Manual"}</div>
+                            {cp?.reference && (
+                              <div className="text-muted-foreground">Referência: {cp.reference}</div>
+                            )}
+                          </td>
+                          <td className="p-2 align-top text-right">
+                            <div>{qty} un</div>
+                            {w > 0 && <div className="text-muted-foreground">{fmtNum(w, 4)} kg</div>}
+                          </td>
+                          <td className="p-2 align-top text-right">{tv > 0 ? fmtBrl(tv / qty) : "—"}</td>
+                          <td className="p-2 align-top text-right font-medium">{tv > 0 ? fmtBrl(tv) : "Pendente"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {isCeramico && catalogFixedItems.length > 0 && (
+
               <div>
                 <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Fixo (Catálogo)</p>
                 <table className="w-full text-xs border">
