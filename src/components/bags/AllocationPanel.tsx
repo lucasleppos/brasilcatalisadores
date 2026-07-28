@@ -339,7 +339,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      {m.weight.toFixed(1)}
+                      {m.isRealWeight && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right">
                       {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </TableCell>
