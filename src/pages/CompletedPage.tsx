@@ -42,13 +42,16 @@ export default function CompletedPage() {
       if (results.some(Boolean)) all = await loadPurchases();
     }
 
-    // Concluídos: cerâmico e peças encerrados
+    // Concluídos: encerrados + aguardando alocação em bag
     const completed = all.filter(p =>
       p.status === "Cerâmico: Encerrado" ||
       p.status === "Peças: Encerrado" ||
       p.status === "Concluído" ||
-      p.opStatus === "Bag Alocado"
+      p.opStatus === "Bag Alocado" ||
+      p.status === "Peças: Alocado ao Bag" ||
+      (p.materialFlow === "ceramico" && p.opStatus === "Alocando Bag")
     );
+
 
     setPurchases(completed);
 
