@@ -72,12 +72,13 @@ export default function CompletedDetailRow({ purchase }: Props) {
     if (isCeramico) {
       return groupNames[item.id] || `Grupo ${String(index + 1).padStart(2, "0")}`;
     }
+    const num = item.seq ?? index + 1;
     const code = item.catalogPartCode;
     const ref = item.catalogPartRef;
     if (code || ref) {
-      return [code ? `Cód. ${code}` : null, ref ? `Ref. ${ref}` : null].filter(Boolean).join(" · ");
+      return `#${num} · ` + [code ? `Cód. ${code}` : null, ref ? `Ref. ${ref}` : null].filter(Boolean).join(" · ");
     }
-    return `Item ${index + 1}`;
+    return `Item ${item.seq ?? index + 1}`;
   }
 
   function itemValue(item: PurchaseQuoteItem) {
