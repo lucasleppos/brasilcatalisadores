@@ -311,15 +311,24 @@ export interface Purchase {
   bulkWeight: number | null;
 }
 
+/** Categoria dos itens separados na conferência (fora da margem de peso) */
+export const EXCLUDED_CATEGORY = "conferencia_excluida";
+
 /** Filter out conference-generated items — returns only the original purchase items */
 export function getOriginalItems(purchase: Purchase): PurchaseQuoteItem[] {
-  return purchase.items.filter(i => i.category !== "conferencia");
+  return purchase.items.filter(i => i.category !== "conferencia" && i.category !== EXCLUDED_CATEGORY);
 }
 
 /** Return only items generated during conference (peca_sacola individual pieces) */
 export function getConferenciaItems(purchase: Purchase): PurchaseQuoteItem[] {
   return purchase.items.filter(i => i.category === "conferencia");
 }
+
+/** Peças separadas na conferência que não seguem o fluxo (irão para nova compra de cerâmico) */
+export function getExcludedItems(purchase: Purchase): PurchaseQuoteItem[] {
+  return purchase.items.filter(i => i.category === EXCLUDED_CATEGORY);
+}
+
 
 /** Sum quantities from original items only */
 export function getOriginalItemCount(purchase: Purchase): number {
@@ -351,7 +360,7 @@ export function getItemLabel(purchase: Purchase): string {
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
   // Only sum original items (exclude conference-generated ones which have no value yet)
-  const original = items.filter(i => i.category !== "conferencia");
+  const original = items.filter(i => i.category !== "conferencia" && i.category !== EXCLUDED_CATEGORY);
   return original.reduce((sum, q) => {
     if (q.itemType === "peca" || (q.itemType === "peca_sacola" && !q.result)) {
       return sum + (q.totalValue || 0);

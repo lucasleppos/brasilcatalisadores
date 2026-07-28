@@ -1,44 +1,29 @@
-## Entendimento
+## Objetivo
 
-Peça em sacola passa a ser tratada **uma a uma**: cada peça tem peso próprio, pesado pelo operador, e é comparada com o peso do catálogo. Duas validações definem o preço:
+Na conferência de Peça em Sacola, as peças que não passam na 1ª validação (peso abaixo da margem de 3%) deixam de seguir o fluxo de sacola. Elas saem do bloco principal, vão para um bloco separado no final da tela, e ficam registradas na compra (não são apagadas) para que o operador crie depois uma nova compra no fluxo cerâmico só com elas.
 
-1. **Peso** — diferença até 3% (para menos) em relação ao catálogo: OK.
-2. **Análise** — diferença até 5% (para menos) entre PPM do catálogo e PPM do laboratório: OK.
+## Como fica na tela
 
-Regra de pagamento:
-- Peso e análise **acima** do catálogo → paga-se pelo **catálogo** (não se paga a mais).
-- Diferença para menos **dentro** das margens (<3% / <5%) → paga-se pelo **catálogo**, apenas sinalizando a diferença.
-- Diferença para menos **fora** das margens → paga-se pelo **peso e PPM reais da análise**.
+1. Cada peça fora da margem continua marcada em vermelho e ganha o botão **"Separar do fluxo"**.
+2. Ao separar, a peça desce para o bloco **"Peças fora da margem — não seguem o fluxo de sacola"**, em fundo âmbar, mostrando código, referência, peso pesado, peso de catálogo e Δ%.
+3. Atalho **"Separar todas fora da margem"** no aviso já existente ("4 peça(s) fora da margem…"), para fazer em lote.
+4. É possível **devolver ao fluxo** uma peça separada, caso tenha sido engano.
+5. As peças separadas **saem das quantidades da compra**:
+   - não contam no total de peças, nem no peso, nem no valor;
+   - o total declarado é **reduzido**: separando 4 de 10, o contador passa a exibir **6/6 peças** e o encerramento é liberado com 6;
+   - o cabeçalho passa a mostrar "10 declaradas · 4 separadas · 6 no fluxo";
+   - exibem a etiqueta "Destino: nova compra — fluxo cerâmico".
+6. Resumo do bloco separado: quantidade e peso total separados, para facilitar a criação da nova compra cerâmica.
 
-Nada bloqueia o avanço; o app sinaliza de forma destacada.
+## Efeito nas etapas seguintes
 
-## Etapa 1 — Conferência (SacolaConferenciaPanel)
-
-- Trocar o campo "Quantidade (un)" por **"Peso pesado (kg)"** (`type=text`, `inputMode=decimal`, formato brasileiro).
-- Cada "Adicionar Peça" cria **uma linha própria** (quantidade sempre 1), mesmo com código repetido — remover a lógica de somar quantidade e os botões +/−.
-- Em cada linha mostrar: Código, Referência, **Peso catálogo**, **Peso pesado** e **Δ%** destacado:
-  - verde: dentro de 3% ou acima do catálogo;
-  - laranja/vermelho: abaixo do catálogo em mais de 3%, com selo "Fora da margem de peso".
-- Peso pesado editável direto na linha.
-- Meta de encerramento continua exata: nº de peças pesadas = total declarado (10/10).
-- Rodapé: total de peças, peso total conferido, peso total de catálogo e Δ% geral.
-
-## Etapa 2 — Análise (SacolaLabPanel)
-
-- Para cada peça, ao lado dos PPMs do laboratório, exibir os PPMs do catálogo e o **Δ%** por metal e o Δ% do valor de metal contido.
-- Selo por peça: "Análise dentro da margem (5%)" ou "Fora da margem de análise".
-
-## Etapa 3 — Precificação (SacolaPricingPanel)
-
-- Calcular automaticamente para cada peça a **origem do preço sugerido**:
-  - `catalogo` quando peso e análise estão OK (dentro das margens ou acima do catálogo);
-  - `calculadora` (peso + PPM reais) quando qualquer uma das validações estiver fora da margem para menos.
-- A seleção continua editável pelo operador; a sugestão automática vem pré-marcada com um resumo do motivo ("Peso −5,2% fora da margem → pagar por análise").
-- Painel mostra as duas colunas de validação (peso / análise) com os selos.
+Trituração, Laboratório e Precificação de sacola passam a ignorar as peças separadas — não aparecem para pesagem, análise nem precificação, e não entram no demonstrativo/PDF. O registro fica preservado no banco e é exibido no detalhe da compra (e no módulo Concluído) como "peças transferidas para fluxo cerâmico".
 
 ## Detalhes técnicos
 
-- Margens 3% e 5% ficam como constantes num helper novo (`src/lib/sacola-validation.ts`) com funções `weightCheck(catalogWeight, realWeight)` e `analysisCheck(catalogPpms, labPpms)` retornando `{ diffPct, withinMargin, useCatalog }`.
-- Persistência: cada peça continua uma linha em `purchase_items` (`item_type = peca_sacola`, `category = conferencia`, `quantity = 1`), com `weight` = peso pesado e `catalog_part_id` apontando o catálogo (peso de catálogo é lido de lá, sem coluna nova).
-- `pricing_source` em `purchase_items` já existe e recebe o resultado da decisão.
-- Demonstrativo/PDF permanecem como estão nesta etapa (sem exibir margens/PPM).
+- Em `purchase_items`, as peças separadas passam a ter `category = "conferencia_excluida"` (mesma linha, só muda a categoria) — nada é perdido e não há mudança de schema.
+- `src/components/processes/SacolaConferenciaPanel.tsx`: estado `excluded` por peça, carregamento das duas categorias em `loadExistingPieces`, gravação com a categoria correspondente em `persistPieces`, novo bloco de UI, e recálculo de `declaredQty` (= declarado − separadas) e dos totais.
+- `src/components/processes/SacolaTrituracaoPanel.tsx`, `SacolaLabPanel.tsx`, `SacolaPricingPanel.tsx`: filtrar itens por `category = "conferencia"`.
+- `src/components/processes/DemonstrativoViewDialog.tsx` e `supabase/functions/generate-demonstrativo-pdf/index.ts`: ignorar `conferencia_excluida`.
+- `src/components/purchases/PurchaseDetail.tsx` e `src/components/purchases/CompletedDetailRow.tsx`: seção informativa com as peças separadas.
+- A separação é sempre ação manual do operador, nunca automática.

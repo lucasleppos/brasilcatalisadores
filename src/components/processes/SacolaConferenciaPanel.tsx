@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus, ArrowDownToLine, Undo2, PackageX } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, EXCLUDED_CATEGORY } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 import PartSearch from "@/components/catalog/PartSearch";
@@ -25,7 +25,10 @@ interface ConferenciaPiece {
   /** Peso cadastrado no catálogo (referência de comparação) */
   catalogWeight: number;
   quantity: number;
+  /** Separada do fluxo de sacola (irá para nova compra de cerâmico) */
+  excluded?: boolean;
 }
+
 
 interface SacolaConferenciaPanelProps {
   purchase: Purchase;
@@ -55,7 +58,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       .select("id, item_type, weight, quantity, catalog_part_id, category")
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
-      .eq("category", "conferencia");
+      .in("category", ["conferencia", EXCLUDED_CATEGORY]);
 
     const rows = (data || []).filter(d => d.catalog_part_id);
     if (rows.length === 0) {
@@ -82,9 +85,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         unitWeight: (Number(d.weight) || 0) / q,
         catalogWeight: info?.weight || 0,
         quantity: q,
+        excluded: d.category === EXCLUDED_CATEGORY,
       };
     }));
   };
+
 
   const handlePartSelect = (part: CatalogPart) => {
     setSelectedPart(part);
@@ -153,6 +158,17 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(prev => prev.filter((_, i) => i !== index));
   };
 
+  const setExcluded = (index: number, value: boolean) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
+  };
+
+  const excludeAllOutOfMargin = () => {
+    setPieces(prev => prev.map(p => {
+      const c = weightCheck(p.catalogWeight, p.unitWeight);
+      return c.hasBase && !c.withinMargin ? { ...p, excluded: true } : p;
+    }));
+  };
+
   /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
   const persistPieces = async () => {
     await supabase
@@ -165,7 +181,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       pieces.map(p => ({
         purchase_id: purchase.id,
         item_type: itemType,
-        category: "conferencia",
+        category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
         quantity: p.quantity,
         weight: p.unitWeight * p.quantity,
         catalog_part_id: p.catalogPartId,
@@ -187,29 +203,37 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
   };
 
+  const activePieces = pieces.filter(p => !p.excluded);
+  const excludedPieces = pieces.filter(p => p.excluded);
+  const excludedQty = excludedPieces.reduce((s, p) => s + p.quantity, 0);
+  const excludedWeight = excludedPieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
+
   // Meta = total de peças declaradas na criação da compra (unidades)
-  const declaredQty = purchase.bulkWeight && purchase.bulkWeight > 0
+  const baseDeclaredQty = purchase.bulkWeight && purchase.bulkWeight > 0
     ? Math.round(purchase.bulkWeight)
     : purchase.items
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
+  // Peças separadas saem da meta do fluxo
+  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty);
 
-  const totalQty = pieces.reduce((s, p) => s + p.quantity, 0);
-  const totalWeight = pieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
-  const totalCatalogWeight = pieces.reduce((s, p) => s + p.catalogWeight * p.quantity, 0);
+  const totalQty = activePieces.reduce((s, p) => s + p.quantity, 0);
+  const totalWeight = activePieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
+  const totalCatalogWeight = activePieces.reduce((s, p) => s + p.catalogWeight * p.quantity, 0);
   const globalCheck = weightCheck(totalCatalogWeight, totalWeight);
   const outOfMargin = isSacola
-    ? pieces.filter(p => {
+    ? activePieces.filter(p => {
         const c = weightCheck(p.catalogWeight, p.unitWeight);
         return c.hasBase && !c.withinMargin;
       }).length
     : 0;
   const isComplete = declaredQty > 0 && totalQty === declaredQty
-    && (!isSacola || pieces.every(p => p.unitWeight > 0));
+    && (!isSacola || activePieces.every(p => p.unitWeight > 0));
+
 
   const handleFinish = async () => {
-    if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
-    if (isSacola && pieces.some(p => p.unitWeight <= 0)) {
+    if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    if (isSacola && activePieces.some(p => p.unitWeight <= 0)) {
       toast.error("Informe o peso de todas as peças");
       return;
     }
@@ -245,16 +269,21 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <span className="font-mono text-muted-foreground">{purchase.purchaseNumber}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{declaredQty} peças declaradas</span>
+            <span>
+              {excludedQty > 0
+                ? `${baseDeclaredQty} declaradas · ${excludedQty} separadas · ${declaredQty} no fluxo`
+                : `${declaredQty} peças declaradas`}
+            </span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
           </div>
         </div>
 
         {/* Pieces list */}
-        {pieces.length > 0 && (
+        {activePieces.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Peças Conferidas</p>
             {pieces.map((p, i) => {
+              if (p.excluded) return null;
               const check = weightCheck(p.catalogWeight, p.unitWeight);
               const outside = check.hasBase && !check.withinMargin;
               return (
@@ -288,9 +317,19 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                             <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
                           </div>
                           {outside && (
-                            <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Fora da margem de peso ({WEIGHT_MARGIN_PCT}%)
-                            </Badge>
+                            <div className="space-y-1">
+                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
+                                <AlertTriangle className="h-3 w-3 mr-1" /> Fora da margem de peso ({WEIGHT_MARGIN_PCT}%)
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] border-amber-400 text-amber-700 hover:bg-amber-500/10"
+                                onClick={() => setExcluded(i, true)}
+                              >
+                                <ArrowDownToLine className="h-3 w-3 mr-1" /> Separar do fluxo
+                              </Button>
+                            </div>
                           )}
                         </div>
                       ) : (
@@ -321,6 +360,39 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             })}
           </div>
         )}
+
+        {/* Peças separadas do fluxo */}
+        {excludedPieces.length > 0 && (
+          <div className="space-y-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-3">
+            <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+              <PackageX className="h-3.5 w-3.5" />
+              Não seguem o fluxo de sacola ({excludedQty} peça(s) · {fmtNum(excludedWeight, 3)} kg)
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Registradas nesta compra para histórico. Devem ser incluídas em uma nova compra no fluxo de cerâmico.
+            </p>
+            {pieces.map((p, i) => {
+              if (!p.excluded) return null;
+              const check = weightCheck(p.catalogWeight, p.unitWeight);
+              return (
+                <div key={p.id || `ex-${p.catalogPartId}-${i}`} className="flex items-center justify-between gap-2 rounded border border-amber-400/30 bg-background/60 p-2">
+                  <div className="text-xs space-y-0.5">
+                    <p><span className="text-muted-foreground">Código: </span><span className="font-mono font-medium">{p.code}</span></p>
+                    <p className="text-muted-foreground">
+                      Pesado: {fmtNum(p.unitWeight, 3)} kg · Catálogo: {fmtNum(p.catalogWeight, 3)} kg ·{" "}
+                      <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setExcluded(i, false)}>
+                    <Undo2 className="h-3 w-3 mr-1" /> Retornar
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+
 
         {/* Add piece form */}
         <div className="space-y-3 rounded-md border p-3">
@@ -399,10 +471,20 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </div>
           )}
           {isSacola && outOfMargin > 0 && (
-            <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {outOfMargin} peça(s) fora da margem de {WEIGHT_MARGIN_PCT}% — serão pagas pelo peso/análise reais
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {outOfMargin} peça(s) fora da margem de {WEIGHT_MARGIN_PCT}%
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] border-amber-400 text-amber-700 hover:bg-amber-500/10"
+                onClick={excludeAllOutOfMargin}
+              >
+                <ArrowDownToLine className="h-3 w-3 mr-1" /> Separar todas do fluxo
+              </Button>
+            </div>
           )}
 
           <div className="flex items-center gap-2">
