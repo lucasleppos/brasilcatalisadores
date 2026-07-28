@@ -76,6 +76,9 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
+    // Peso real pós-trituração (peças), rateado por item de conferência
+    const realWeights = await getRealWeightsByItem(purchaseIds);
+
     const available: AvailableMaterial[] = [];
     (items || []).forEach((item: any) => {
       if (allocatedIds.has(item.id)) return;
@@ -83,11 +86,13 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
       if (!purchase) return;
 
       const result = item.calc_result as any;
+      const realWeight = realWeights.get(item.id);
       available.push({
         purchaseId: item.purchase_id,
         purchaseItemId: item.id,
         supplierName: purchase.supplier_name,
-        weight: Number(item.weight) || (result?.netWeightKg || 0),
+        weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+
         paidValue: Number(item.total_value) || (result?.finalValueBrl || 0),
         ptPpm: result?.ptContentG ? 0 : 0,
         pdPpm: 0,
