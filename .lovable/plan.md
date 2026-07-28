@@ -1,19 +1,20 @@
-## Objetivo
+## Problema
 
-Na tela **Precificação de Peças**, remover o fluxo de justificativa e aprovação de alteração de preço. O usuário continua vendo o valor calculado pelo catálogo (referência) e pode simplesmente digitar outro valor, que é gravado direto.
+No card do processo (etapa de Corte, e demais etapas do fluxo de Peças), a linha de itens mostra "0 peças".
 
-## O que muda (`src/components/processes/PiecePricingPanel.tsx`)
+Causa confirmada em `src/lib/purchases.ts`: `getItemLabel()` para o fluxo de peças usa `getOriginalItemCount()`, que soma apenas itens **originais** (`category !== "conferencia"`). Como na Conferência o item placeholder criado na compra é removido e as peças reais são gravadas com `category = "conferencia"`, não sobra nenhum item original → contagem 0.
 
-- Remover o campo de justificativa (Textarea) que aparece quando o valor digitado diverge do calculado.
-- Remover o bloco amarelo "aguardando aprovação" com os botões de aprovar/rejeitar.
-- Remover o rodapé "X alteração(ões) aguardando aprovação" e a linha "Valor a ser gravado (sem ajustes pendentes)".
-- Remover o bloco "Histórico de alterações de valor".
-- Remover a leitura e a escrita em `price_override_log`, os estados `overrides`/`justifications` e as funções `pendingFor`, `approvedFor`, `reviewOverride`, `isDiverged`, `effectiveUnit`, `loadOverrides`.
-- Ao salvar: gravar exatamente o valor digitado (`valor unit. × quantidade`) em `purchase_items.total_value`, com `pricing_source` = `catalogo` quando igual ao calculado e `manual` quando o usuário alterou.
-- Manter: coluna "Calculado unit." (referência do catálogo), botão "Recalcular" (repõe os valores calculados), Pt/Pd/Rh + margem por item, e o resumo Total de peças / Peso total / Valor total.
-- O valor inicial de cada linha passa a ser: valor já salvo no item, ou o calculado pelo catálogo quando ainda não há valor.
+## Correção
 
-## Observações
+Ajustar `getItemLabel()` (fluxo peças / peça em sacola) para usar, nesta ordem:
 
-- Nenhuma alteração de banco: a tabela `price_override_log` permanece existente, apenas deixa de ser usada. Posso removê-la depois, se preferir.
-- Nenhuma mudança no demonstrativo nem no PDF.
+1. Soma de `quantity` dos itens de conferência (`getConferenciaItems`) quando existirem — é a quantidade real conferida;
+2. Senão, `getOriginalItemCount()` (compras antigas / antes da conferência);
+3. Senão, `bulkWeight` (total de peças declarado na criação da compra), evitando o "0".
+
+Também exibir o peso quando disponível, no formato `12 peças · 3,450 kg`, usando a soma dos pesos dos itens de conferência (opcional, mas útil na etapa de Corte).
+
+## Detalhe técnico
+
+- Arquivo único: `src/lib/purchases.ts`, função `getItemLabel`.
+- Nenhuma mudança de schema, de fluxo ou de outros componentes: `StageActionCard` e `PurchaseSummary` já consomem `getItemLabel`, então a correção propaga automaticamente para todas as etapas.
