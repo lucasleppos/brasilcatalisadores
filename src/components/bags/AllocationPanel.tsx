@@ -9,19 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
-import { syncCeramicoAllocation } from "@/lib/purchases";
+import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
 
 interface AvailableMaterial {
   purchaseId: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
+  isRealWeight?: boolean;
   paidValue: number;
   ptPpm: number;
   pdPpm: number;
   rhPpm: number;
   itemType: string;
 }
+
 
 interface InProcessMaterial {
   purchaseId: string;
