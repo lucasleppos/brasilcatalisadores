@@ -8,15 +8,20 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Scale, Loader2, CheckCircle2, Save, AlertTriangle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, batchUpdateItemPricing } from "@/lib/purchases";
+import { Purchase, batchUpdateItemPricing, advanceStage } from "@/lib/purchases";
+import { calculate, CalculatorInput } from "@/lib/calculator";
+import { loadSettings } from "@/lib/settings";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+
+const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
 interface PricingPiece {
   itemId: string;
   code: string;
   reference: string | null;
   weight: number;
+  quantity: number;
   catalogPartId: string | null;
   // Catalog PPMs
   catPt: number;
@@ -81,7 +86,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, catalog_part_id, category, total_value, pricing_source")
+        .select("id, weight, quantity, catalog_part_id, category, total_value, pricing_source")
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
         .eq("category", "conferencia");
@@ -129,17 +134,49 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         }
       });
 
+      // Settings + margem de peças do fornecedor (para os valores sugeridos)
+      const [settings, supplierRes] = await Promise.all([
+        loadSettings(),
+        supabase.from("suppliers").select("margin, margin_pecas").eq("id", purchase.supplierId).maybeSingle(),
+      ]);
+      const sup: any = supplierRes?.data ?? null;
+      const marginPecas = Number(sup?.margin_pecas ?? sup?.margin) || 15;
+
+      const suggest = (weight: number, pt: number, pd: number, rh: number): number => {
+        if (weight <= 0 || (pt <= 0 && pd <= 0 && rh <= 0)) return 0;
+        const input: CalculatorInput = {
+          grossWeight: weight,
+          tare: 0,
+          materialType: "comum",
+          ptPpm: pt,
+          pdPpm: pd,
+          rhPpm: rh,
+          clientDiscount: marginPecas,
+          entryType: "peca_sacola",
+          manualPrice: null,
+          customPt: null,
+          customPd: null,
+          customRh: null,
+        };
+        return calculate(input, settings).finalValueBrl;
+      };
+
       setPieces(items.map(item => {
         const cp = item.catalog_part_id ? catalogMap[item.catalog_part_id] : null;
         const lr = labMap[item.id];
         const existingSource = (item as any).pricing_source as string | null;
         const existingValue = Number(item.total_value) || 0;
+        const weight = Number(item.weight) || 0;
+
+        const catSuggested = cp ? suggest(weight, cp.ptPpm, cp.pdPpm, cp.rhPpm) : 0;
+        const labSuggested = lr ? suggest(weight, lr.pt, lr.pd, lr.rh) : 0;
 
         return {
           itemId: item.id,
           code: cp ? cp.code : "Manual",
           reference: cp ? cp.reference : null,
-          weight: Number(item.weight) || 0,
+          weight,
+          quantity: Number(item.quantity) || 1,
           catalogPartId: item.catalog_part_id,
           catPt: cp?.ptPpm || 0,
           catPd: cp?.pdPpm || 0,
@@ -147,9 +184,9 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
           labPt: lr?.pt || 0,
           labPd: lr?.pd || 0,
           labRh: lr?.rh || 0,
-          valueCatalog: existingSource === "catalogo" && existingValue > 0 ? String(existingValue) : "",
-          valueCalc: existingSource === "calculadora" && existingValue > 0 ? String(existingValue) : "",
-          pricingSource: (existingSource as "catalogo" | "calculadora") || null,
+          valueCatalog: existingSource === "catalogo" && existingValue > 0 ? toStr(existingValue) : toStr(catSuggested),
+          valueCalc: existingSource === "calculadora" && existingValue > 0 ? toStr(existingValue) : toStr(labSuggested),
+          pricingSource: (existingSource as "catalogo" | "calculadora") || (labSuggested > 0 ? "calculadora" : null),
         };
       }));
     } finally {
@@ -221,7 +258,13 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
       }));
 
       await batchUpdateItemPricing(purchase.id, updates);
-      toast.success("Precificação confirmada");
+      // Precificação confirmada → segue para Aprovação (PDF + Boleto Syge)
+      if (purchase.status === "Peças: Aguardando Demonstrativo") {
+        await advanceStage(purchase.id, purchase.status);
+        toast.success("Precificação confirmada — enviado para Aprovação");
+      } else {
+        toast.success("Precificação confirmada");
+      }
       onOpenChange(false);
       onCompleted();
     } catch {

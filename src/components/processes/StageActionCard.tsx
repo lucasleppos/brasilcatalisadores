@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow } from "@/lib/purchases";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
+import SacolaTrituracaoPanel from "./SacolaTrituracaoPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoTrituracaoPanel from "./CeramicoTrituracaoPanel";
@@ -59,6 +60,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
+  const [sacolaTrituracaoOpen, setSacolaTrituracaoOpen] = useState(false);
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
   const [ceramicoTrituracaoOpen, setCeramicoTrituracaoOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
@@ -93,14 +95,16 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const isContested = purchase.status.includes("Demonstrativo Contestado");
   const isPiecePricing = purchase.status === "Peças: Aguardando Demonstrativo";
   const hasSacolaItems = purchase.items.some(i => i.itemType === "peca_sacola");
-  const isSacolaPricing = isPiecePricing && hasSacolaItems;
+  const isSacola = isSacolaFlow(purchase);
+  const isSacolaPricing = isPiecePricing && isSacola;
   const isWeighing = purchase.status === "Peças: Pesagem Realizada";
   const isWeightDivergent = purchase.status === "Peças: Peso Divergente";
   const isParallel = isInParallelPhase(purchase);
   const isApprovalStage = purchase.status === "Aprovação do Fornecedor" || purchase.status.includes("Aprovado - Aguardando");
   const canGeneratePdf = isDemonstrative || isPiecePricing || purchase.status === "Cerâmico: Em Precificação";
-  const isSacolaConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "pecas";
-  const isSacolaLab = purchase.status === "Peças: Laboratório" && hasSacolaItems;
+  const isSacolaConferencia = purchase.status === "Em Conferência" && (purchase.materialFlow === "pecas" || purchase.materialFlow === "sacola");
+  const isSacolaTrituracao = purchase.status === "Peças: Em Trituração" && isSacola;
+  const isSacolaLab = purchase.status === "Peças: Laboratório" && isSacola;
   const isCeramicoConferencia = purchase.status === "Em Conferência" && purchase.materialFlow === "ceramico";
   const isCeramicoTrituracao = purchase.status === "Cerâmico: Em Trituração/Homogeneização" && purchase.materialFlow === "ceramico";
   const isCeramicoLab = purchase.status === "Cerâmico: Lab em Análise" && purchase.materialFlow === "ceramico";
@@ -347,7 +351,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <p className="text-xs text-muted-foreground">{getItemLabel(purchase)}</p>
             {purchase.materialFlow && (
               <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
-                {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}
+                {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "sacola" ? "Sacola" : "Peças"}
               </Badge>
             )}
           </div>
@@ -456,12 +460,12 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      {purchase.materialFlow === "pecas" ? "Aprovar e Enviar para Bag" : purchase.materialFlow === "ceramico" ? "Aprovar e Encerrar" : "Aprovar demonstrativo?"}
+                      {purchase.materialFlow === "pecas" || purchase.materialFlow === "sacola" ? "Aprovar e Enviar para Bag" : purchase.materialFlow === "ceramico" ? "Aprovar e Encerrar" : "Aprovar demonstrativo?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription className="sr-only">Confirmação de aprovação</AlertDialogDescription>
                   </AlertDialogHeader>
                   <PurchaseSummary purchase={purchase} showPdf={true} />
-                  {(purchase.materialFlow === "pecas" || purchase.materialFlow === "ceramico") && (
+                  {(purchase.materialFlow === "pecas" || purchase.materialFlow === "sacola" || purchase.materialFlow === "ceramico") && (
                     <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 flex items-start gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                       <p className="text-xs text-amber-700">
@@ -474,7 +478,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleApprove} disabled={loading}>
-                      {loading ? "Processando..." : purchase.materialFlow === "pecas" ? "Confirmar e Alocar" : purchase.materialFlow === "ceramico" ? "Confirmar e Alocar ao Bag" : "Confirmar Aprovação"}
+                      {loading ? "Processando..." : purchase.materialFlow === "ceramico" ? "Confirmar e Alocar ao Bag" : purchase.materialFlow === "pecas" || purchase.materialFlow === "sacola" ? "Confirmar e Alocar" : "Confirmar Aprovação"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -588,6 +592,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               purchase={purchase}
               open={conferenciaOpen}
               onOpenChange={setConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isSacolaTrituracao ? (
+          /* Sacola: Trituração peça a peça */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setSacolaTrituracaoOpen(true)}>
+              <Package className="h-3 w-3 mr-1" /> Iniciar Trituração
+            </Button>
+            <SacolaTrituracaoPanel
+              purchase={purchase}
+              open={sacolaTrituracaoOpen}
+              onOpenChange={setSacolaTrituracaoOpen}
               onCompleted={onCompleted}
             />
           </div>

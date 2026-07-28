@@ -5,7 +5,7 @@ import { loadSettings } from "./settings";
 import { fmtNum } from "./utils";
 
 // ===== Material Flow Types =====
-export type MaterialFlow = "pecas" | "ceramico";
+export type MaterialFlow = "pecas" | "ceramico" | "sacola";
 export type PurchaseItemType = "peca" | "peca_sacola" | "ceramico";
 
 // ===== Status Definitions =====
@@ -150,6 +150,17 @@ export const PECAS_FLOW: string[] = [
   "Concluído",
 ];
 
+// Peça em Sacola: Conferência → Trituração (peça a peça) → Laboratório → Precificação → Aprovação → Bag
+export const SACOLA_FLOW: string[] = [
+  ...COMMON_STATUSES,
+  "Peças: Em Trituração",
+  "Peças: Laboratório",
+  "Peças: Aguardando Demonstrativo",
+  "Peças: Gerar Boleto de Aprovação",
+  "Peças: Alocado ao Bag",
+  "Concluído",
+];
+
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
@@ -170,6 +181,7 @@ export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
 
 export function getFlowStatuses(materialFlow: MaterialFlow | null): string[] {
   if (materialFlow === "pecas") return PECAS_FLOW;
+  if (materialFlow === "sacola") return SACOLA_FLOW;
   if (materialFlow === "ceramico") return CERAMICO_FLOW;
   return LEGACY_FLOW;
 }
@@ -179,6 +191,18 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   if (current === "Peças: Demonstrativo Contestado") return "Peças: Aguardando Demonstrativo";
   if (current === "Cerâmico: Demonstrativo Contestado") return "Cerâmico: Em Trituração/Homogeneização";
   if (current === "Peças: Peso Divergente") return "Peças: Alocado ao Bag";
+
+  // Peça em Sacola: Conferência → Trituração → Laboratório → Precificação → Aprovação → Bag
+  if (materialFlow === "sacola") {
+    if (current === "Em Conferência") return "Peças: Em Trituração";
+    if (current === "Peças: Em Trituração") return "Peças: Laboratório";
+    if (current === "Peças: Laboratório") return "Peças: Aguardando Demonstrativo";
+    if (current === "Peças: Aguardando Demonstrativo") return "Peças: Gerar Boleto de Aprovação";
+    if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
+    if (current === "Peças: Encerrado") return "Concluído";
+    if (current === "Peças: Alocado ao Bag" || current === "Concluído") return null;
+  }
+
 
   // Peças: após aprovação (boleto) segue para Corte → Trituração/Amostragem → Bag
   if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Em Corte";
@@ -235,8 +259,16 @@ export function canUserActOnStage(role: string | null, status: string): boolean 
 
 /** Determine material flow from items */
 export function determineMaterialFlow(items: PurchaseQuoteItem[]): MaterialFlow {
-  const hasCeramicFlow = items.some(i => i.itemType === "ceramico");
-  return hasCeramicFlow ? "ceramico" : "pecas";
+  if (items.some(i => i.itemType === "ceramico")) return "ceramico";
+  if (items.some(i => i.itemType === "peca_sacola")) return "sacola";
+  return "pecas";
+}
+
+/** Compras de Peça em Sacola (inclui compras antigas sem material_flow = "sacola") */
+export function isSacolaFlow(purchase: Pick<Purchase, "materialFlow" | "items">): boolean {
+  if (purchase.materialFlow === "sacola") return true;
+  if (purchase.materialFlow === "ceramico") return false;
+  return purchase.items.some(i => i.itemType === "peca_sacola");
 }
 
 // ===== Types =====
@@ -530,7 +562,7 @@ export async function syncCeramicoAllocation(purchaseId: string): Promise<boolea
   if (!purchase) return false;
 
   const isCeramico = purchase.material_flow === "ceramico";
-  const isPecas = purchase.material_flow === "pecas";
+  const isPecas = purchase.material_flow === "pecas" || purchase.material_flow === "sacola";
   if (isCeramico && (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag")) return false;
   if (isPecas && purchase.status !== "Peças: Alocado ao Bag") return false;
   if (!isCeramico && !isPecas) return false;

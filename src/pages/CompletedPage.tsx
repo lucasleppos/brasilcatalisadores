@@ -46,7 +46,7 @@ export default function CompletedPage() {
     // em "Alocando Bag" (cerâmico) ou "Alocado ao Bag" (peças) são encerradas.
     const pending = all.filter(p =>
       (p.materialFlow === "ceramico" && p.opStatus === "Alocando Bag") ||
-      (p.materialFlow === "pecas" && p.status === "Peças: Alocado ao Bag")
+      ((p.materialFlow === "pecas" || p.materialFlow === "sacola") && p.status === "Peças: Alocado ao Bag")
     );
     if (pending.length > 0) {
       const results = await Promise.all(pending.map(p => syncCeramicoAllocation(p.id)));
