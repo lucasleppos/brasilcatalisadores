@@ -5,7 +5,7 @@ import { loadSettings } from "./settings";
 import { fmtNum } from "./utils";
 
 // ===== Material Flow Types =====
-export type MaterialFlow = "pecas" | "ceramico";
+export type MaterialFlow = "pecas" | "ceramico" | "sacola";
 export type PurchaseItemType = "peca" | "peca_sacola" | "ceramico";
 
 // ===== Status Definitions =====
@@ -235,8 +235,16 @@ export function canUserActOnStage(role: string | null, status: string): boolean 
 
 /** Determine material flow from items */
 export function determineMaterialFlow(items: PurchaseQuoteItem[]): MaterialFlow {
-  const hasCeramicFlow = items.some(i => i.itemType === "ceramico");
-  return hasCeramicFlow ? "ceramico" : "pecas";
+  if (items.some(i => i.itemType === "ceramico")) return "ceramico";
+  if (items.some(i => i.itemType === "peca_sacola")) return "sacola";
+  return "pecas";
+}
+
+/** Compras de Peça em Sacola (inclui compras antigas sem material_flow = "sacola") */
+export function isSacolaFlow(purchase: Pick<Purchase, "materialFlow" | "items">): boolean {
+  if (purchase.materialFlow === "sacola") return true;
+  if (purchase.materialFlow === "ceramico") return false;
+  return purchase.items.some(i => i.itemType === "peca_sacola");
 }
 
 // ===== Types =====
