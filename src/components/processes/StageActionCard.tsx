@@ -351,7 +351,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <p className="text-xs text-muted-foreground">{getItemLabel(purchase)}</p>
             {purchase.materialFlow && (
               <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
-                {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}
+                {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "sacola" ? "Sacola" : "Peças"}
               </Badge>
             )}
           </div>
@@ -592,6 +592,19 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               purchase={purchase}
               open={conferenciaOpen}
               onOpenChange={setConferenciaOpen}
+              onCompleted={onCompleted}
+            />
+          </div>
+        ) : isSacolaTrituracao ? (
+          /* Sacola: Trituração peça a peça */
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            <Button size="sm" className="w-full" onClick={() => setSacolaTrituracaoOpen(true)}>
+              <Package className="h-3 w-3 mr-1" /> Iniciar Trituração
+            </Button>
+            <SacolaTrituracaoPanel
+              purchase={purchase}
+              open={sacolaTrituracaoOpen}
+              onOpenChange={setSacolaTrituracaoOpen}
               onCompleted={onCompleted}
             />
           </div>
