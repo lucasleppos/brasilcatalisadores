@@ -434,7 +434,6 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             </div>
           </>
 
-          </div>
         )}
       </section>
 
