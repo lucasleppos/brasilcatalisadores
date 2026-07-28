@@ -159,7 +159,47 @@ Deno.serve(async (req) => {
     const calcItems = items.filter(i => i.pricing_source === 'calculadora');
     const regularItems = items.filter(i => !i.pricing_source);
 
-    const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
+    const hasSacolaBlocks = isCeramico && (catalogFixedItems.length > 0 || calcItems.length > 0);
+
+    // === Peças / Peça em Sacola: single table (Código/Referência, Qtd/Peso, Valor unit., Subtotal) ===
+    if (!isCeramico) {
+      const pCols = [10, contentWidth - 115, 30, 35, 40];
+      const pX = [margin];
+      for (let i = 1; i < pCols.length; i++) pX.push(pX[i - 1] + pCols[i - 1]);
+
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y, contentWidth, 7, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      const pHeaders = ["#", "Peça", "Qtd / Peso", "Valor unit.", "Subtotal"];
+      for (let i = 0; i < pHeaders.length; i++) doc.text(pHeaders[i], pX[i] + 2, y + 5);
+      y += 7;
+
+      doc.setFont("helvetica", "normal");
+      for (let i = 0; i < itemsForTotal.length; i++) {
+        const item = itemsForTotal[i];
+        const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+        const qty = Number(item.quantity) || 1;
+        const tv = Number(item.total_value) || 0;
+        const w = Number(item.weight) || 0;
+        const rowH = 11;
+        if (i % 2 === 0) {
+          doc.setFillColor(250, 250, 250);
+          doc.rect(margin, y, contentWidth, rowH, "F");
+        }
+        doc.text(`${i + 1}`, pX[0] + 2, y + 4);
+        doc.text(`Código: ${cp?.code || "Manual"}`, pX[1] + 2, y + 4);
+        if (cp?.reference) doc.text(`Referência: ${cp.reference}`, pX[1] + 2, y + 8);
+        doc.text(`${qty} un`, pX[2] + 2, y + 4);
+        if (w > 0) doc.text(`${fmt(w, 4)} kg`, pX[2] + 2, y + 8);
+        doc.text(tv > 0 ? fmtBrl(tv / qty) : "—", pX[3] + 2, y + 4);
+        doc.text(tv > 0 ? fmtBrl(tv) : "Pendente", pX[4] + 2, y + 4);
+        y += rowH;
+        if (y > 265) { doc.addPage(); y = margin; }
+      }
+      y += 4;
+    }
+
 
     if (hasSacolaBlocks) {
       // === Block 1: Fixed Price (Catálogo) ===
