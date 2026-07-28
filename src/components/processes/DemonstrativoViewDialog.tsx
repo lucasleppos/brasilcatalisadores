@@ -311,7 +311,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {regularItems.length > 0 && (
+            {isCeramico && regularItems.length > 0 && (
               <div>
                 {hasSacolaBlocks && <p className="font-semibold mb-1">Demais Itens</p>}
                 <table className="w-full text-xs border">
