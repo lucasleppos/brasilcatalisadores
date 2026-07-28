@@ -58,13 +58,13 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
           .not("purchase_item_id", "is", null),
         supabase
           .from("suppliers")
-          .select("margin")
+          .select("margin, margin_ceramico")
           .eq("id", purchase.supplierId)
           .single(),
       ]);
 
       setSettings(settingsData);
-      const margin = Number(supplier?.margin) || 15;
+      const margin = Number((supplier as any)?.margin_ceramico ?? supplier?.margin) || 15;
       setSupplierMargin(margin);
 
       if (!items || items.length === 0) {
