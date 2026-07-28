@@ -1,33 +1,30 @@
-## Diagnóstico
+## Situação atual (verificada no banco)
 
-O peso de corte **existe no banco** (7 kg, `weight_ceramica_extraida`, etapa "Peças: Em Corte", compra Boleto 4444). O problema é no front-end.
+A compra de peças `27/07/2026 - 02` (Syge 4444) está com status **"Peças: Alocado ao Bag"** — a trituração já foi concluída e o fluxo avançou corretamente. O problema é como esse status é tratado nas telas:
 
-Existe um laço infinito no card:
+- **Processos**: "Peças: Alocado ao Bag" não pertence a nenhuma aba do quadro, mas continua entrando na contagem dos KPIs → é ele que aparece como "Em Produção: 1".
+- **Concluídos**: a página só lista `Peças: Encerrado`, `Cerâmico: Encerrado`, `Concluído` ou `op_status = Bag Alocado`. Como os itens ainda não foram alocados em bag, a compra não aparece em lugar nenhum.
+- **Bags**: a compra já é elegível (status listado, filial matriz, 2 itens de conferência de 3 un cada), mas o peso oferecido para alocação vem do catálogo (3,48 kg + 3,87 kg), e não do peso real após trituração.
 
-```text
-StageActionCard renderiza
-  -> passa onChecklistChange={(ready) => { ...; setLossRefresh(k => k+1) }}  (função nova a cada render)
-     -> StageChecklist tem useEffect com dependência [.., onChecklistChange]
-        -> dispara e chama onChecklistChange
-           -> setLossRefresh incrementa -> novo render -> nova função -> repete
-```
+## Alterações propostas
 
-Cada volta do laço faz `PecasLossSummary` recarregar as evidências, e cada chamada do Supabase disputa o lock de autenticação. Daí os avisos no console ("Lock ... was not released within 5000ms") e o erro `Lock broken by another request with the 'steal' option`. Resultado: a leitura das evidências nunca conclui (peso de corte fica "pendente") e o `addEvidence` do peso pós-trituração é abortado no `auth.getUser()`, então nada é salvo.
+1. **Tirar peças pós-trituração do quadro de Processos** (`src/lib/purchases.ts`)
+   - Estender `isInParallelPhase` para incluir peças com status "Peças: Alocado ao Bag", igual ao cerâmico com `op_status = Alocando Bag`.
+   - Efeito: o KPI "Em Produção" deixa de contar essa compra e ela some das abas de Processos.
 
-## O que fazer
+2. **Mostrar a compra em Concluídos** (`src/pages/CompletedPage.tsx`)
+   - Incluir no filtro as compras com status "Peças: Alocado ao Bag" (e cerâmicos em "Alocando Bag"), exibindo na coluna Bag(s) o indicador "Aguardando alocação" enquanto não houver bag vinculado.
+   - Manter a rotina `syncCeramicoAllocation`, que muda o status para "Peças: Encerrado" assim que todos os itens de conferência forem alocados — aí a linha passa a mostrar os bags.
 
-1. **Quebrar o laço** (`src/components/processes/StageActionCard.tsx`)
-   - Estabilizar o callback passado ao checklist com `useCallback` e parar de incrementar `lossRefresh` dentro dele.
-   - Atualizar o resumo apenas quando uma evidência for realmente registrada.
+3. **Usar o peso após trituração na alocação do bag** (`src/components/bags/AllocationPanel.tsx`)
+   - Para compras de peças, ler a evidência `weight_pos_trituracao` (registrada na etapa de Trit./Homog./Amostr.) em `stage_evidence`.
+   - Quando existir, esse peso passa a ser o peso disponível para alocação, em vez do peso de catálogo dos itens de conferência.
+   - Como a compra tem vários itens de conferência e apenas um peso real de trituração, o peso real será **rateado proporcionalmente** entre os itens (na proporção do peso de catálogo de cada um), garantindo que a soma alocada ao bag seja exatamente o peso após trituração.
+   - Na tabela de materiais disponíveis, indicar que o peso exibido é o peso real pós-trituração; se a evidência não existir, mantém-se o peso de catálogo como hoje.
 
-2. **Notificar de forma pontual** (`src/components/processes/StageChecklist.tsx`)
-   - Adicionar uma prop opcional `onEvidenceAdded` chamada após salvar peso/foto/nota; o card usa isso para incrementar `lossRefresh`.
-   - Garantir que o efeito de "pode avançar" use uma ref para o callback, sem depender da identidade da função.
+4. **Validação em tela**
+   - Conferir que a compra de peças aparece em "Materiais Disponíveis" com o peso real, alocar em um bag e confirmar que o status vira "Peças: Encerrado" e a compra aparece em Concluídos com o bag vinculado.
 
-3. **Reduzir disputa pelo lock de auth** (`src/lib/stage-tasks.ts`)
-   - Em `addEvidence`/`addLabAnalysis`, obter o usuário via `supabase.auth.getSession()` (leitura de sessão em cache) em vez de `getUser()`, e não bloquear a inserção caso a chamada falhe.
+## Detalhe técnico
 
-4. **Validar no preview**
-   - Abrir o card de "Peças: Trituração e Amostragem" da compra 4444, confirmar que "Peso após corte" mostra 7,0000 kg, salvar o peso pós-trituração e verificar que ele persiste e o console fica limpo.
-
-Nenhuma mudança de banco, PDF ou regras de etapa.
+Nenhuma migração de banco é necessária — o peso de trituração já é persistido em `stage_evidence` (`task_key = weight_pos_trituracao`). Arquivos afetados: `src/lib/purchases.ts`, `src/pages/CompletedPage.tsx` e `src/components/bags/AllocationPanel.tsx`.
