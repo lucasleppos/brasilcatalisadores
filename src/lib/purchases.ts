@@ -181,6 +181,7 @@ export const LEGACY_FLOW: string[] = [...LEGACY_STATUSES];
 
 export function getFlowStatuses(materialFlow: MaterialFlow | null): string[] {
   if (materialFlow === "pecas") return PECAS_FLOW;
+  if (materialFlow === "sacola") return SACOLA_FLOW;
   if (materialFlow === "ceramico") return CERAMICO_FLOW;
   return LEGACY_FLOW;
 }
@@ -190,6 +191,18 @@ export function getNextStatus(current: string, materialFlow: MaterialFlow | null
   if (current === "Peças: Demonstrativo Contestado") return "Peças: Aguardando Demonstrativo";
   if (current === "Cerâmico: Demonstrativo Contestado") return "Cerâmico: Em Trituração/Homogeneização";
   if (current === "Peças: Peso Divergente") return "Peças: Alocado ao Bag";
+
+  // Peça em Sacola: Conferência → Trituração → Laboratório → Precificação → Aprovação → Bag
+  if (materialFlow === "sacola") {
+    if (current === "Em Conferência") return "Peças: Em Trituração";
+    if (current === "Peças: Em Trituração") return "Peças: Laboratório";
+    if (current === "Peças: Laboratório") return "Peças: Aguardando Demonstrativo";
+    if (current === "Peças: Aguardando Demonstrativo") return "Peças: Gerar Boleto de Aprovação";
+    if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Alocado ao Bag";
+    if (current === "Peças: Encerrado") return "Concluído";
+    if (current === "Peças: Alocado ao Bag" || current === "Concluído") return null;
+  }
+
 
   // Peças: após aprovação (boleto) segue para Corte → Trituração/Amostragem → Bag
   if (current === "Peças: Gerar Boleto de Aprovação") return "Peças: Em Corte";
