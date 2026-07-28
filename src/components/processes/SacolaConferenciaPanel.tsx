@@ -232,8 +232,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
 
   const handleFinish = async () => {
-    if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
-    if (isSacola && pieces.some(p => p.unitWeight <= 0)) {
+    if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    if (isSacola && activePieces.some(p => p.unitWeight <= 0)) {
       toast.error("Informe o peso de todas as peças");
       return;
     }
