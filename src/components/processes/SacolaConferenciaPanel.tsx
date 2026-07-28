@@ -17,6 +17,8 @@ import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-valida
 
 interface ConferenciaPiece {
   id?: string;
+  /** Número fixo da peça, mantido em todas as etapas */
+  seq: number;
   code: string;
   reference: string | null;
   catalogPartId: string;
@@ -55,7 +57,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, quantity, catalog_part_id, category")
+      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, created_at")
+      .order("created_at", { ascending: true })
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
       .in("category", ["conferencia", EXCLUDED_CATEGORY]);
@@ -74,11 +77,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       .in("id", catalogIds);
     (parts || []).forEach(p => { catalogMap[p.id] = { code: p.code, reference: p.reference, weight: Number(p.weight) || 0 }; });
 
+    let fallbackSeq = 0;
     setPieces(rows.map(d => {
       const q = Math.max(1, Number(d.quantity) || 1);
       const info = catalogMap[d.catalog_part_id!];
+      fallbackSeq += 1;
       return {
         id: d.id,
+        seq: Number((d as { seq?: number | null }).seq) || fallbackSeq,
         code: info?.code || "",
         reference: info?.reference || null,
         catalogPartId: d.catalog_part_id!,
@@ -90,6 +96,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }));
   };
 
+
+  const nextSeq = (list: ConferenciaPiece[]) =>
+    list.reduce((m, p) => Math.max(m, p.seq || 0), 0) + 1;
 
   const handlePartSelect = (part: CatalogPart) => {
     setSelectedPart(part);
@@ -106,6 +115,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       if (!w || w <= 0) { toast.error("Informe o peso pesado da peça"); return; }
       // Cada peça em sacola é uma linha própria (pesagem individual)
       setPieces(prev => [...prev, {
+        seq: nextSeq(prev),
         code: selectedPart.code || selectedPart.reference,
         reference: selectedPart.reference,
         catalogPartId: selectedPart.id,
@@ -129,6 +139,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         return next;
       }
       return [...prev, {
+        seq: nextSeq(prev),
         code: selectedPart.code || selectedPart.reference,
         reference: selectedPart.reference,
         catalogPartId: selectedPart.id,
@@ -185,6 +196,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         quantity: p.quantity,
         weight: p.unitWeight * p.quantity,
         catalog_part_id: p.catalogPartId,
+        seq: p.seq,
       }))
     );
   };
@@ -290,7 +302,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                 <Card key={p.id || `${p.catalogPartId}-${i}`} className={`border-border/50 ${outside ? "border-destructive/50 bg-destructive/5" : ""}`}>
                   <CardContent className="p-3 flex items-start justify-between gap-2">
                     <div className="space-y-0.5 flex-1">
-                      <p className="text-xs font-semibold text-muted-foreground">#{i + 1}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">#{p.seq}</p>
                       <p className="text-sm">
                         <span className="text-muted-foreground">Código: </span>
                         <span className="font-mono font-medium">{p.code}</span>
@@ -377,6 +389,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               return (
                 <div key={p.id || `ex-${p.catalogPartId}-${i}`} className="flex items-center justify-between gap-2 rounded border border-amber-400/30 bg-background/60 p-2">
                   <div className="text-xs space-y-0.5">
+                    <p className="font-semibold text-muted-foreground">#{p.seq}</p>
                     <p><span className="text-muted-foreground">Código: </span><span className="font-mono font-medium">{p.code}</span></p>
                     <p className="text-muted-foreground">
                       Pesado: {fmtNum(p.unitWeight, 3)} kg · Catálogo: {fmtNum(p.catalogWeight, 3)} kg ·{" "}
