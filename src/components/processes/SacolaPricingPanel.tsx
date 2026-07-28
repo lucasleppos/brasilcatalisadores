@@ -377,6 +377,13 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                 const rhDiff = pctDiff(p.catRh, p.labRh);
                 const valDiff = valuePctDiff(p.valueCatalog, p.valueCalc);
 
+                const wChk = weightCheck(p.catWeight, p.weight);
+                const aChk = analysisCheck(
+                  { pt: p.catPt, pd: p.catPd, rh: p.catRh },
+                  { pt: p.labPt, pd: p.labPd, rh: p.labRh },
+                );
+                const suggested = suggestPricingSource(wChk, aChk);
+
                 return (
                   <div
                     key={p.itemId}
@@ -387,8 +394,20 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                       <div className="col-span-2 space-y-0.5">
                         <p className="text-sm font-mono font-semibold">#{idx + 1} {p.code}</p>
                         {p.reference && <p className="text-xs text-muted-foreground truncate">{p.reference}</p>}
-                        <p className="text-xs text-muted-foreground">{fmtNum(p.weight, 3)} kg</p>
+                        <p className="text-xs text-muted-foreground">
+                          Catálogo: {fmtNum(p.catWeight, 3)} kg
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Pesado: {fmtNum(p.weight, 3)} kg
+                        </p>
+                        <p className={`text-xs font-semibold ${marginColor(wChk)}`}>
+                          Δ peso {wChk.label} {wChk.withinMargin ? `(≤ ${WEIGHT_MARGIN_PCT}%)` : `(> ${WEIGHT_MARGIN_PCT}%)`}
+                        </p>
+                        <p className={`text-[11px] ${suggested === "catalogo" ? "text-green-700" : "text-amber-700"}`}>
+                          {decisionReason(wChk, aChk)}
+                        </p>
                       </div>
+
 
                       {/* Col 2: PPM Comparison */}
                       <div className="col-span-4">
