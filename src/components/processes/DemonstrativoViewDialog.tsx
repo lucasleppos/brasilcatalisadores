@@ -265,7 +265,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                   <tbody>
                     {catalogFixedItems.map((it, i) => (
                       <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                        <td className="p-1">{i + 1}</td>
+                        <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
                         <td className="p-1">{partLabel(it.catalog_part_id)}</td>
                         <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
                         <td className="p-1">{Number(it.total_value) > 0 ? fmtBrl(Number(it.total_value)) : "—"}</td>
@@ -296,7 +296,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       const lab = labMap[it.id] || { pt: 0, pd: 0, rh: 0 };
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="p-1">{i + 1}</td>
+                          <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
                           <td className="p-1">{partLabel(it.catalog_part_id)}</td>
                           <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
                           <td className="p-1">{fmtNum(lab.pt, 0)}</td>
@@ -367,7 +367,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       }
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="p-1 align-top">{i + 1}</td>
+                          <td className="p-1 align-top">{(it as { seq?: number | null }).seq ?? i + 1}</td>
                           <td className="p-1 align-top">{typeLabel(it)}</td>
                           <td className="p-1 align-top">{qtyWeight}</td>
                           <td className="p-1 align-top">{unitVal}</td>

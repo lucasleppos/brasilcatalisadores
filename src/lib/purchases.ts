@@ -287,6 +287,8 @@ export interface PurchaseQuoteItem {
   catalogPartRef?: string;
   weightReal?: number;
   weightLoss?: number;
+  /** Número fixo da peça/grupo definido na conferência */
+  seq?: number;
 }
 
 export interface Purchase {
@@ -418,6 +420,7 @@ export async function loadPurchases(): Promise<Purchase[]> {
       catalogPartRef: cp?.reference || undefined,
       weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
       weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
+      seq: (item as any).seq != null ? Number((item as any).seq) : undefined,
     });
   });
 
@@ -778,6 +781,7 @@ export async function registerAnalysis(
     catalogPartId: i.catalog_part_id || undefined,
     weightReal: i.weight_real != null ? Number(i.weight_real) : undefined,
     weightLoss: i.weight_loss != null ? Number(i.weight_loss) : undefined,
+    seq: i.seq != null ? Number(i.seq) : undefined,
   }));
 
   const newTotal = calcTotal(mappedItems);

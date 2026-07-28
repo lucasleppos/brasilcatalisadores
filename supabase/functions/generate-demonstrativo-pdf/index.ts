@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
           doc.setFillColor(250, 250, 250);
           doc.rect(margin, y, contentWidth, rowH, "F");
         }
-        doc.text(`${i + 1}`, pX[0] + 2, y + 4);
+        doc.text(`${item.seq ?? i + 1}`, pX[0] + 2, y + 4);
         doc.text(`Código: ${cp?.code || "Manual"}`, pX[1] + 2, y + 4);
         if (cp?.reference) doc.text(`Referência: ${cp.reference}`, pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
 
-          doc.text(`${i + 1}`, fixedX[0] + 2, y + 4);
+          doc.text(`${item.seq ?? i + 1}`, fixedX[0] + 2, y + 4);
           doc.text(label || "—", fixedX[1] + 2, y + 4);
           doc.text(weight, fixedX[2] + 2, y + 4);
           doc.text(val, fixedX[3] + 2, y + 4);
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
           const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
           const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
 
-          doc.text(`${i + 1}`, calcX[0] + 2, y + 4);
+          doc.text(`${item.seq ?? i + 1}`, calcX[0] + 2, y + 4);
           doc.text(label || "—", calcX[1] + 2, y + 4);
           doc.text(weight, calcX[2] + 2, y + 4);
           doc.text(fmt(lab.pt, 0), calcX[3] + 2, y + 4);
@@ -410,7 +410,7 @@ Deno.serve(async (req) => {
           doc.rect(margin, y, contentWidth, rowHeight, "F");
         }
 
-        doc.text(`${i + 1}`, colX[0] + 2, y + 4);
+        doc.text(`${item.seq ?? i + 1}`, colX[0] + 2, y + 4);
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
         const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
         doc.text(typeLabel, colX[1] + 2, y + 4);

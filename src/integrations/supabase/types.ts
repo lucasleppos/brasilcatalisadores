@@ -515,6 +515,7 @@ export type Database = {
           pricing_source: string | null
           purchase_id: string
           quantity: number | null
+          seq: number | null
           total_value: number | null
           weight: number | null
           weight_loss: number | null
@@ -531,6 +532,7 @@ export type Database = {
           pricing_source?: string | null
           purchase_id: string
           quantity?: number | null
+          seq?: number | null
           total_value?: number | null
           weight?: number | null
           weight_loss?: number | null
@@ -547,6 +549,7 @@ export type Database = {
           pricing_source?: string | null
           purchase_id?: string
           quantity?: number | null
+          seq?: number | null
           total_value?: number | null
           weight?: number | null
           weight_loss?: number | null

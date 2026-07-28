@@ -27,6 +27,7 @@ const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
 interface PricingPiece {
   itemId: string;
+  seq: number;
   code: string;
   reference: string | null;
   weight: number;
@@ -96,7 +97,8 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, quantity, catalog_part_id, category, total_value, pricing_source")
+        .select("id, weight, quantity, catalog_part_id, category, total_value, pricing_source, seq, created_at")
+        .order("created_at", { ascending: true })
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
         .eq("category", "conferencia");
@@ -172,7 +174,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         return calculate(input, settings).finalValueBrl;
       };
 
-      setPieces(items.map(item => {
+      setPieces(items.map((item, _idx) => {
         const cp = item.catalog_part_id ? catalogMap[item.catalog_part_id] : null;
         const lr = labMap[item.id];
         const existingSource = (item as any).pricing_source as string | null;
@@ -193,6 +195,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
         return {
           itemId: item.id,
+          seq: Number((item as { seq?: number | null }).seq) || _idx + 1,
           code: cp ? cp.code : "Manual",
           reference: cp ? cp.reference : null,
           weight,
@@ -256,14 +259,14 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
     for (let i = 0; i < pieces.length; i++) {
       const p = pieces[i];
       if (!p.pricingSource) {
-        toast.error(`Peça #${i + 1} (${p.code}) não tem preço selecionado`);
+        toast.error(`Peça #${p.seq} (${p.code}) não tem preço selecionado`);
         return;
       }
       const val = p.pricingSource === "catalogo"
         ? parseFloat(p.valueCatalog.replace(",", "."))
         : parseFloat(p.valueCalc.replace(",", "."));
       if (isNaN(val) || val <= 0) {
-        toast.error(`Peça #${i + 1} (${p.code}): valor inválido`);
+        toast.error(`Peça #${p.seq} (${p.code}): valor inválido`);
         return;
       }
     }
@@ -392,7 +395,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                     <div className="grid grid-cols-12 gap-4 items-start">
                       {/* Col 1: Piece info */}
                       <div className="col-span-2 space-y-0.5">
-                        <p className="text-sm font-mono font-semibold">#{idx + 1} {p.code}</p>
+                        <p className="text-sm font-mono font-semibold">#{p.seq} {p.code}</p>
                         {p.reference && <p className="text-xs text-muted-foreground truncate">{p.reference}</p>}
                         <p className="text-xs text-muted-foreground">
                           Catálogo: {fmtNum(p.catWeight, 3)} kg

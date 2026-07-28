@@ -1,29 +1,31 @@
 ## Objetivo
 
-Na conferência de Peça em Sacola, as peças que não passam na 1ª validação (peso abaixo da margem de 3%) deixam de seguir o fluxo de sacola. Elas saem do bloco principal, vão para um bloco separado no final da tela, e ficam registradas na compra (não são apagadas) para que o operador crie depois uma nova compra no fluxo cerâmico só com elas.
+Cada peça em sacola recebe um número na conferência (#1, #2, #3...) e mantém esse mesmo número em todas as etapas seguintes (trituração, análise, precificação, demonstrativo/PDF e concluídos), mesmo quando peças são separadas do fluxo ou removidas.
 
-## Como fica na tela
+## Situação atual
 
-1. Cada peça fora da margem continua marcada em vermelho e ganha o botão **"Separar do fluxo"**.
-2. Ao separar, a peça desce para o bloco **"Peças fora da margem — não seguem o fluxo de sacola"**, em fundo âmbar, mostrando código, referência, peso pesado, peso de catálogo e Δ%.
-3. Atalho **"Separar todas fora da margem"** no aviso já existente ("4 peça(s) fora da margem…"), para fazer em lote.
-4. É possível **devolver ao fluxo** uma peça separada, caso tenha sido engano.
-5. As peças separadas **saem das quantidades da compra**:
-   - não contam no total de peças, nem no peso, nem no valor;
-   - o total declarado é **reduzido**: separando 4 de 10, o contador passa a exibir **6/6 peças** e o encerramento é liberado com 6;
-   - o cabeçalho passa a mostrar "10 declaradas · 4 separadas · 6 no fluxo";
-   - exibem a etiqueta "Destino: nova compra — fluxo cerâmico".
-6. Resumo do bloco separado: quantidade e peso total separados, para facilitar a criação da nova compra cerâmica.
+Hoje o número é apenas o índice da lista renderizada em cada tela (`#{i + 1}`). Como a conferência apaga e reinsere os itens a cada salvamento, e as etapas seguintes filtram as peças separadas, a mesma peça pode aparecer como #3 na conferência e #2 na trituração. Não existe campo de sequência em `purchase_items` (colunas atuais: quantity, weight, weight_loss, weight_real, category, catalog_part_id, calc_input/result, pricing_source).
 
-## Efeito nas etapas seguintes
+## Alterações
 
-Trituração, Laboratório e Precificação de sacola passam a ignorar as peças separadas — não aparecem para pesagem, análise nem precificação, e não entram no demonstrativo/PDF. O registro fica preservado no banco e é exibido no detalhe da compra (e no módulo Concluído) como "peças transferidas para fluxo cerâmico".
+**1. Banco de dados**
+- Migração: adicionar coluna `seq integer` em `public.purchase_items` (nullable, sem impacto nos itens existentes). Sem mudança de RLS/grants.
+
+**2. Conferência (`SacolaConferenciaPanel.tsx`)**
+- Cada peça adicionada recebe o próximo número livre (maior `seq` existente + 1); o número nunca é reaproveitado ao excluir uma peça.
+- O número é carregado do banco ao reabrir o painel e regravado no re-insert do salvamento (a peça #3 continua #3).
+- Peças separadas do fluxo mantêm seu número original no bloco "Não seguem o fluxo de sacola".
+- Itens antigos sem `seq` recebem numeração automática pela ordem de criação na primeira abertura.
+
+**3. Etapas seguintes**
+- `SacolaTrituracaoPanel.tsx`, `SacolaLabPanel.tsx`, `SacolaPricingPanel.tsx`: exibir `#seq` vindo do item em vez do índice da lista (mensagens de erro da precificação também passam a citar o número real).
+- `DemonstrativoViewDialog.tsx` e a função de PDF (`generate-demonstrativo-pdf`): coluna "#" das peças usa o `seq` gravado.
+- `CompletedDetailRow.tsx`: mostrar o número da peça no detalhamento.
+
+**4. Fallback**
+- Quando o item não tiver `seq` (compras antigas), usa-se o índice atual como hoje, evitando quebra visual.
 
 ## Detalhes técnicos
 
-- Em `purchase_items`, as peças separadas passam a ter `category = "conferencia_excluida"` (mesma linha, só muda a categoria) — nada é perdido e não há mudança de schema.
-- `src/components/processes/SacolaConferenciaPanel.tsx`: estado `excluded` por peça, carregamento das duas categorias em `loadExistingPieces`, gravação com a categoria correspondente em `persistPieces`, novo bloco de UI, e recálculo de `declaredQty` (= declarado − separadas) e dos totais.
-- `src/components/processes/SacolaTrituracaoPanel.tsx`, `SacolaLabPanel.tsx`, `SacolaPricingPanel.tsx`: filtrar itens por `category = "conferencia"`.
-- `src/components/processes/DemonstrativoViewDialog.tsx` e `supabase/functions/generate-demonstrativo-pdf/index.ts`: ignorar `conferencia_excluida`.
-- `src/components/purchases/PurchaseDetail.tsx` e `src/components/purchases/CompletedDetailRow.tsx`: seção informativa com as peças separadas.
-- A separação é sempre ação manual do operador, nunca automática.
+- `seq` é único apenas dentro da compra (controlado no app, sem constraint), calculado como `max(seq) + 1` sobre todas as peças da compra, incluindo as separadas.
+- O fluxo de peça fechada (`peca`, agrupado por quantidade) não usa numeração individual; a mudança fica restrita a `peca_sacola`.
