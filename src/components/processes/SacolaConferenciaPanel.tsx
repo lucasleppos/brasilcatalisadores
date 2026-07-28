@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus, ArrowDownToLine, Undo2, PackageX } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, EXCLUDED_CATEGORY } from "@/lib/purchases";
