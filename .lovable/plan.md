@@ -1,57 +1,44 @@
-## Objetivo
-Criar um fluxo próprio para **Peça em Sacola**, separado do fluxo de Peça fechada (que fica inalterado):
+## Entendimento
 
-```text
-Inclusão → Conferência (peças do catálogo)
-        → Trituração (peça a peça)
-        → Laboratório (PPM por peça)
-        → Precificação (confirmar valor a pagar)
-        → Aprovação (PDF + Boleto Syge)
-        → Alocado ao Bag → Concluído
-```
+Peça em sacola passa a ser tratada **uma a uma**: cada peça tem peso próprio, pesado pelo operador, e é comparada com o peso do catálogo. Duas validações definem o preço:
 
-## 1. Identificação do fluxo
-- Hoje `material_flow` só tem `pecas` e `ceramico`; sacola é detectada pelos itens (`item_type = peca_sacola`).
-- Adicionar o valor `sacola` em `MaterialFlow` e em `determineMaterialFlow` (compra cujos itens são `peca_sacola` → `sacola`).
-- Compras antigas continuam funcionando: onde não houver `sacola`, cai no comportamento atual (detecção por item).
+1. **Peso** — diferença até 3% (para menos) em relação ao catálogo: OK.
+2. **Análise** — diferença até 5% (para menos) entre PPM do catálogo e PPM do laboratório: OK.
 
-## 2. Máquina de estados (`src/lib/purchases.ts`)
-- Novo `SACOLA_FLOW`: `Aguardando Inclusão → Aguardando Conferência → Em Conferência → Peças: Em Trituração → Peças: Laboratório → Peças: Aguardando Demonstrativo → Peças: Gerar Boleto de Aprovação → Peças: Alocado ao Bag → Concluído` (reaproveita status já existentes, sem migração de banco).
-- `getNextStatus` para `sacola`:
-  - `Em Conferência → Peças: Em Trituração`
-  - `Peças: Em Trituração → Peças: Laboratório`
-  - `Peças: Laboratório → Peças: Aguardando Demonstrativo`
-  - `Peças: Aguardando Demonstrativo → Peças: Gerar Boleto de Aprovação`
-  - `Peças: Gerar Boleto de Aprovação → Peças: Alocado ao Bag` (com exigência do Boleto Syge, como hoje)
-  - Contestação continua voltando para `Peças: Aguardando Demonstrativo`.
-- Não há etapa de Corte nem pesagem pós-trituração neste fluxo.
-- `isInParallelPhase` / encerramento automático após alocação continuam válidos.
+Regra de pagamento:
+- Peso e análise **acima** do catálogo → paga-se pelo **catálogo** (não se paga a mais).
+- Diferença para menos **dentro** das margens (<3% / <5%) → paga-se pelo **catálogo**, apenas sinalizando a diferença.
+- Diferença para menos **fora** das margens → paga-se pelo **peso e PPM reais da análise**.
 
-## 3. Etapa de Trituração (nova tela)
-- Novo painel `SacolaTrituracaoPanel.tsx`, aberto por um botão “Triturar Peças” no card da etapa.
-- Lista cada peça conferida (Código, Referência, Qtd) com um marcador “Triturada”, salvo em `stage_evidence` (uma evidência por peça).
-- **Sem campo de peso** (definido com o usuário) — apenas a confirmação por peça.
-- Botão “Encerrar” habilita só quando todas as peças estiverem marcadas; avança para Laboratório.
+Nada bloqueia o avanço; o app sinaliza de forma destacada.
 
-## 4. Etapa de Laboratório
-- Reaproveita o `SacolaLabPanel.tsx` existente (PPM por peça conferida, salvo em `lab_results` com `purchase_item_id`).
-- Ajustes: pré-carregar valores já salvos (já faz), permitir edição, e ao encerrar avançar para Precificação.
-- O painel passa a ser acionado pelo status `Peças: Laboratório` no fluxo `sacola`.
+## Etapa 1 — Conferência (SacolaConferenciaPanel)
 
-## 5. Etapa de Precificação
-- Usa o painel de precificação de sacola já existente (`SacolaPricingPanel`), acionado em `Peças: Aguardando Demonstrativo`.
-- Valor sugerido calculado com os **PPMs do laboratório** (não do catálogo) e a margem `margin_pecas` do fornecedor; valor unitário editável livremente, como no fluxo de peças.
-- Confirmar precificação grava os valores e avança para Aprovação.
+- Trocar o campo "Quantidade (un)" por **"Peso pesado (kg)"** (`type=text`, `inputMode=decimal`, formato brasileiro).
+- Cada "Adicionar Peça" cria **uma linha própria** (quantidade sempre 1), mesmo com código repetido — remover a lógica de somar quantidade e os botões +/−.
+- Em cada linha mostrar: Código, Referência, **Peso catálogo**, **Peso pesado** e **Δ%** destacado:
+  - verde: dentro de 3% ou acima do catálogo;
+  - laranja/vermelho: abaixo do catálogo em mais de 3%, com selo "Fora da margem de peso".
+- Peso pesado editável direto na linha.
+- Meta de encerramento continua exata: nº de peças pesadas = total declarado (10/10).
+- Rodapé: total de peças, peso total conferido, peso total de catálogo e Δ% geral.
 
-## 6. Etapa de Aprovação
-- Igual ao que já existe: Visualizar demonstrativo, Gerar PDF, Contestar sempre ativos; “Aprovar” bloqueado até preencher o Boleto Syge.
-- Demonstrativo/PDF da sacola mostram Código, Referência, Qtd, Valor unitário e Subtotal (sem PPM/margem), como no fluxo de peças.
+## Etapa 2 — Análise (SacolaLabPanel)
 
-## 7. Board de Processos e permissões
-- Grupos de abas: sacola entra em “Conferência”, “Trit. / Homog. / Amostr.”, “Prep. Amostra / Análise” (Laboratório), “Precif. / Demonstrativo” e “Aprovação” — sem mudar os grupos existentes.
-- `STAGE_ROLES`: `Peças: Em Trituração` → operacional; `Peças: Laboratório` → laboratório (já configurado).
-- Badge do card passa a exibir “Sacola” para esse fluxo.
+- Para cada peça, ao lado dos PPMs do laboratório, exibir os PPMs do catálogo e o **Δ%** por metal e o Δ% do valor de metal contido.
+- Selo por peça: "Análise dentro da margem (5%)" ou "Fora da margem de análise".
+
+## Etapa 3 — Precificação (SacolaPricingPanel)
+
+- Calcular automaticamente para cada peça a **origem do preço sugerido**:
+  - `catalogo` quando peso e análise estão OK (dentro das margens ou acima do catálogo);
+  - `calculadora` (peso + PPM reais) quando qualquer uma das validações estiver fora da margem para menos.
+- A seleção continua editável pelo operador; a sugestão automática vem pré-marcada com um resumo do motivo ("Peso −5,2% fora da margem → pagar por análise").
+- Painel mostra as duas colunas de validação (peso / análise) com os selos.
 
 ## Detalhes técnicos
-- Arquivos afetados: `src/lib/purchases.ts` (tipo, flows, transições, badge helpers), `src/components/processes/StageActionCard.tsx` (roteamento dos painéis), novo `src/components/processes/SacolaTrituracaoPanel.tsx`, ajustes em `SacolaLabPanel.tsx` e `SacolaPricingPanel.tsx`, e rótulos em `DemonstrativoViewDialog.tsx` / edge function do PDF.
-- Sem alteração de schema no banco: usa `stage_evidence`, `lab_results` e `purchase_items` já existentes.
+
+- Margens 3% e 5% ficam como constantes num helper novo (`src/lib/sacola-validation.ts`) com funções `weightCheck(catalogWeight, realWeight)` e `analysisCheck(catalogPpms, labPpms)` retornando `{ diffPct, withinMargin, useCatalog }`.
+- Persistência: cada peça continua uma linha em `purchase_items` (`item_type = peca_sacola`, `category = conferencia`, `quantity = 1`), com `weight` = peso pesado e `catalog_part_id` apontando o catálogo (peso de catálogo é lido de lá, sem coluna nova).
+- `pricing_source` em `purchase_items` já existe e recebe o resultado da decisão.
+- Demonstrativo/PDF permanecem como estão nesta etapa (sem exibir margens/PPM).
