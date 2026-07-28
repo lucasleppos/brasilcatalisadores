@@ -237,7 +237,18 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Peças para Análise</p>
-            {pieces.map((p, i) => (
+            {pieces.map((p, i) => {
+              const labPt = parseNum(p.ptPpm);
+              const labPd = parseNum(p.pdPpm);
+              const labRh = parseNum(p.rhPpm);
+              const ptChk = analysisCheck({ pt: p.catPt, pd: 0, rh: 0 }, { pt: labPt, pd: 0, rh: 0 });
+              const pdChk = analysisCheck({ pt: 0, pd: p.catPd, rh: 0 }, { pt: 0, pd: labPd, rh: 0 });
+              const rhChk = analysisCheck({ pt: 0, pd: 0, rh: p.catRh }, { pt: 0, pd: 0, rh: labRh });
+              const check = analysisCheck(
+                { pt: p.catPt, pd: p.catPd, rh: p.catRh },
+                { pt: labPt, pd: labPd, rh: labRh },
+              );
+              return (
               <Card key={p.itemId} className={`border-border/50 ${p.saved ? "bg-green-500/5 border-green-300/50" : ""}`}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
