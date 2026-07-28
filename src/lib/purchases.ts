@@ -150,6 +150,17 @@ export const PECAS_FLOW: string[] = [
   "Concluído",
 ];
 
+// Peça em Sacola: Conferência → Trituração (peça a peça) → Laboratório → Precificação → Aprovação → Bag
+export const SACOLA_FLOW: string[] = [
+  ...COMMON_STATUSES,
+  "Peças: Em Trituração",
+  "Peças: Laboratório",
+  "Peças: Aguardando Demonstrativo",
+  "Peças: Gerar Boleto de Aprovação",
+  "Peças: Alocado ao Bag",
+  "Concluído",
+];
+
 
 export const CERAMICO_FLOW: string[] = [
   ...COMMON_STATUSES,
