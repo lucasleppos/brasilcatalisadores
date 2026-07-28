@@ -304,8 +304,17 @@ export function getItemLabel(purchase: Purchase): string {
     }
     return purchase.bulkWeight ? `${fmtNum(purchase.bulkWeight, 3)} kg` : "—";
   }
-  const count = getOriginalItemCount(purchase);
-  return `${count} ${count === 1 ? "peça" : "peças"}`;
+  // Peças / Peça em Sacola: prioriza os itens conferidos (os originais são removidos na conferência)
+  const confItems = getConferenciaItems(purchase);
+  let count = confItems.reduce((s, i) => s + (i.quantity || 1), 0);
+  let weight = confItems.reduce((s, i) => s + (i.weight || 0), 0);
+  if (count === 0) {
+    count = getOriginalItemCount(purchase);
+    weight = getOriginalItems(purchase).reduce((s, i) => s + (i.weight || 0), 0);
+  }
+  if (count === 0 && purchase.bulkWeight) count = purchase.bulkWeight;
+  const base = `${count} ${count === 1 ? "peça" : "peças"}`;
+  return weight > 0 ? `${base} · ${fmtNum(weight, 3)} kg` : base;
 }
 
 function calcTotal(items: PurchaseQuoteItem[]): number {
