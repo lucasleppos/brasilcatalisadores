@@ -1,41 +1,36 @@
 ## Objetivo
+Permitir selecionar vários grupos/peças na tabela "Materiais Disponíveis para Alocação" e enviar todos de uma vez para o mesmo bag.
 
-No módulo **Concluídos**, permitir expandir cada compra para ver, item a item (grupo cerâmico ou peça), o peso, o valor e **em qual bag** cada um foi alocado.
+## O que muda (apenas `src/components/bags/AllocationPanel.tsx`)
 
-## Prévia (como vai ficar)
+1. **Coluna de checkbox**
+   - Nova primeira coluna na tabela de materiais disponíveis com `Checkbox` por linha.
+   - Checkbox no cabeçalho para "selecionar todos / limpar seleção" (estado indeterminado quando parcial).
+   - Clique na linha também alterna a seleção (sem interferir no botão "Alocar").
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ ▸  28/07/2026-01  3333  Cleusa de Fatima  Marcos  15,000 kg  R$ 14.607,89 …  │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ ▾  27/07/2026-02  4444  Cleusa de Fatima  Marcos  6 peças    R$ 6.449,28  …  │
-│   ┌────────────────────────────────────────────────────────────────────────┐ │
-│   │ Detalhamento dos materiais                                             │ │
-│   │ Material              Qtd   Peso alocado   Valor        Bag   Alocado  │ │
-│   │ Cód. 1234 · Ref. AB    3 un   3,450 kg (real) R$ 3.100,00 BAG-002 27/07│ │
-│   │ Cód. 5678 · Ref. CD    3 un   3,450 kg (real) R$ 3.349,28 BAG-002 27/07│ │
-│   │ ─────────────────────────────────────────────────────────────────────  │ │
-│   │ Total: 6 un · 6,900 kg · R$ 6.449,28        Bags: BAG-002              │ │
-│   └────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+2. **Barra de ação em lote**
+   - Aparece acima da tabela quando há 1+ selecionados: "N itens selecionados · X,X kg · R$ Y" + botões "Alocar selecionados" e "Limpar".
 
-Para cerâmico as linhas mostram **Grupo 01 / Grupo 02 …** com peso bruto, tara, peso líquido e o bag correspondente. Itens ainda não alocados aparecem com badge âmbar **"Aguardando alocação"** na coluna Bag.
+3. **Diálogo de alocação em lote**
+   - Reaproveita o diálogo atual, agora aceitando 1 ou N materiais.
+   - Mostra a lista dos itens escolhidos (fornecedor, tipo, peso) e o seletor de Bag destino.
+   - Rodapé com o peso projetado: `peso atual do bag + soma dos selecionados / máximo`.
 
-## Alterações
+4. **Validação de peso considerando o total do lote**
+   - Usa a soma dos pesos selecionados em `isOverWeight` / `isNearLimit`.
+   - Acima de 5% da margem: bloqueia com toast (como hoje).
+   - Entre o máximo e 5%: exibe o `AlertDialog` de confirmação, uma única vez para o lote inteiro.
 
-1. **`src/pages/CompletedPage.tsx`**
-   - Nova coluna inicial com botão chevron (`ChevronRight`/`ChevronDown`) por linha; estado `expandedIds: Set<string>`.
-   - Ao expandir pela primeira vez, carrega sob demanda os `purchase_items` da compra e os `bag_items` correspondentes (join com `bags` para número/rótulo), com cache em memória.
-   - Renderiza uma `TableRow` extra com `colSpan` contendo a tabela de detalhamento.
+5. **Execução**
+   - `allocateItem` é chamado em sequência para cada item selecionado.
+   - `syncCeramicoAllocation` é chamado uma vez por `purchaseId` distinto, ao final (evita chamadas repetidas).
+   - Toast: "N materiais alocados com sucesso"; em caso de falha parcial, informa quantos foram alocados.
+   - Limpa a seleção e recarrega os dados.
 
-2. **Novo componente `src/components/purchases/CompletedDetailRow.tsx`**
-   - Recebe a compra e renderiza o detalhamento: rótulo do material (Código/Referência para peças, Grupo N para cerâmico), quantidade, peso alocado (com marcação "(real)" quando vier do peso pós-trituração), valor pago, badge do bag e data de alocação.
-   - Linha de totais no rodapé e lista consolidada de bags.
-   - Usa os helpers já existentes (`getItemLabel`, `fmtBrl`, formatação BR com 3–4 casas).
+6. **Botão "Alocar" individual permanece** na linha, agora funcionando como atalho para o mesmo fluxo com um único item.
 
-3. Sem mudanças de banco e sem alteração das regras de negócio — apenas leitura e apresentação.
-
-## Detalhe técnico
-
-Os dados vêm de `purchase_items` (peso, `weight_loss` = tara, `calc_result`, `catalog_part_id`) e de `bag_items` (peso alocado, `paid_value`, `allocated_at`) unidos a `bags` (`bag_number`, `bag_label`). A correspondência é por `bag_items.purchase_item_id`.
+## Detalhes técnicos
+- Estado novo: `selectedIds: Set<string>` (chaveado por `purchaseItemId`), e `allocatingMaterials: AvailableMaterial[]` substituindo `allocatingMaterial`.
+- `Checkbox` do shadcn (`@/components/ui/checkbox`).
+- Sem mudanças de banco de dados nem em `src/lib/bags.ts`.
+- `AllocateMaterialDialog.tsx` não é alterado (fluxo separado, usado fora do painel).
