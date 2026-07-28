@@ -80,7 +80,7 @@ export default function PurchaseSummary({ purchase, showPdf }: PurchaseSummaryPr
         <div className="text-muted-foreground">Fluxo</div>
         <div>
           <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
-            {purchase.materialFlow === "ceramico" ? "Cerâmico" : "Peças"}
+            {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "sacola" ? "Peça em Sacola" : "Peças"}
           </Badge>
         </div>
 
