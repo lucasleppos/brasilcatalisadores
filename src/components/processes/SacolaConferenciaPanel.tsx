@@ -361,6 +361,39 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
         )}
 
+        {/* Peças separadas do fluxo */}
+        {excludedPieces.length > 0 && (
+          <div className="space-y-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-3">
+            <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+              <PackageX className="h-3.5 w-3.5" />
+              Não seguem o fluxo de sacola ({excludedQty} peça(s) · {fmtNum(excludedWeight, 3)} kg)
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Registradas nesta compra para histórico. Devem ser incluídas em uma nova compra no fluxo de cerâmico.
+            </p>
+            {pieces.map((p, i) => {
+              if (!p.excluded) return null;
+              const check = weightCheck(p.catalogWeight, p.unitWeight);
+              return (
+                <div key={p.id || `ex-${p.catalogPartId}-${i}`} className="flex items-center justify-between gap-2 rounded border border-amber-400/30 bg-background/60 p-2">
+                  <div className="text-xs space-y-0.5">
+                    <p><span className="text-muted-foreground">Código: </span><span className="font-mono font-medium">{p.code}</span></p>
+                    <p className="text-muted-foreground">
+                      Pesado: {fmtNum(p.unitWeight, 3)} kg · Catálogo: {fmtNum(p.catalogWeight, 3)} kg ·{" "}
+                      <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setExcluded(i, false)}>
+                    <Undo2 className="h-3 w-3 mr-1" /> Retornar
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+
+
         {/* Add piece form */}
         <div className="space-y-3 rounded-md border p-3">
           <p className="text-xs font-medium text-muted-foreground">Adicionar Peça</p>
