@@ -276,7 +276,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
               </div>
             )}
 
-            {calcItems.length > 0 && (
+            {isCeramico && calcItems.length > 0 && (
               <div>
                 <p className="font-semibold mb-1">{isCeramico ? "Material" : "Peças"} — Preço Calculado (PPM Lab)</p>
                 <table className="w-full text-xs border">
