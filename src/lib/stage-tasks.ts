@@ -103,7 +103,11 @@ export async function addEvidence(params: {
   valueText?: string;
   fileUrl?: string;
 }): Promise<StageEvidence | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    userId = data.session?.user?.id ?? null;
+  } catch { userId = null; }
 
   const { data, error } = await supabase
     .from("stage_evidence")
@@ -115,7 +119,7 @@ export async function addEvidence(params: {
       value_numeric: params.valueNumeric ?? null,
       value_text: params.valueText ?? null,
       file_url: params.fileUrl ?? null,
-      created_by: user?.id ?? null,
+      created_by: userId,
     })
     .select()
     .single();
@@ -193,7 +197,11 @@ export async function addLabAnalysis(params: {
   pdPpm: number;
   rhPpm: number;
 }): Promise<LabAnalysis | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    userId = sess.session?.user?.id ?? null;
+  } catch { userId = null; }
 
   const { data, error } = await supabase
     .from("lab_analyses")
@@ -203,7 +211,7 @@ export async function addLabAnalysis(params: {
       pt_ppm: params.ptPpm,
       pd_ppm: params.pdPpm,
       rh_ppm: params.rhPpm,
-      created_by: user?.id ?? null,
+      created_by: userId,
     })
     .select()
     .single();

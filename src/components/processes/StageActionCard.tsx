@@ -81,6 +81,10 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     setChecklistReady(canAdvance);
   }, []);
 
+  const handleEvidenceAdded = useCallback(() => {
+    setLossRefresh(k => k + 1);
+  }, []);
+
   const lastChange = purchase.statusHistory[purchase.statusHistory.length - 1];
   const timeInStage = lastChange ? timeSince(lastChange.date) : "—";
 
@@ -683,7 +687,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <StageChecklist
               purchaseId={purchase.id}
               status={purchase.status}
-              onChecklistChange={(ready) => { handleChecklistChange(ready); if (isPecasTrituracao) setLossRefresh(k => k + 1); }}
+              onChecklistChange={handleChecklistChange}
+              onEvidenceAdded={handleEvidenceAdded}
             />
 
 
