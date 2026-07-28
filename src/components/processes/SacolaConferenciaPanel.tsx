@@ -25,7 +25,10 @@ interface ConferenciaPiece {
   /** Peso cadastrado no catálogo (referência de comparação) */
   catalogWeight: number;
   quantity: number;
+  /** Separada do fluxo de sacola (irá para nova compra de cerâmico) */
+  excluded?: boolean;
 }
+
 
 interface SacolaConferenciaPanelProps {
   purchase: Purchase;
