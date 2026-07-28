@@ -48,8 +48,8 @@ const fmtWeight = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigi
 
 export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricingPanelProps) {
   const { user } = useAuth();
-  const { canDo, role } = usePermissions();
-  const canApprove = role === "super_admin" || canDo("compras", "aprovar_preco");
+  const { canDo } = usePermissions();
+  const canApprove = canDo("compras", "aprovar_preco") || canDo("permissoes", "access");
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
