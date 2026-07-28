@@ -279,10 +279,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         </div>
 
         {/* Pieces list */}
-        {pieces.length > 0 && (
+        {activePieces.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Peças Conferidas</p>
             {pieces.map((p, i) => {
+              if (p.excluded) return null;
               const check = weightCheck(p.catalogWeight, p.unitWeight);
               const outside = check.hasBase && !check.withinMargin;
               return (
