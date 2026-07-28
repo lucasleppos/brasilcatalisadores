@@ -99,20 +99,22 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
       // Fetch catalog parts
       const catalogIds = [...new Set(items.filter(i => i.catalog_part_id).map(i => i.catalog_part_id!))];
-      let catalogMap: Record<string, { code: string; reference: string; ptPpm: number; pdPpm: number; rhPpm: number }> = {};
+      let catalogMap: Record<string, { code: string; reference: string; weight: number; ptPpm: number; pdPpm: number; rhPpm: number }> = {};
       if (catalogIds.length > 0) {
         const { data: parts } = await supabase
           .from("catalog_parts")
-          .select("id, code, reference, pt_ppm, pd_ppm, rh_ppm")
+          .select("id, code, reference, weight, pt_ppm, pd_ppm, rh_ppm")
           .in("id", catalogIds);
         (parts || []).forEach(p => {
           catalogMap[p.id] = {
             code: p.code,
             reference: p.reference,
+            weight: Number(p.weight) || 0,
             ptPpm: Number(p.pt_ppm) || 0,
             pdPpm: Number(p.pd_ppm) || 0,
             rhPpm: Number(p.rh_ppm) || 0,
           };
+        });
         });
       }
 
