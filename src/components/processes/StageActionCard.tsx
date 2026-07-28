@@ -670,12 +670,16 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
               <PiecePricingPanel purchase={purchase} onCompleted={onCompleted} />
             )}
 
+            {/* Peças: Trituração e Amostragem — resumo de perda do processo */}
+            {isPecasTrituracao && <PecasLossSummary purchase={purchase} refreshKey={lossRefresh} />}
+
             {/* Stage Checklist */}
             <StageChecklist
               purchaseId={purchase.id}
               status={purchase.status}
-              onChecklistChange={handleChecklistChange}
+              onChecklistChange={(ready) => { handleChecklistChange(ready); if (isPecasTrituracao) setLossRefresh(k => k + 1); }}
             />
+
 
             {needsErp && missingErp && ErpInlineInput}
 
