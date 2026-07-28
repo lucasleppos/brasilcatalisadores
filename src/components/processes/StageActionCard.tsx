@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow } from "@/lib/purchases";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import TripleAnalysisForm from "./TripleAnalysisForm";
 import PiecePricingPanel from "./PiecePricingPanel";
 import SacolaConferenciaPanel from "./SacolaConferenciaPanel";
 import SacolaLabPanel from "./SacolaLabPanel";
+import SacolaTrituracaoPanel from "./SacolaTrituracaoPanel";
 import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoTrituracaoPanel from "./CeramicoTrituracaoPanel";
@@ -59,6 +60,7 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [conferenciaOpen, setConferenciaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const [sacolaPricingOpen, setSacolaPricingOpen] = useState(false);
+  const [sacolaTrituracaoOpen, setSacolaTrituracaoOpen] = useState(false);
   const [ceramicoConferenciaOpen, setCeramicoConferenciaOpen] = useState(false);
   const [ceramicoTrituracaoOpen, setCeramicoTrituracaoOpen] = useState(false);
   const [ceramicoLabOpen, setCeramicoLabOpen] = useState(false);
