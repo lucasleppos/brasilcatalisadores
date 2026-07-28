@@ -422,6 +422,54 @@ export type Database = {
         }
         Relationships: []
       }
+      price_override_log: {
+        Row: {
+          calculated_unit_value: number
+          created_at: string
+          created_by: string | null
+          id: string
+          item_label: string
+          justification: string
+          new_unit_value: number
+          purchase_id: string
+          purchase_item_id: string
+          quantity: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          calculated_unit_value?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_label?: string
+          justification: string
+          new_unit_value?: number
+          purchase_id: string
+          purchase_item_id: string
+          quantity?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          calculated_unit_value?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_label?: string
+          justification?: string
+          new_unit_value?: number
+          purchase_id?: string
+          purchase_item_id?: string
+          quantity?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -745,6 +793,8 @@ export type Database = {
           email: string
           id: string
           margin: number
+          margin_ceramico: number
+          margin_pecas: number
           name: string
         }
         Insert: {
@@ -755,6 +805,8 @@ export type Database = {
           email?: string
           id?: string
           margin?: number
+          margin_ceramico?: number
+          margin_pecas?: number
           name: string
         }
         Update: {
@@ -765,6 +817,8 @@ export type Database = {
           email?: string
           id?: string
           margin?: number
+          margin_ceramico?: number
+          margin_pecas?: number
           name?: string
         }
         Relationships: []
