@@ -683,7 +683,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             <StageChecklist
               purchaseId={purchase.id}
               status={purchase.status}
-              onChecklistChange={(ready) => { handleChecklistChange(ready); if (isPecasTrituracao) setLossRefresh(k => k + 1); }}
+              onChecklistChange={handleChecklistChange}
+              onEvidenceAdded={handleEvidenceAdded}
             />
 
 
