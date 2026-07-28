@@ -8,15 +8,20 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Scale, Loader2, CheckCircle2, Save, AlertTriangle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, batchUpdateItemPricing } from "@/lib/purchases";
+import { Purchase, batchUpdateItemPricing, advanceStage } from "@/lib/purchases";
+import { calculate, CalculatorInput } from "@/lib/calculator";
+import { loadSettings } from "@/lib/settings";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+
+const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
 interface PricingPiece {
   itemId: string;
   code: string;
   reference: string | null;
   weight: number;
+  quantity: number;
   catalogPartId: string | null;
   // Catalog PPMs
   catPt: number;
