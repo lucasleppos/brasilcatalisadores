@@ -79,7 +79,8 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
       dataType: "photo",
       fileUrl: url,
     });
-    if (ev) setEvidences(prev => [...prev, ev]);
+    if (ev) { setEvidences(prev => [...prev, ev]); addedRef.current?.(); }
+    else toast.error("Não foi possível salvar a foto");
     setSaving(null);
   };
 
@@ -94,8 +95,13 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
       dataType: "weight",
       valueNumeric: val,
     });
-    if (ev) setEvidences(prev => [...prev, ev]);
-    setWeightInput(prev => ({ ...prev, [taskKey]: "" }));
+    if (ev) {
+      setEvidences(prev => [...prev, ev]);
+      setWeightInput(prev => ({ ...prev, [taskKey]: "" }));
+      addedRef.current?.();
+    } else {
+      toast.error("Não foi possível salvar o peso. Tente novamente.");
+    }
     setSaving(null);
   };
 
@@ -110,8 +116,13 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
       dataType: "note",
       valueText: text,
     });
-    if (ev) setEvidences(prev => [...prev, ev]);
-    setNoteInput(prev => ({ ...prev, [taskKey]: "" }));
+    if (ev) {
+      setEvidences(prev => [...prev, ev]);
+      setNoteInput(prev => ({ ...prev, [taskKey]: "" }));
+      addedRef.current?.();
+    } else {
+      toast.error("Não foi possível salvar a observação");
+    }
     setSaving(null);
   };
 

@@ -103,7 +103,11 @@ export async function addEvidence(params: {
   valueText?: string;
   fileUrl?: string;
 }): Promise<StageEvidence | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    userId = data.session?.user?.id ?? null;
+  } catch { userId = null; }
 
   const { data, error } = await supabase
     .from("stage_evidence")
