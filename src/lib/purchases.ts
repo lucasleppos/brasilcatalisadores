@@ -956,10 +956,64 @@ export function isPurchaseClosed(purchase: Purchase): boolean {
   return purchase.status === "Concluído" || purchase.status === "Peças: Encerrado" || purchase.status === "Cerâmico: Encerrado" || purchase.status === "Exportação/Venda";
 }
 
-/** Check if cerâmico is in parallel phase (aprovado + em alocação de bag) */
+/** Check if a purchase is in the parallel bag-allocation phase (fora do quadro de processos) */
 export function isInParallelPhase(purchase: Purchase): boolean {
-  return purchase.status === "Cerâmico: Aprovado" && purchase.opStatus != null;
+  if (purchase.status === "Cerâmico: Aprovado" && purchase.opStatus != null) return true;
+  if (purchase.status === "Peças: Alocado ao Bag") return true;
+  return false;
 }
+
+/**
+ * Peso real por item de conferência, considerando o peso após trituração (peças).
+ * Retorna um mapa purchaseItemId -> peso real (rateado proporcionalmente ao peso
+ * de catálogo). Itens de compras sem evidência de trituração ficam de fora.
+ */
+export async function getRealWeightsByItem(purchaseIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (purchaseIds.length === 0) return map;
+
+  const { data: evidence } = await supabase
+    .from("stage_evidence")
+    .select("purchase_id, value_numeric, created_at")
+    .eq("task_key", "weight_pos_trituracao")
+    .in("purchase_id", purchaseIds)
+    .order("created_at", { ascending: true });
+
+  const tritByPurchase = new Map<string, number>();
+  (evidence || []).forEach((e: any) => {
+    const v = Number(e.value_numeric) || 0;
+    if (v > 0) tritByPurchase.set(e.purchase_id, v);
+  });
+  if (tritByPurchase.size === 0) return map;
+
+  const ids = [...tritByPurchase.keys()];
+  const { data: items } = await supabase
+    .from("purchase_items")
+    .select("id, purchase_id, weight")
+    .eq("category", "conferencia")
+    .in("purchase_id", ids);
+
+  const grouped = new Map<string, { id: string; weight: number }[]>();
+  (items || []).forEach((i: any) => {
+    const list = grouped.get(i.purchase_id) || [];
+    list.push({ id: i.id, weight: Number(i.weight) || 0 });
+    grouped.set(i.purchase_id, list);
+  });
+
+  grouped.forEach((list, pid) => {
+    const trit = tritByPurchase.get(pid) || 0;
+    const totalCatalog = list.reduce((s, i) => s + i.weight, 0);
+    list.forEach((i, idx) => {
+      const real = totalCatalog > 0
+        ? (i.weight / totalCatalog) * trit
+        : (idx === 0 ? trit : 0);
+      map.set(i.id, real);
+    });
+  });
+
+  return map;
+}
+
 
 /** Update the Boleto Syge / ERP number on a purchase */
 export async function updatePurchaseErp(id: string, erpNumber: string): Promise<boolean> {
