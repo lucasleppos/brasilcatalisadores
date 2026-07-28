@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Package, ChevronRight, RefreshCw, Check, X } from "lucide-react";
+import { Package, ChevronRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/lib/permissions";
 import { Purchase, getConferenciaItems, getOriginalItems, batchUpdateItemPricing } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings, Settings } from "@/lib/settings";
@@ -27,18 +24,6 @@ interface CatalogInfo {
   rhPpm: number;
 }
 
-interface OverrideRow {
-  id: string;
-  purchase_item_id: string;
-  item_label: string;
-  calculated_unit_value: number;
-  new_unit_value: number;
-  quantity: number;
-  justification: string;
-  status: string;
-  created_at: string;
-}
-
 const parseNum = (v: string) => {
   const n = parseFloat((v || "").replace(/\./g, "").replace(",", "."));
   return isNaN(n) ? 0 : n;
@@ -47,10 +32,6 @@ const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 const fmtWeight = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
 export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricingPanelProps) {
-  const { user } = useAuth();
-  const { canDo } = usePermissions();
-  const canApprove = canDo("compras", "aprovar_preco") || canDo("permissoes", "access");
-
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -60,8 +41,6 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [calcUnit, setCalcUnit] = useState<Record<string, number>>({});
   const [calcData, setCalcData] = useState<Record<string, { input: CalculatorInput; result: CalculatorResult }>>({});
   const [unitValues, setUnitValues] = useState<Record<string, string>>({});
-  const [justifications, setJustifications] = useState<Record<string, string>>({});
-  const [overrides, setOverrides] = useState<OverrideRow[]>([]);
 
   const items = useMemo(() => {
     const conf = getConferenciaItems(purchase).filter(i => i.itemType === "peca" || i.itemType === "peca_sacola");
@@ -74,15 +53,6 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
 
   const labelOf = (item: typeof items[number], idx: number) =>
     item.catalogPartCode || item.category || `Item ${idx + 1}`;
-
-  const loadOverrides = useCallback(async () => {
-    const { data } = await supabase
-      .from("price_override_log")
-      .select("*")
-      .eq("purchase_id", purchase.id)
-      .order("created_at", { ascending: false });
-    setOverrides((data || []) as OverrideRow[]);
-  }, [purchase.id]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -143,21 +113,12 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       setCalcUnit(units);
       setCalcData(datas);
 
-      const { data: ovs } = await supabase
-        .from("price_override_log")
-        .select("*")
-        .eq("purchase_id", purchase.id)
-        .order("created_at", { ascending: false });
-      const list = (ovs || []) as OverrideRow[];
-      setOverrides(list);
-
-      // Valor exibido: salvo (se houver) → override aprovado → calculado
+      // Valor exibido: já salvo no item → senão o calculado pelo catálogo
       const initial: Record<string, string> = {};
       items.forEach(item => {
         const qty = item.quantity || 1;
-        const approved = list.find(o => o.purchase_item_id === item.id && o.status === "aprovado");
         const saved = (item.totalValue || 0) / qty;
-        initial[item.id] = toStr(approved ? Number(approved.new_unit_value) : saved > 0 ? saved : units[item.id] || 0);
+        initial[item.id] = toStr(saved > 0 ? saved : units[item.id] || 0);
       });
       setUnitValues(initial);
     } finally {
@@ -175,74 +136,29 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
     const next: Record<string, string> = {};
     items.forEach(i => (next[i.id] = toStr(calcUnit[i.id] || 0)));
     setUnitValues(next);
-    setJustifications({});
     toast.success("Valores recalculados pelas cotações atuais");
   };
 
-  const isDiverged = (itemId: string) => {
+  const isManual = (itemId: string) => {
     const typed = parseNum(unitValues[itemId] || "");
     const calc = calcUnit[itemId] || 0;
     return typed > 0 && Math.abs(typed - calc) > 0.005;
   };
 
-  const pendingFor = (itemId: string) => overrides.find(o => o.purchase_item_id === itemId && o.status === "pendente");
-  const approvedFor = (itemId: string) => overrides.find(o => o.purchase_item_id === itemId && o.status === "aprovado");
-
-  /** Valor efetivamente gravado: só usa o manual se já aprovado */
-  const effectiveUnit = (itemId: string) => {
-    const approved = approvedFor(itemId);
-    if (approved) return Number(approved.new_unit_value);
-    return calcUnit[itemId] || 0;
-  };
-
   const computedTotal = items.reduce((sum, i) => sum + parseNum(unitValues[i.id] || "") * (i.quantity || 1), 0);
-  const savedTotal = items.reduce((sum, i) => sum + effectiveUnit(i.id) * (i.quantity || 1), 0);
 
   const handleSave = async () => {
-    // Alterações manuais precisam de justificativa e viram solicitação de aprovação
-    const newOverrides = items
-      .map((item, idx) => ({ item, idx }))
-      .filter(({ item }) => {
-        if (!isDiverged(item.id)) return false;
-        const approved = approvedFor(item.id);
-        if (approved && Math.abs(Number(approved.new_unit_value) - parseNum(unitValues[item.id] || "")) < 0.005) return false;
-        return true;
-      });
-
-    const missingJust = newOverrides.filter(({ item }) => (justifications[item.id] || "").trim().length < 10);
-    if (missingJust.length > 0) {
-      toast.error("Informe a justificativa (mín. 10 caracteres) para os valores alterados manualmente");
-      return;
-    }
-
     setSaving(true);
     try {
-      if (newOverrides.length > 0) {
-        await supabase.from("price_override_log").insert(
-          newOverrides.map(({ item, idx }) => ({
-            purchase_id: purchase.id,
-            purchase_item_id: item.id,
-            item_label: labelOf(item, idx),
-            calculated_unit_value: calcUnit[item.id] || 0,
-            new_unit_value: parseNum(unitValues[item.id] || ""),
-            quantity: item.quantity || 1,
-            justification: (justifications[item.id] || "").trim(),
-            status: "pendente",
-            created_by: user?.id ?? null,
-          }))
-        );
-      }
-
-      // Grava valores efetivos (calculado, ou manual já aprovado)
       for (const item of items) {
         const qty = item.quantity || 1;
-        const unit = effectiveUnit(item.id);
+        const unit = parseNum(unitValues[item.id] || "");
         const cd = calcData[item.id];
         await supabase
           .from("purchase_items")
           .update({
             total_value: unit * qty,
-            pricing_source: approvedFor(item.id) ? "calculadora" : "catalogo",
+            pricing_source: isManual(item.id) ? "manual" : "catalogo",
             calc_input: (cd?.input as any) ?? null,
             calc_result: (cd?.result as any) ?? null,
           })
@@ -250,13 +166,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       }
       await batchUpdateItemPricing(purchase.id, []);
 
-      if (newOverrides.length > 0) {
-        toast.success("Precificação salva. Alterações manuais enviadas para aprovação da gestão.");
-      } else {
-        toast.success("Precificação salva");
-      }
-      setJustifications({});
-      await loadOverrides();
+      toast.success("Precificação salva");
       setOpen(false);
       onCompleted();
     } catch {
@@ -265,21 +175,6 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       setSaving(false);
     }
   };
-
-  const reviewOverride = async (id: string, status: "aprovado" | "rejeitado") => {
-    const { error } = await supabase
-      .from("price_override_log")
-      .update({ status, reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) {
-      toast.error("Sem permissão para aprovar alterações de preço");
-      return;
-    }
-    toast.success(status === "aprovado" ? "Alteração aprovada" : "Alteração rejeitada");
-    await loadData();
-  };
-
-  const pendingCount = overrides.filter(o => o.status === "pendente").length;
 
   return (
     <>
@@ -339,10 +234,8 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                     const qty = item.quantity || 1;
                     const unit = parseNum(unitValues[item.id] || "");
                     const info = item.catalogPartId ? catalog[item.catalogPartId] : undefined;
-                    const pending = pendingFor(item.id);
-                    const diverged = isDiverged(item.id);
                     return (
-                      <div key={item.id} className="px-4 py-2.5 space-y-2">
+                      <div key={item.id} className="px-4 py-2.5">
                         <div className="grid grid-cols-12 gap-2 items-center">
                           <div className="col-span-4 min-w-0">
                             <p className="text-sm font-medium truncate">
@@ -379,33 +272,6 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                           </div>
                           <div className="col-span-2 text-right text-sm font-semibold">{fmtBrl(unit * qty)}</div>
                         </div>
-
-                        {pending && (
-                          <div className="flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
-                            <p className="text-[11px] text-amber-800">
-                              Valor ajustado para {fmtBrl(Number(pending.new_unit_value))} — aguardando aprovação · {pending.justification}
-                            </p>
-                            {canApprove && (
-                              <div className="flex gap-1 shrink-0">
-                                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => reviewOverride(pending.id, "aprovado")}>
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => reviewOverride(pending.id, "rejeitado")}>
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {diverged && !pending && (
-                          <Textarea
-                            value={justifications[item.id] ?? ""}
-                            onChange={(e) => setJustifications(prev => ({ ...prev, [item.id]: e.target.value }))}
-                            placeholder="Justificativa da alteração manual (mín. 10 caracteres) — será enviada para aprovação"
-                            className="text-xs min-h-[52px]"
-                          />
-                        )}
                       </div>
                     );
                   })}
@@ -413,31 +279,12 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
               )}
             </ScrollArea>
 
-            {overrides.length > 0 && (
-              <div className="px-4 py-2 border-t border-border max-h-32 overflow-auto">
-                <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-1">Histórico de alterações de valor</p>
-                <div className="space-y-1">
-                  {overrides.map(o => (
-                    <p key={o.id} className="text-[11px] text-muted-foreground">
-                      {new Date(o.created_at).toLocaleString("pt-BR")} · {o.item_label}: {fmtBrl(Number(o.calculated_unit_value))} → {fmtBrl(Number(o.new_unit_value))} · {o.status} · {o.justification}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {items.length > 0 && (
               <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Total de peças: {totalQty} un</span>
                   <span>Peso total: {fmtWeight(totalWeight)} kg</span>
                 </div>
-                {Math.abs(computedTotal - savedTotal) > 0.01 && (
-                  <div className="flex justify-between text-xs text-amber-700">
-                    <span>Valor a ser gravado (sem ajustes pendentes)</span>
-                    <span>{fmtBrl(savedTotal)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold">Valor total</span>
                   <span className="text-lg font-bold">{fmtBrl(computedTotal)}</span>
@@ -447,11 +294,6 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
           </div>
 
           <DialogFooter className="px-6 py-4 border-t border-border">
-            {pendingCount > 0 && (
-              <span className="text-xs text-amber-700 mr-auto self-center">
-                {pendingCount} alteração(ões) aguardando aprovação
-              </span>
-            )}
             <Button variant="outline" onClick={() => setOpen(false)}>Fechar</Button>
             <Button disabled={saving || loading || items.length === 0} onClick={handleSave}>Salvar precificação</Button>
           </DialogFooter>
