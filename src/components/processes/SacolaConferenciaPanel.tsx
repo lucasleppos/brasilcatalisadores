@@ -158,6 +158,17 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(prev => prev.filter((_, i) => i !== index));
   };
 
+  const setExcluded = (index: number, value: boolean) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
+  };
+
+  const excludeAllOutOfMargin = () => {
+    setPieces(prev => prev.map(p => {
+      const c = weightCheck(p.catalogWeight, p.unitWeight);
+      return c.hasBase && !c.withinMargin ? { ...p, excluded: true } : p;
+    }));
+  };
+
   /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
   const persistPieces = async () => {
     await supabase
@@ -170,7 +181,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       pieces.map(p => ({
         purchase_id: purchase.id,
         item_type: itemType,
-        category: "conferencia",
+        category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
         quantity: p.quantity,
         weight: p.unitWeight * p.quantity,
         catalog_part_id: p.catalogPartId,
@@ -192,25 +203,33 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }
   };
 
+  const activePieces = pieces.filter(p => !p.excluded);
+  const excludedPieces = pieces.filter(p => p.excluded);
+  const excludedQty = excludedPieces.reduce((s, p) => s + p.quantity, 0);
+  const excludedWeight = excludedPieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
+
   // Meta = total de peças declaradas na criação da compra (unidades)
-  const declaredQty = purchase.bulkWeight && purchase.bulkWeight > 0
+  const baseDeclaredQty = purchase.bulkWeight && purchase.bulkWeight > 0
     ? Math.round(purchase.bulkWeight)
     : purchase.items
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
+  // Peças separadas saem da meta do fluxo
+  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty);
 
-  const totalQty = pieces.reduce((s, p) => s + p.quantity, 0);
-  const totalWeight = pieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
-  const totalCatalogWeight = pieces.reduce((s, p) => s + p.catalogWeight * p.quantity, 0);
+  const totalQty = activePieces.reduce((s, p) => s + p.quantity, 0);
+  const totalWeight = activePieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
+  const totalCatalogWeight = activePieces.reduce((s, p) => s + p.catalogWeight * p.quantity, 0);
   const globalCheck = weightCheck(totalCatalogWeight, totalWeight);
   const outOfMargin = isSacola
-    ? pieces.filter(p => {
+    ? activePieces.filter(p => {
         const c = weightCheck(p.catalogWeight, p.unitWeight);
         return c.hasBase && !c.withinMargin;
       }).length
     : 0;
   const isComplete = declaredQty > 0 && totalQty === declaredQty
-    && (!isSacola || pieces.every(p => p.unitWeight > 0));
+    && (!isSacola || activePieces.every(p => p.unitWeight > 0));
+
 
   const handleFinish = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
