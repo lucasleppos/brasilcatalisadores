@@ -16,6 +16,9 @@ interface LabPiece {
   itemId: string;
   code: string;
   catalogPartName: string | null;
+  catPt: number;
+  catPd: number;
+  catRh: number;
   weight: number;
   // Lab result fields
   labResultId: string | null;
