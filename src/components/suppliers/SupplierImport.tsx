@@ -75,6 +75,8 @@ export default function SupplierImport({ open, onOpenChange, onImport }: Supplie
         branch: String(row[colIdx("branch")] ?? "").trim(),
         buyer: String(row[colIdx("buyer")] ?? "").trim(),
         margin: parseFloat(String(row[colIdx("margin")] ?? "15")) || 15,
+        marginPecas: parseFloat(String(row[colIdx("margin")] ?? "15")) || 15,
+        marginCeramico: parseFloat(String(row[colIdx("margin")] ?? "15")) || 15,
       };
     }).filter((r) => r.name);
     onImport(result);
