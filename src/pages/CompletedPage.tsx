@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,8 +153,8 @@ export default function CompletedPage() {
                   const bags = bagAllocations[p.id] || [];
                   const isExpanded = expandedIds.has(p.id);
                   return (
-                    <>
-                      <TableRow key={p.id} className={isExpanded ? "border-b-0" : undefined}>
+                    <Fragment key={p.id}>
+                      <TableRow className={isExpanded ? "border-b-0" : undefined}>
                         <TableCell className="pr-0">
                           <Button
                             variant="ghost"
@@ -197,13 +197,13 @@ export default function CompletedPage() {
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
-                        <TableRow key={`${p.id}-detail`} className="hover:bg-transparent">
+                        <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={10} className="p-3 pt-0">
                             <CompletedDetailRow purchase={p} />
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })
 
