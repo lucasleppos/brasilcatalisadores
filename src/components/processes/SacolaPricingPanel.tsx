@@ -30,6 +30,7 @@ interface PricingPiece {
   code: string;
   reference: string | null;
   weight: number;
+  catWeight: number;
   quantity: number;
   catalogPartId: string | null;
   // Catalog PPMs
