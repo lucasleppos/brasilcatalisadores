@@ -21,7 +21,8 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [email, setEmail] = useState(initial?.email ?? "");
   const [branch, setBranch] = useState(initial?.branch ?? "");
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
-  const [marginStr, setMarginStr] = useState(String(initial?.margin ?? 15));
+  const [marginPecasStr, setMarginPecasStr] = useState(String(initial?.marginPecas ?? 15));
+  const [marginCeramicoStr, setMarginCeramicoStr] = useState(String(initial?.marginCeramico ?? 15));
 
   useEffect(() => {
     if (open) {
@@ -30,13 +31,23 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
       setEmail(initial?.email ?? "");
       setBranch(initial?.branch ?? "");
       setBuyer(initial?.buyer ?? "");
-      setMarginStr(String(initial?.margin ?? 15));
+      setMarginPecasStr(String(initial?.marginPecas ?? 15));
+      setMarginCeramicoStr(String(initial?.marginCeramico ?? 15));
     }
   }, [open, initial]);
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), document: document.trim(), email: email.trim(), branch: branch.trim(), buyer: buyer.trim(), margin: parseNum(marginStr) });
+    onSave({
+      name: name.trim(),
+      document: document.trim(),
+      email: email.trim(),
+      branch: branch.trim(),
+      buyer: buyer.trim(),
+      margin: parseNum(marginPecasStr),
+      marginPecas: parseNum(marginPecasStr),
+      marginCeramico: parseNum(marginCeramicoStr),
+    });
     onOpenChange(false);
   };
 
@@ -71,9 +82,15 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
               <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Margem (%)</Label>
-            <Input type="text" inputMode="decimal" value={marginStr} onChange={(e) => setMarginStr(numFilter(e.target.value))} className="h-8 text-sm" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Margem Peças (%)</Label>
+              <Input type="text" inputMode="decimal" value={marginPecasStr} onChange={(e) => setMarginPecasStr(numFilter(e.target.value))} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Margem Cerâmico (%)</Label>
+              <Input type="text" inputMode="decimal" value={marginCeramicoStr} onChange={(e) => setMarginCeramicoStr(numFilter(e.target.value))} className="h-8 text-sm" />
+            </div>
           </div>
         </div>
         <DialogFooter>
