@@ -120,7 +120,8 @@ export default function SuppliersPage() {
                 {!hideEmail && <SortableTableHead column="email" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>E-mail</SortableTableHead>}
                 <SortableTableHead column="branch" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Filial</SortableTableHead>
                 <SortableTableHead column="buyer" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Comprador</SortableTableHead>
-                {!hideMargin && <SortableTableHead column="margin" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Margem %</SortableTableHead>}
+                {!hideMargin && <SortableTableHead column="marginPecas" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Margem Peças %</SortableTableHead>}
+                {!hideMargin && <SortableTableHead column="marginCeramico" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort} className="text-right">Margem Cerâmico %</SortableTableHead>}
                 <TableHead className="text-xs w-20" />
               </TableRow>
             </TableHeader>
