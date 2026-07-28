@@ -15,10 +15,12 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
   // e peças/peça em sacola usam SacolaConferenciaPanel
   "Em Conferência": [],
 
-  // Peças: Trituração e Amostragem (unified stage)
+  // Peças: Trituração e Amostragem (unified stage) — peso final antes da alocação no bag
   "Peças: Trituração e Amostragem": [
-    { key: "confirm_trit_amostr", type: "note", label: "Confirmar trituração e amostragem concluídas", required: true },
+    { key: "weight_pos_trituracao", type: "weight", label: "Peso após trituração (kg)", required: true },
+    { key: "photo_material_triturado", type: "photo", label: "Foto do material triturado (opcional)", required: false },
   ],
+
   // Cerâmico: Separação foi removido do fluxo (a separação acontece durante a Conferência)
   // Peças: Corte — abertura das carcaças metálicas e pesagem real da cerâmica
   "Peças: Em Corte": [
