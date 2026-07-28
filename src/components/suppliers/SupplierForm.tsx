@@ -82,9 +82,15 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
               <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Margem (%)</Label>
-            <Input type="text" inputMode="decimal" value={marginStr} onChange={(e) => setMarginStr(numFilter(e.target.value))} className="h-8 text-sm" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Margem Peças (%)</Label>
+              <Input type="text" inputMode="decimal" value={marginPecasStr} onChange={(e) => setMarginPecasStr(numFilter(e.target.value))} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Margem Cerâmico (%)</Label>
+              <Input type="text" inputMode="decimal" value={marginCeramicoStr} onChange={(e) => setMarginCeramicoStr(numFilter(e.target.value))} className="h-8 text-sm" />
+            </div>
           </div>
         </div>
         <DialogFooter>
