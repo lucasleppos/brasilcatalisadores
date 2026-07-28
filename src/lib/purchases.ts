@@ -562,7 +562,7 @@ export async function syncCeramicoAllocation(purchaseId: string): Promise<boolea
   if (!purchase) return false;
 
   const isCeramico = purchase.material_flow === "ceramico";
-  const isPecas = purchase.material_flow === "pecas";
+  const isPecas = purchase.material_flow === "pecas" || purchase.material_flow === "sacola";
   if (isCeramico && (purchase.status !== "Cerâmico: Aprovado" || purchase.op_status !== "Alocando Bag")) return false;
   if (isPecas && purchase.status !== "Peças: Alocado ao Bag") return false;
   if (!isCeramico && !isPecas) return false;
