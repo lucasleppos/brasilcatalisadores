@@ -4,6 +4,7 @@ import { Bag, allocateItem, isNearLimit, isOverWeight } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -66,13 +67,35 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const [loading, setLoading] = useState(true);
 
   // Allocate dialog state
-  const [allocatingMaterial, setAllocatingMaterial] = useState<AvailableMaterial | null>(null);
+  const [allocatingMaterials, setAllocatingMaterials] = useState<AvailableMaterial[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedBagId, setSelectedBagId] = useState("");
   const [saving, setSaving] = useState(false);
   const [showWeightWarning, setShowWeightWarning] = useState(false);
 
   const openBags = bags.filter(b => b.status === "Aberto");
   const selectedBag = bags.find(b => b.id === selectedBagId);
+  const allocatingWeight = allocatingMaterials.reduce((s, m) => s + m.weight, 0);
+  const allocatingValue = allocatingMaterials.reduce((s, m) => s + m.paidValue, 0);
+  const selectedMaterials = availableMaterials.filter(m => selectedIds.has(m.purchaseItemId));
+  const selectedWeight = selectedMaterials.reduce((s, m) => s + m.weight, 0);
+  const selectedValue = selectedMaterials.reduce((s, m) => s + m.paidValue, 0);
+  const allSelected = availableMaterials.length > 0 && selectedIds.size === availableMaterials.length;
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds(prev =>
+      prev.size === availableMaterials.length ? new Set() : new Set(availableMaterials.map(m => m.purchaseItemId))
+    );
+  };
+
 
   useEffect(() => {
     loadData();
@@ -229,19 +252,19 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     setInProcessMaterials(result);
   };
 
-  const handleAllocateClick = (material: AvailableMaterial) => {
-    setAllocatingMaterial(material);
+  const handleAllocateClick = (materials: AvailableMaterial[]) => {
+    setAllocatingMaterials(materials);
     setSelectedBagId("");
   };
 
   const handleConfirmAllocate = async () => {
-    if (!allocatingMaterial || !selectedBag) return;
+    if (allocatingMaterials.length === 0 || !selectedBag) return;
 
-    if (isOverWeight(selectedBag, allocatingMaterial.weight)) {
+    if (isOverWeight(selectedBag, allocatingWeight)) {
       toast({ title: "Peso ultrapassa o limite de 5% acima do máximo!", variant: "destructive" });
       return;
     }
-    if (isNearLimit(selectedBag, allocatingMaterial.weight)) {
+    if (isNearLimit(selectedBag, allocatingWeight)) {
       setShowWeightWarning(true);
       return;
     }
@@ -250,29 +273,43 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   };
 
   const doAllocate = async () => {
-    if (!allocatingMaterial || !selectedBag) return;
+    if (allocatingMaterials.length === 0 || !selectedBag) return;
     setSaving(true);
-    await allocateItem({
-      bagId: selectedBag.id,
-      purchaseId: allocatingMaterial.purchaseId,
-      purchaseItemId: allocatingMaterial.purchaseItemId,
-      weight: allocatingMaterial.weight,
-      paidValue: allocatingMaterial.paidValue,
-      estimatedPtPpm: allocatingMaterial.ptPpm,
-      estimatedPdPpm: allocatingMaterial.pdPpm,
-      estimatedRhPpm: allocatingMaterial.rhPpm,
-      supplierName: allocatingMaterial.supplierName,
-    });
-    setSaving(false);
-    toast({ title: "Material alocado com sucesso" });
+
+    let ok = 0;
+    for (const m of allocatingMaterials) {
+      const res = await allocateItem({
+        bagId: selectedBag.id,
+        purchaseId: m.purchaseId,
+        purchaseItemId: m.purchaseItemId,
+        weight: m.weight,
+        paidValue: m.paidValue,
+        estimatedPtPpm: m.ptPpm,
+        estimatedPdPpm: m.pdPpm,
+        estimatedRhPpm: m.rhPpm,
+        supplierName: m.supplierName,
+      });
+      if (res) ok++;
+    }
 
     // Cerâmico: auto-encerra quando todos os grupos da compra estão alocados
-    await syncCeramicoAllocation(allocatingMaterial.purchaseId);
+    const purchaseIds = [...new Set(allocatingMaterials.map(m => m.purchaseId))];
+    for (const pid of purchaseIds) await syncCeramicoAllocation(pid);
 
-    setAllocatingMaterial(null);
+    setSaving(false);
+    if (ok === allocatingMaterials.length) {
+      toast({ title: ok > 1 ? `${ok} materiais alocados com sucesso` : "Material alocado com sucesso" });
+    } else {
+      toast({ title: `${ok} de ${allocatingMaterials.length} materiais alocados`, variant: "destructive" });
+    }
+
+    const allocatedSet = new Set(allocatingMaterials.map(m => m.purchaseItemId));
+    setSelectedIds(prev => new Set([...prev].filter(id => !allocatedSet.has(id))));
+    setAllocatingMaterials([]);
     onAllocated();
     loadData();
   };
+
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Carregando materiais...</p>;
@@ -318,50 +355,86 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <p className="text-sm">Nenhum material disponível para alocação no momento.</p>
           </div>
         ) : (
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Valor (R$)</TableHead>
-                  <TableHead className="text-right">Pt</TableHead>
-                  <TableHead className="text-right">Pd</TableHead>
-                  <TableHead className="text-right">Rh</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {availableMaterials.map((m) => (
-                  <TableRow key={m.purchaseItemId}>
-                    <TableCell className="font-medium">{m.supplierName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{m.itemType}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {m.weight.toFixed(1)}
-                      {m.isRealWeight && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-right">
-                      {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">{m.ptPpm}</TableCell>
-                    <TableCell className="text-right">{m.pdPpm}</TableCell>
-                    <TableCell className="text-right">{m.rhPpm}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" onClick={() => handleAllocateClick(m)}>
-                        <ArrowRight className="h-4 w-4 mr-1" /> Alocar
-                      </Button>
-                    </TableCell>
+          <>
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/50 px-4 py-2">
+                <p className="text-sm">
+                  <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? "item selecionado" : "itens selecionados"} ·{" "}
+                  {selectedWeight.toFixed(1)} kg · R$ {selectedValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
+                  <Button size="sm" onClick={() => handleAllocateClick(selectedMaterials)}>
+                    <ArrowRight className="h-4 w-4 mr-1" /> Alocar selecionados
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={toggleAll}
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Peso (kg)</TableHead>
+                    <TableHead className="text-right">Valor (R$)</TableHead>
+                    <TableHead className="text-right">Pt</TableHead>
+                    <TableHead className="text-right">Pd</TableHead>
+                    <TableHead className="text-right">Rh</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {availableMaterials.map((m) => (
+                    <TableRow
+                      key={m.purchaseItemId}
+                      data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
+                      className="cursor-pointer"
+                      onClick={() => toggleOne(m.purchaseItemId)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(m.purchaseItemId)}
+                          onCheckedChange={() => toggleOne(m.purchaseItemId)}
+                          aria-label="Selecionar material"
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{m.supplierName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{m.itemType}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {m.weight.toFixed(1)}
+                        {m.isRealWeight && (
+                          <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">{m.ptPpm}</TableCell>
+                      <TableCell className="text-right">{m.pdPpm}</TableCell>
+                      <TableCell className="text-right">{m.rhPpm}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" onClick={() => handleAllocateClick([m])}>
+                          <ArrowRight className="h-4 w-4 mr-1" /> Alocar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+
         )}
       </section>
 
@@ -460,19 +533,27 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         )}
       </section>
 
-      {/* Allocate Dialog - simplified, material pre-selected */}
-      <Dialog open={!!allocatingMaterial} onOpenChange={(open) => { if (!open) setAllocatingMaterial(null); }}>
+      {/* Allocate Dialog - suporta 1 ou N materiais */}
+      <Dialog open={allocatingMaterials.length > 0} onOpenChange={(open) => { if (!open) setAllocatingMaterials([]); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Alocar ao Bag</DialogTitle>
+            <DialogTitle>
+              {allocatingMaterials.length > 1 ? `Alocar ${allocatingMaterials.length} materiais ao Bag` : "Alocar ao Bag"}
+            </DialogTitle>
           </DialogHeader>
-          {allocatingMaterial && (
+          {allocatingMaterials.length > 0 && (
             <div className="space-y-4">
-              <div className="text-sm p-3 rounded-md bg-muted space-y-1">
-                <div>Fornecedor: <strong>{allocatingMaterial.supplierName}</strong></div>
-                <div>Peso: <strong>{allocatingMaterial.weight.toFixed(2)} kg</strong></div>
-                <div>Valor: <strong>R$ {allocatingMaterial.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong></div>
-                <div>PPMs: Pt {allocatingMaterial.ptPpm} | Pd {allocatingMaterial.pdPpm} | Rh {allocatingMaterial.rhPpm}</div>
+              <div className="text-sm rounded-md bg-muted p-3 space-y-1 max-h-48 overflow-y-auto">
+                {allocatingMaterials.map((m) => (
+                  <div key={m.purchaseItemId} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{m.supplierName} · {m.itemType}</span>
+                    <span className="shrink-0 font-medium">{m.weight.toFixed(2)} kg</span>
+                  </div>
+                ))}
+                <div className="border-t pt-1 mt-1 flex items-center justify-between font-semibold">
+                  <span>Total</span>
+                  <span>{allocatingWeight.toFixed(2)} kg · R$ {allocatingValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
 
               <div>
@@ -491,11 +572,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
               {selectedBag && (
                 <div className="text-xs text-muted-foreground">
-                  Peso após alocação: {(selectedBag.totalWeight + allocatingMaterial.weight).toFixed(1)} / {selectedBag.maxWeight} kg
-                  {isNearLimit(selectedBag, allocatingMaterial.weight) && (
+                  Peso após alocação: {(selectedBag.totalWeight + allocatingWeight).toFixed(1)} / {selectedBag.maxWeight} kg
+                  {isNearLimit(selectedBag, allocatingWeight) && (
                     <Badge className="ml-2 bg-yellow-100 text-yellow-800">Acima do limite</Badge>
                   )}
-                  {isOverWeight(selectedBag, allocatingMaterial.weight) && (
+                  {isOverWeight(selectedBag, allocatingWeight) && (
                     <Badge className="ml-2 bg-destructive text-destructive-foreground">Excede margem de 5%</Badge>
                   )}
                 </div>
@@ -503,7 +584,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAllocatingMaterial(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAllocatingMaterials([])}>Cancelar</Button>
             <Button onClick={handleConfirmAllocate} disabled={!selectedBagId || saving}>
               {saving ? "Alocando..." : "Alocar"}
             </Button>
@@ -517,7 +598,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção: Peso acima do limite</AlertDialogTitle>
             <AlertDialogDescription>
-              O bag ficará com {selectedBag && allocatingMaterial ? (selectedBag.totalWeight + allocatingMaterial.weight).toFixed(1) : "?"} kg,
+              O bag ficará com {selectedBag ? (selectedBag.totalWeight + allocatingWeight).toFixed(1) : "?"} kg,
               ultrapassando o limite de {selectedBag?.maxWeight || 1000} kg. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -529,6 +610,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
