@@ -10,12 +10,16 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
-import { fmtNum } from "@/lib/utils";
+import { fmtNum, parseNum } from "@/lib/utils";
+import { analysisCheck, marginColor, ANALYSIS_MARGIN_PCT } from "@/lib/sacola-validation";
 
 interface LabPiece {
   itemId: string;
   code: string;
   catalogPartName: string | null;
+  catPt: number;
+  catPd: number;
+  catRh: number;
   weight: number;
   // Lab result fields
   labResultId: string | null;
@@ -61,13 +65,21 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
 
       // Fetch catalog info
       const catalogIds = items.filter(d => d.catalog_part_id).map(d => d.catalog_part_id!);
-      let catalogMap: Record<string, { code: string; reference: string }> = {};
+      let catalogMap: Record<string, { code: string; reference: string; pt: number; pd: number; rh: number }> = {};
       if (catalogIds.length > 0) {
         const { data: parts } = await supabase
           .from("catalog_parts")
-          .select("id, code, reference")
+          .select("id, code, reference, pt_ppm, pd_ppm, rh_ppm")
           .in("id", catalogIds);
-        (parts || []).forEach(p => { catalogMap[p.id] = { code: p.code, reference: p.reference }; });
+        (parts || []).forEach(p => {
+          catalogMap[p.id] = {
+            code: p.code,
+            reference: p.reference,
+            pt: Number(p.pt_ppm) || 0,
+            pd: Number(p.pd_ppm) || 0,
+            rh: Number(p.rh_ppm) || 0,
+          };
+        });
       }
 
       // Fetch existing lab results for this purchase (by purchase_item_id)
@@ -96,6 +108,9 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
           itemId: item.id,
           code: cp ? cp.code : "Manual",
           catalogPartName: cp ? cp.reference : null,
+          catPt: cp?.pt || 0,
+          catPd: cp?.pd || 0,
+          catRh: cp?.rh || 0,
           weight: Number(item.weight) || 0,
           labResultId: lr?.id || null,
           ptPpm: lr ? String(lr.pt) : "",
@@ -223,7 +238,18 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Peças para Análise</p>
-            {pieces.map((p, i) => (
+            {pieces.map((p, i) => {
+              const labPt = parseNum(p.ptPpm);
+              const labPd = parseNum(p.pdPpm);
+              const labRh = parseNum(p.rhPpm);
+              const ptChk = analysisCheck({ pt: p.catPt, pd: 0, rh: 0 }, { pt: labPt, pd: 0, rh: 0 });
+              const pdChk = analysisCheck({ pt: 0, pd: p.catPd, rh: 0 }, { pt: 0, pd: labPd, rh: 0 });
+              const rhChk = analysisCheck({ pt: 0, pd: 0, rh: p.catRh }, { pt: 0, pd: 0, rh: labRh });
+              const check = analysisCheck(
+                { pt: p.catPt, pd: p.catPd, rh: p.catRh },
+                { pt: labPt, pd: labPd, rh: labRh },
+              );
+              return (
               <Card key={p.itemId} className={`border-border/50 ${p.saved ? "bg-green-500/5 border-green-300/50" : ""}`}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
@@ -274,6 +300,42 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                     </div>
                   </div>
 
+                  {check.hasBase && (
+                    <div className="rounded-md border bg-muted/20 p-2 space-y-1">
+                      <div className="grid grid-cols-4 gap-1 text-[11px]">
+                        <span className="text-muted-foreground"></span>
+                        <span className="text-muted-foreground text-center">Catálogo</span>
+                        <span className="text-muted-foreground text-center">Lab</span>
+                        <span className="text-muted-foreground text-center">Δ%</span>
+
+                        <span className="font-medium">Pt</span>
+                        <span className="text-center">{fmtNum(p.catPt, 0)}</span>
+                        <span className="text-center">{fmtNum(labPt, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(ptChk)}`}>{ptChk.label}</span>
+
+                        <span className="font-medium">Pd</span>
+                        <span className="text-center">{fmtNum(p.catPd, 0)}</span>
+                        <span className="text-center">{fmtNum(labPd, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(pdChk)}`}>{pdChk.label}</span>
+
+                        <span className="font-medium">Rh</span>
+                        <span className="text-center">{fmtNum(p.catRh, 0)}</span>
+                        <span className="text-center">{fmtNum(labRh, 0)}</span>
+                        <span className={`text-center font-semibold ${marginColor(rhChk)}`}>{rhChk.label}</span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${check.withinMargin
+                          ? "text-green-700 border-green-300 bg-green-500/10"
+                          : "text-destructive border-destructive/40 bg-destructive/10"}`}
+                      >
+                        {check.withinMargin
+                          ? `Análise dentro da margem (${ANALYSIS_MARGIN_PCT}%) — Δ total ${check.label}`
+                          : `Fora da margem de análise (${ANALYSIS_MARGIN_PCT}%) — Δ total ${check.label}`}
+                      </Badge>
+                    </div>
+                  )}
+
                   {!p.saved && (
                     <Button
                       size="sm"
@@ -288,7 +350,8 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                   )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
 
