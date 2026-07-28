@@ -66,6 +66,8 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
   const [viewDemoOpen, setViewDemoOpen] = useState(false);
   const [erpInput, setErpInput] = useState("");
   const [savingErp, setSavingErp] = useState(false);
+  const [lossRefresh, setLossRefresh] = useState(0);
+
 
   // Admin manual stage move
   const [adminMoveOpen, setAdminMoveOpen] = useState(false);
