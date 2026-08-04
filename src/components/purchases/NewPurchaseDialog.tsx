@@ -260,6 +260,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const isCeramicoMode = addType === "ceramico";
   // Peça / Peça em Sacola creation: items are registered during Conferência
   const isPecaCreate = !isEditing && (addType === "peca" || addType === "peca_sacola");
+  // Compra que já passou pela conferência: itens são gerenciados nos painéis das etapas
+  const itemsLocked = isEditing && items.some(i => i.category === "conferencia" || i.category === "conferencia_excluida");
 
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
