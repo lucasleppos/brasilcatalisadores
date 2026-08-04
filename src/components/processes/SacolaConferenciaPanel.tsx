@@ -45,14 +45,50 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [weighed, setWeighed] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
+  const [returnedQtyStr, setReturnedQtyStr] = useState("0");
+  const [returnedReason, setReturnedReason] = useState("");
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
+  const showReturns = !isSacola && purchase.materialFlow !== "ceramico";
 
   useEffect(() => {
     if (!open) return;
     loadExistingPieces();
+    loadReturns();
   }, [open, purchase.id]);
+
+  const loadReturns = async () => {
+    const { data } = await supabase
+      .from("stage_evidence")
+      .select("task_key, value_numeric, value_text")
+      .eq("purchase_id", purchase.id)
+      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    const q = (data || []).find(d => d.task_key === "qtd_devolvida");
+    const r = (data || []).find(d => d.task_key === "motivo_devolucao");
+    setReturnedQtyStr(q?.value_numeric != null ? String(Number(q.value_numeric)) : "0");
+    setReturnedReason(r?.value_text || "");
+  };
+
+  const persistReturns = async () => {
+    await supabase
+      .from("stage_evidence")
+      .delete()
+      .eq("purchase_id", purchase.id)
+      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    if (returnedQty > 0) {
+      await supabase.from("stage_evidence").insert([
+        {
+          purchase_id: purchase.id, stage: "conferencia", task_key: "qtd_devolvida",
+          data_type: "number", value_numeric: returnedQty,
+        },
+        {
+          purchase_id: purchase.id, stage: "conferencia", task_key: "motivo_devolucao",
+          data_type: "text", value_text: returnedReason.trim(),
+        },
+      ]);
+    }
+  };
 
   const loadExistingPieces = async () => {
     const { data } = await supabase
