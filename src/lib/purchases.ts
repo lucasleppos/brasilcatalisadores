@@ -837,14 +837,17 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
     }
   }
 
-  // Sum catalog items total to include in purchase total
-  const { data: catalogItems } = await supabase
+  // Total = soma de todos os itens realmente gravados (sem dupla contagem)
+  const { data: allItems } = await supabase
     .from("purchase_items")
-    .select("total_value")
-    .eq("purchase_id", id)
-    .not("catalog_part_id", "is", null);
-  const catalogTotal = (catalogItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
-  const totalBrl = calcTotal(data.items) + catalogTotal;
+    .select("total_value, calc_result, category")
+    .eq("purchase_id", id);
+  const totalBrl = (allItems || [])
+    .filter(i => i.category !== EXCLUDED_CATEGORY)
+    .reduce((sum, i) => {
+      const calc = i.calc_result as any;
+      return sum + (Number(calc?.finalValueBrl) || Number(i.total_value) || 0);
+    }, 0);
 
   // Recalculate material_flow
   const materialFlow = determineMaterialFlow(data.items);
