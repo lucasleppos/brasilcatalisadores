@@ -106,6 +106,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           calcInput: i.input,
           calcResult: i.result,
           category: i.category,
+          catalogPartId: i.catalogPartId,
+          seq: i.seq,
         })));
       } else {
         setSupplierId("");
