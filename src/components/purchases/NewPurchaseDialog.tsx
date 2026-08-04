@@ -518,8 +518,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             </div>
           )}
 
-          {/* Add item — hidden for ceramico and for peças na criação (itens vão para a conferência) */}
-          {!isCeramicoMode && !isPecaCreate && (
+          {/* Aviso: itens já conferidos não são editados aqui */}
+          {itemsLocked && (
+            <div className="rounded-md bg-muted/30 border p-3 text-xs text-muted-foreground">
+              <p>Os itens desta compra já foram registrados na <strong>Conferência</strong> e são editados nos painéis de cada etapa. Aqui você pode alterar apenas o Boleto Syge e as observações.</p>
+            </div>
+          )}
+
+          {/* Add item — hidden for ceramico, peças na criação e itens já conferidos */}
+          {!isCeramicoMode && !isPecaCreate && !itemsLocked && (
 
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
