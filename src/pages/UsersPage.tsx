@@ -105,11 +105,17 @@ export default function UsersPage() {
     setInviteLoading(false);
 
     if (res.error || res.data?.error) {
-      toast({
-        title: "Erro ao convidar",
-        description: res.data?.error || res.error?.message || "Erro desconhecido",
-        variant: "destructive",
-      });
+      let description = res.data?.error || res.error?.message || "Erro desconhecido";
+      const ctx = (res.error as any)?.context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.json();
+          if (body?.error) description = body.error;
+        } catch {
+          // ignore
+        }
+      }
+      toast({ title: "Erro ao convidar", description, variant: "destructive" });
     } else {
       toast({ title: "Convite enviado", description: `Email enviado para ${form.email}` });
       setInviteOpen(false);
