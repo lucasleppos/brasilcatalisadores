@@ -317,6 +317,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       result: i.calcResult,
       category: i.category,
       catalogPartId: i.catalogPartId,
+      seq: i.seq,
     }));
 
     if (isEditing) {
