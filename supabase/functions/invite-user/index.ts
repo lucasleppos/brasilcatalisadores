@@ -118,10 +118,21 @@ Deno.serve(async (req) => {
       });
 
     if (inviteError) {
-      return new Response(JSON.stringify({ error: inviteError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const alreadyExists =
+        (inviteError as any).code === "email_exists" ||
+        /already been registered|already registered/i.test(inviteError.message);
+
+      return new Response(
+        JSON.stringify({
+          error: alreadyExists
+            ? `Este email já está cadastrado (${sanitizedEmail}). Use a lista de usuários para editar o perfil ou remova o usuário antes de convidar novamente.`
+            : inviteError.message,
+        }),
+        {
+          status: alreadyExists ? 409 : 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const userId = inviteData.user.id;
