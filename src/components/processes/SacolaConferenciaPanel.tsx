@@ -240,9 +240,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   const handleSave = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    if (returnsInvalid) { toast.error(returnsError!); return; }
     setSaving(true);
     try {
       await persistPieces();
+      await persistReturns();
       toast.success("Conferência salva");
       onOpenChange(false);
     } catch {
@@ -263,8 +265,15 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     : purchase.items
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
-  // Peças separadas saem da meta do fluxo
-  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty);
+  // Peças separadas e devolvidas saem da meta do fluxo
+  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty - returnedQty);
+
+  const returnsError = returnedQty > baseDeclaredQty - excludedQty
+    ? "Quantidade devolvida maior que o total declarado"
+    : returnedQty > 0 && !returnedReason.trim()
+      ? "Informe o motivo da devolução"
+      : null;
+  const returnsInvalid = !!returnsError;
 
   const totalQty = activePieces.reduce((s, p) => s + p.quantity, 0);
   const totalWeight = activePieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
@@ -277,6 +286,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       }).length
     : 0;
   const isComplete = declaredQty > 0 && totalQty === declaredQty
+    && !returnsInvalid
     && (!isSacola || activePieces.every(p => p.unitWeight > 0));
 
 
@@ -286,6 +296,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       toast.error("Informe o peso de todas as peças");
       return;
     }
+    if (returnsInvalid) { toast.error(returnsError!); return; }
     if (!isComplete) {
       toast.error(`Faltam peças: ${totalQty}/${declaredQty} conferidas`);
       return;
@@ -293,6 +304,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setSaving(true);
     try {
       await persistPieces();
+      await persistReturns();
       await advanceStage(purchase.id, purchase.status);
       toast.success("Conferência encerrada");
       onOpenChange(false);
@@ -303,6 +315,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       setSaving(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
