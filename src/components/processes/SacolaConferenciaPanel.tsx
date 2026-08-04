@@ -45,14 +45,51 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [weighed, setWeighed] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
+  const [returnedQtyStr, setReturnedQtyStr] = useState("0");
+  const [returnedReason, setReturnedReason] = useState("");
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
+  const showReturns = !isSacola && purchase.materialFlow !== "ceramico";
+  const returnedQty = showReturns ? Math.max(0, Math.floor(parseNum(returnedQtyStr) || 0)) : 0;
 
   useEffect(() => {
     if (!open) return;
     loadExistingPieces();
+    loadReturns();
   }, [open, purchase.id]);
+
+  const loadReturns = async () => {
+    const { data } = await supabase
+      .from("stage_evidence")
+      .select("task_key, value_numeric, value_text")
+      .eq("purchase_id", purchase.id)
+      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    const q = (data || []).find(d => d.task_key === "qtd_devolvida");
+    const r = (data || []).find(d => d.task_key === "motivo_devolucao");
+    setReturnedQtyStr(q?.value_numeric != null ? String(Number(q.value_numeric)) : "0");
+    setReturnedReason(r?.value_text || "");
+  };
+
+  const persistReturns = async () => {
+    await supabase
+      .from("stage_evidence")
+      .delete()
+      .eq("purchase_id", purchase.id)
+      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    if (returnedQty > 0) {
+      await supabase.from("stage_evidence").insert([
+        {
+          purchase_id: purchase.id, stage: "conferencia", task_key: "qtd_devolvida",
+          data_type: "number", value_numeric: returnedQty,
+        },
+        {
+          purchase_id: purchase.id, stage: "conferencia", task_key: "motivo_devolucao",
+          data_type: "text", value_text: returnedReason.trim(),
+        },
+      ]);
+    }
+  };
 
   const loadExistingPieces = async () => {
     const { data } = await supabase
@@ -203,9 +240,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   const handleSave = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    if (returnsInvalid) { toast.error(returnsError!); return; }
     setSaving(true);
     try {
       await persistPieces();
+      await persistReturns();
       toast.success("Conferência salva");
       onOpenChange(false);
     } catch {
@@ -226,8 +265,15 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     : purchase.items
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
-  // Peças separadas saem da meta do fluxo
-  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty);
+  // Peças separadas e devolvidas saem da meta do fluxo
+  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty - returnedQty);
+
+  const returnsError = returnedQty > baseDeclaredQty - excludedQty
+    ? "Quantidade devolvida maior que o total declarado"
+    : returnedQty > 0 && !returnedReason.trim()
+      ? "Informe o motivo da devolução"
+      : null;
+  const returnsInvalid = !!returnsError;
 
   const totalQty = activePieces.reduce((s, p) => s + p.quantity, 0);
   const totalWeight = activePieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
@@ -240,6 +286,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       }).length
     : 0;
   const isComplete = declaredQty > 0 && totalQty === declaredQty
+    && !returnsInvalid
     && (!isSacola || activePieces.every(p => p.unitWeight > 0));
 
 
@@ -249,6 +296,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       toast.error("Informe o peso de todas as peças");
       return;
     }
+    if (returnsInvalid) { toast.error(returnsError!); return; }
     if (!isComplete) {
       toast.error(`Faltam peças: ${totalQty}/${declaredQty} conferidas`);
       return;
@@ -256,6 +304,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setSaving(true);
     try {
       await persistPieces();
+      await persistReturns();
       await advanceStage(purchase.id, purchase.status);
       toast.success("Conferência encerrada");
       onOpenChange(false);
@@ -266,6 +315,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       setSaving(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -282,11 +332,17 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>
-              {excludedQty > 0
-                ? `${baseDeclaredQty} declaradas · ${excludedQty} separadas · ${declaredQty} no fluxo`
+              {excludedQty > 0 || returnedQty > 0
+                ? [
+                    `${baseDeclaredQty} declaradas`,
+                    excludedQty > 0 ? `${excludedQty} separadas` : null,
+                    returnedQty > 0 ? `${returnedQty} devolvidas` : null,
+                    `${declaredQty} no fluxo`,
+                  ].filter(Boolean).join(" · ")
                 : `${declaredQty} peças declaradas`}
             </span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
+
           </div>
         </div>
 
@@ -470,6 +526,47 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               : "Somente peças do catálogo podem ser incluídas. O peso é carregado automaticamente do cadastro."}
           </p>
         </div>
+
+        {/* Peças devolvidas (somente fluxo de Peças) */}
+        {showReturns && (
+          <div className="space-y-2 rounded-md border p-3">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <PackageX className="h-3 w-3" /> Peças devolvidas
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Qtd. (un)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={returnedQtyStr}
+                  onChange={e => setReturnedQtyStr(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="0"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Motivo{returnedQty > 0 ? " *" : ""}</Label>
+                <Input
+                  value={returnedReason}
+                  onChange={e => setReturnedReason(e.target.value)}
+                  placeholder="Ex.: peças deformadas"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+            {returnsError ? (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> {returnsError}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Peças reprovadas na entrada são descontadas do total declarado.
+              </p>
+            )}
+          </div>
+        )}
+
+
 
         {/* Summary + Actions */}
         <div className="space-y-3 pt-2 border-t border-border/40">
