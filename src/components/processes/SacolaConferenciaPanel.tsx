@@ -527,6 +527,47 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </p>
         </div>
 
+        {/* Peças devolvidas (somente fluxo de Peças) */}
+        {showReturns && (
+          <div className="space-y-2 rounded-md border p-3">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <PackageX className="h-3 w-3" /> Peças devolvidas
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Qtd. (un)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={returnedQtyStr}
+                  onChange={e => setReturnedQtyStr(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="0"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Motivo{returnedQty > 0 ? " *" : ""}</Label>
+                <Input
+                  value={returnedReason}
+                  onChange={e => setReturnedReason(e.target.value)}
+                  placeholder="Ex.: peças deformadas"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+            {returnsError ? (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> {returnsError}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Peças reprovadas na entrada são descontadas do total declarado.
+              </p>
+            )}
+          </div>
+        )}
+
+
+
         {/* Summary + Actions */}
         <div className="space-y-3 pt-2 border-t border-border/40">
           <div className="flex justify-between text-sm">
