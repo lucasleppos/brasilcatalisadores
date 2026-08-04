@@ -51,6 +51,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
   const showReturns = !isSacola && purchase.materialFlow !== "ceramico";
+  const returnedQty = showReturns ? Math.max(0, Math.floor(parseNum(returnedQtyStr) || 0)) : 0;
 
   useEffect(() => {
     if (!open) return;
