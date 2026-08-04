@@ -40,6 +40,7 @@ interface PendingItem {
   calcResult?: CalculatorResult;
   category?: string;
   catalogPartId?: string;
+  seq?: number;
 }
 
 export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
@@ -105,6 +106,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           calcInput: i.input,
           calcResult: i.result,
           category: i.category,
+          catalogPartId: i.catalogPartId,
+          seq: i.seq,
         })));
       } else {
         setSupplierId("");
@@ -257,6 +260,8 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const isCeramicoMode = addType === "ceramico";
   // Peça / Peça em Sacola creation: items are registered during Conferência
   const isPecaCreate = !isEditing && (addType === "peca" || addType === "peca_sacola");
+  // Compra que já passou pela conferência: itens são gerenciados nos painéis das etapas
+  const itemsLocked = isEditing && items.some(i => i.category === "conferencia" || i.category === "conferencia_excluida");
 
   const handleConfirm = async () => {
     const supplier = suppliers.find(s => s.id === supplierId);
@@ -314,6 +319,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       result: i.calcResult,
       category: i.category,
       catalogPartId: i.catalogPartId,
+      seq: i.seq,
     }));
 
     if (isEditing) {
@@ -512,8 +518,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
             </div>
           )}
 
-          {/* Add item — hidden for ceramico and for peças na criação (itens vão para a conferência) */}
-          {!isCeramicoMode && !isPecaCreate && (
+          {/* Aviso: itens já conferidos não são editados aqui */}
+          {itemsLocked && (
+            <div className="rounded-md bg-muted/30 border p-3 text-xs text-muted-foreground">
+              <p>Os itens desta compra já foram registrados na <strong>Conferência</strong> e são editados nos painéis de cada etapa. Aqui você pode alterar apenas o Boleto Syge e as observações.</p>
+            </div>
+          )}
+
+          {/* Add item — hidden for ceramico, peças na criação e itens já conferidos */}
+          {!isCeramicoMode && !isPecaCreate && !itemsLocked && (
 
           <div className="space-y-3 p-3 rounded-md border bg-muted/30">
             <Label className="text-xs font-semibold">Adicionar Item</Label>
@@ -682,9 +695,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                       {getItemValueDisplay(it)}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!itemsLocked && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

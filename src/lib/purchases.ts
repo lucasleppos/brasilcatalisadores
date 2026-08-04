@@ -801,33 +801,53 @@ export async function registerAnalysis(
 }
 
 export async function updatePurchase(id: string, data: { items: PurchaseQuoteItem[]; notes: string; erpNumber?: string; bulkWeight?: number | null }) {
-  // Delete only non-catalog items (preserve priced pieces added via PiecePricingPanel)
-  await supabase.from("purchase_items").delete().eq("purchase_id", id).is("catalog_part_id", null);
+  // Reconciliação por id: atualiza o que existe, insere o que é novo e remove o que saiu.
+  // Nunca recria itens de conferência (isso duplicava peças/grupos ao salvar a edição).
+  const { data: existing } = await supabase
+    .from("purchase_items")
+    .select("id, category")
+    .eq("purchase_id", id);
+  const existingRows = existing || [];
+  const existingIds = new Set(existingRows.map(r => r.id));
+  const screenIds = new Set(data.items.map(i => i.id));
 
-  if (data.items.length > 0) {
-    await supabase.from("purchase_items").insert(
-      data.items.map((i) => ({
-        purchase_id: id,
-        item_type: i.itemType,
-        quantity: i.quantity || null,
-        total_value: i.totalValue || null,
-        weight: i.weight || null,
-        calc_input: (i.input as any) || null,
-        calc_result: (i.result as any) || null,
-        category: i.category || null,
-        catalog_part_id: i.catalogPartId || null,
-      }))
-    );
+  const removed = existingRows.filter(
+    r => !screenIds.has(r.id) && r.category !== "conferencia" && r.category !== EXCLUDED_CATEGORY
+  );
+  if (removed.length > 0) {
+    await supabase.from("purchase_items").delete().in("id", removed.map(r => r.id));
   }
 
-  // Sum catalog items total to include in purchase total
-  const { data: catalogItems } = await supabase
+  for (const i of data.items) {
+    const payload = {
+      item_type: i.itemType,
+      quantity: i.quantity ?? null,
+      total_value: i.totalValue ?? null,
+      weight: i.weight ?? null,
+      calc_input: (i.input as any) || null,
+      calc_result: (i.result as any) || null,
+      category: i.category || null,
+      catalog_part_id: i.catalogPartId || null,
+      seq: i.seq ?? null,
+    };
+    if (existingIds.has(i.id)) {
+      await supabase.from("purchase_items").update(payload).eq("id", i.id);
+    } else {
+      await supabase.from("purchase_items").insert({ purchase_id: id, ...payload });
+    }
+  }
+
+  // Total = soma de todos os itens realmente gravados (sem dupla contagem)
+  const { data: allItems } = await supabase
     .from("purchase_items")
-    .select("total_value")
-    .eq("purchase_id", id)
-    .not("catalog_part_id", "is", null);
-  const catalogTotal = (catalogItems || []).reduce((sum, i) => sum + (Number(i.total_value) || 0), 0);
-  const totalBrl = calcTotal(data.items) + catalogTotal;
+    .select("total_value, calc_result, category")
+    .eq("purchase_id", id);
+  const totalBrl = (allItems || [])
+    .filter(i => i.category !== EXCLUDED_CATEGORY)
+    .reduce((sum, i) => {
+      const calc = i.calc_result as any;
+      return sum + (Number(calc?.finalValueBrl) || Number(i.total_value) || 0);
+    }, 0);
 
   // Recalculate material_flow
   const materialFlow = determineMaterialFlow(data.items);
