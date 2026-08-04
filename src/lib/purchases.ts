@@ -457,7 +457,7 @@ export async function createPurchase(data: {
   bulkWeight?: number | null;
 }): Promise<Purchase | null> {
   const { data: numData } = await supabase.rpc("generate_purchase_number");
-  const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR");
+  const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR").replace(/\//g, "").slice(0, 4) + new Date().toLocaleDateString("pt-BR").slice(-2) + "-01";
 
   const totalBrl = calcTotal(data.items);
   const materialFlow = determineMaterialFlow(data.items);
