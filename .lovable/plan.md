@@ -1,31 +1,35 @@
-## Objetivo
+# Corrigir duplicação de itens ao editar a compra
 
-Cada peça em sacola recebe um número na conferência (#1, #2, #3...) e mantém esse mesmo número em todas as etapas seguintes (trituração, análise, precificação, demonstrativo/PDF e concluídos), mesmo quando peças são separadas do fluxo ou removidas.
+## O que aconteceu (confirmado no banco)
 
-## Situação atual
+Na compra `04/08/2026 - 01` (fluxo sacola, status "Peças: Alocado ao Bag") existem 20 itens:
+10 originais gravados às 14:30:55 (com `seq` 1..10 e `catalog_part_id`) e 10 cópias criadas
+às 14:38:09 **sem `seq` e sem `catalog_part_id`** — exatamente o horário do clique em Editar → Salvar.
 
-Hoje o número é apenas o índice da lista renderizada em cada tela (`#{i + 1}`). Como a conferência apaga e reinsere os itens a cada salvamento, e as etapas seguintes filtram as peças separadas, a mesma peça pode aparecer como #3 na conferência e #2 na trituração. Não existe campo de sequência em `purchase_items` (colunas atuais: quantity, weight, weight_loss, weight_real, category, catalog_part_id, calc_input/result, pricing_source).
+Causa: em `updatePurchase` (src/lib/purchases.ts:803) o salvamento apaga só os itens sem
+`catalog_part_id` e depois **insere de novo todos os itens da tela**. O diálogo de edição
+(`NewPurchaseDialog`, mapeamento em `setItems` no `useEffect`) não carrega `catalogPartId`
+nem `seq`, então os itens da conferência são reinseridos como novas linhas "soltas",
+duplicando peças, peso e valor.
 
-## Alterações
+## Correção
 
-**1. Banco de dados**
-- Migração: adicionar coluna `seq integer` em `public.purchase_items` (nullable, sem impacto nos itens existentes). Sem mudança de RLS/grants.
+1. **Reconciliação por id em `updatePurchase`** (em vez de apagar/inserir tudo):
+   - itens da tela que já têm `id` existente → `update` da linha (preservando `catalog_part_id`, `seq`, `weight_real`, `weight_loss`);
+   - itens novos (id não existente no banco) → `insert`;
+   - linhas do banco que não estão mais na tela → `delete`;
+   - itens de conferência (`category` = `conferencia` / `conferencia_excluida`) nunca são recriados.
+2. **Preservar campos no diálogo**: incluir `catalogPartId` e `seq` no mapeamento de
+   `editPurchase.items` para `PendingItem`, e reenviá-los no salvamento.
+3. **Proteger etapas avançadas**: quando a compra já passou da conferência
+   (fluxo peças/sacola/cerâmico com itens de conferência gravados), a edição mostra os itens
+   em modo leitura — o detalhamento é feito nos painéis de cada etapa, não nesse diálogo.
+   Assim um "Salvar" sem alterações não muda nada.
+4. **Limpeza dos dados da simulação**: remover as 10 linhas duplicadas criadas às 14:38 da
+   compra `04/08/2026 - 01` (as que estão sem `seq`/`catalog_part_id`), restaurando o total.
 
-**2. Conferência (`SacolaConferenciaPanel.tsx`)**
-- Cada peça adicionada recebe o próximo número livre (maior `seq` existente + 1); o número nunca é reaproveitado ao excluir uma peça.
-- O número é carregado do banco ao reabrir o painel e regravado no re-insert do salvamento (a peça #3 continua #3).
-- Peças separadas do fluxo mantêm seu número original no bloco "Não seguem o fluxo de sacola".
-- Itens antigos sem `seq` recebem numeração automática pela ordem de criação na primeira abertura.
+## Arquivos afetados
 
-**3. Etapas seguintes**
-- `SacolaTrituracaoPanel.tsx`, `SacolaLabPanel.tsx`, `SacolaPricingPanel.tsx`: exibir `#seq` vindo do item em vez do índice da lista (mensagens de erro da precificação também passam a citar o número real).
-- `DemonstrativoViewDialog.tsx` e a função de PDF (`generate-demonstrativo-pdf`): coluna "#" das peças usa o `seq` gravado.
-- `CompletedDetailRow.tsx`: mostrar o número da peça no detalhamento.
-
-**4. Fallback**
-- Quando o item não tiver `seq` (compras antigas), usa-se o índice atual como hoje, evitando quebra visual.
-
-## Detalhes técnicos
-
-- `seq` é único apenas dentro da compra (controlado no app, sem constraint), calculado como `max(seq) + 1` sobre todas as peças da compra, incluindo as separadas.
-- O fluxo de peça fechada (`peca`, agrupado por quantidade) não usa numeração individual; a mudança fica restrita a `peca_sacola`.
+- `src/lib/purchases.ts` — reescrita de `updatePurchase` com reconciliação por id.
+- `src/components/purchases/NewPurchaseDialog.tsx` — manter `catalogPartId`/`seq` e modo leitura em etapas avançadas.
+- Limpeza de dados via operação de escrita nos itens duplicados dessa compra.
