@@ -332,11 +332,17 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>
-              {excludedQty > 0
-                ? `${baseDeclaredQty} declaradas · ${excludedQty} separadas · ${declaredQty} no fluxo`
+              {excludedQty > 0 || returnedQty > 0
+                ? [
+                    `${baseDeclaredQty} declaradas`,
+                    excludedQty > 0 ? `${excludedQty} separadas` : null,
+                    returnedQty > 0 ? `${returnedQty} devolvidas` : null,
+                    `${declaredQty} no fluxo`,
+                  ].filter(Boolean).join(" · ")
                 : `${declaredQty} peças declaradas`}
             </span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
+
           </div>
         </div>
 
