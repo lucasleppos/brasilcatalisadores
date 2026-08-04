@@ -695,9 +695,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
                       {getItemValueDisplay(it)}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!itemsLocked && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(it.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
