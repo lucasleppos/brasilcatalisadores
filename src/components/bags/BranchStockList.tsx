@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Truck, CheckCircle } from "lucide-react";
+import { fmtBrl } from "@/lib/utils";
 
 interface BranchPurchase {
   id: string;
@@ -91,7 +92,7 @@ export function BranchStockList() {
                   <TableRow key={p.id}>
                     <TableCell>{p.purchaseNumber}</TableCell>
                     <TableCell>{p.supplierName}</TableCell>
-                    <TableCell>R$ {p.totalBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>{fmtBrl(p.totalBrl)}</TableCell>
                     <TableCell>{getStatusBadge(p.transferStatus)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -135,7 +136,7 @@ export function BranchStockList() {
                   <TableRow key={p.id}>
                     <TableCell>{p.purchaseNumber}</TableCell>
                     <TableCell>{p.supplierName}</TableCell>
-                    <TableCell>R$ {p.totalBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>{fmtBrl(p.totalBrl)}</TableCell>
                     <TableCell>{getStatusBadge(p.transferStatus)}</TableCell>
                   </TableRow>
                 ))}

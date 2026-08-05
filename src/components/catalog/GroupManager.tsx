@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { CatalogGroup, loadGroups, createGroup, updateGroup, deleteGroup } from "@/lib/catalog";
 import { toast } from "sonner";
+import { fmtPct } from "@/lib/utils";
 
 interface GroupManagerProps {
   open: boolean;
@@ -97,7 +98,7 @@ export default function GroupManager({ open, onOpenChange, onChanged }: GroupMan
               {groups.map(g => (
                 <TableRow key={g.id}>
                   <TableCell className="text-sm font-medium">{g.name}</TableCell>
-                  <TableCell className="text-sm text-right">{g.margin}%</TableCell>
+                  <TableCell className="text-sm text-right">{fmtPct(g.margin)}</TableCell>
                   <TableCell className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(g)}>
                       <Pencil className="h-3 w-3" />

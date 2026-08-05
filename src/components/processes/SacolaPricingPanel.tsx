@@ -12,7 +12,7 @@ import { Purchase, batchUpdateItemPricing, advanceStage } from "@/lib/purchases"
 import { calculate, CalculatorInput } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { toast } from "sonner";
-import { fmtNum, fmtBrl } from "@/lib/utils";
+import { fmtNum, fmtBrl, fmtPct, fmtPctFixed } from "@/lib/utils";
 import {
   weightCheck,
   analysisCheck,
@@ -54,7 +54,7 @@ function pctDiff(cat: number, lab: number): { value: number; label: string; colo
   const diff = ((lab - cat) / cat) * 100;
   return {
     value: diff,
-    label: `${diff > 0 ? "+" : ""}${diff.toFixed(1)}%`,
+    label: `${diff > 0 ? "+" : ""}${fmtPctFixed(diff, 1)}`,
     color: diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-muted-foreground",
   };
 }
@@ -65,7 +65,7 @@ function valuePctDiff(valCat: string, valCalc: string): { label: string; color: 
   if (isNaN(c) || isNaN(l) || c === 0) return { label: "—", color: "text-muted-foreground" };
   const diff = ((l - c) / c) * 100;
   return {
-    label: `${diff > 0 ? "+" : ""}${diff.toFixed(1)}%`,
+    label: `${diff > 0 ? "+" : ""}${fmtPctFixed(diff, 1)}`,
     color: diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-muted-foreground",
   };
 }
@@ -404,7 +404,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                           Pesado: {fmtNum(p.weight, 3)} kg
                         </p>
                         <p className={`text-xs font-semibold ${marginColor(wChk)}`}>
-                          Δ peso {wChk.label} {wChk.withinMargin ? `(≤ ${WEIGHT_MARGIN_PCT}%)` : `(> ${WEIGHT_MARGIN_PCT}%)`}
+                          Δ peso {wChk.label} {wChk.withinMargin ? `(≤ ${fmtPct(WEIGHT_MARGIN_PCT)})` : `(> ${fmtPct(WEIGHT_MARGIN_PCT)})`}
                         </p>
                         <p className={`text-[11px] ${suggested === "catalogo" ? "text-green-700" : "text-amber-700"}`}>
                           {decisionReason(wChk, aChk)}
