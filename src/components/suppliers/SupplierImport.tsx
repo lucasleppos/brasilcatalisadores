@@ -37,7 +37,9 @@ const parseMargin = (raw: unknown): number | null => {
   const s = String(raw ?? "").replace("%", "").trim();
   if (!s) return null;
   const n = parseNum(s);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  // Células formatadas como % no Excel chegam como fração (0,03 = 3%)
+  return normalizePct(n);
 };
 
 
