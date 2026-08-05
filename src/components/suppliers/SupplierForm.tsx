@@ -4,9 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Supplier } from "@/lib/suppliers";
-import { parseNum } from "@/lib/utils";
+import { parseNum, fmtNum } from "@/lib/utils";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
+
+const marginToStr = (n?: number) => {
+  const v = n ?? 15;
+  return Number.isInteger(v) ? String(v) : fmtNum(v, 2);
+};
 
 interface SupplierFormProps {
   open: boolean;
@@ -21,8 +26,8 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [email, setEmail] = useState(initial?.email ?? "");
   const [branch, setBranch] = useState(initial?.branch ?? "");
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
-  const [marginPecasStr, setMarginPecasStr] = useState(String(initial?.marginPecas ?? 15));
-  const [marginCeramicoStr, setMarginCeramicoStr] = useState(String(initial?.marginCeramico ?? 15));
+  const [marginPecasStr, setMarginPecasStr] = useState(marginToStr(initial?.marginPecas));
+  const [marginCeramicoStr, setMarginCeramicoStr] = useState(marginToStr(initial?.marginCeramico));
 
   useEffect(() => {
     if (open) {
@@ -31,8 +36,8 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
       setEmail(initial?.email ?? "");
       setBranch(initial?.branch ?? "");
       setBuyer(initial?.buyer ?? "");
-      setMarginPecasStr(String(initial?.marginPecas ?? 15));
-      setMarginCeramicoStr(String(initial?.marginCeramico ?? 15));
+      setMarginPecasStr(marginToStr(initial?.marginPecas));
+      setMarginCeramicoStr(marginToStr(initial?.marginCeramico));
     }
   }, [open, initial]);
 

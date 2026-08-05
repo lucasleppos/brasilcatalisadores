@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Upload, FileSpreadsheet } from "lucide-react";
 import { Supplier } from "@/lib/suppliers";
-import { parseNum } from "@/lib/utils";
+import { parseNum, normalizePct, fmtPct } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
 interface SupplierImportProps {
@@ -37,7 +37,9 @@ const parseMargin = (raw: unknown): number | null => {
   const s = String(raw ?? "").replace("%", "").trim();
   if (!s) return null;
   const n = parseNum(s);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  // Células formatadas como % no Excel chegam como fração (0,03 = 3%)
+  return normalizePct(n);
 };
 
 
@@ -154,7 +156,7 @@ export default function SupplierImport({ open, onOpenChange, onImport }: Supplie
             </div>
 
             <div className="text-xs text-muted-foreground">
-              Preview ({rows.length} linhas) — margens não mapeadas usam {DEFAULT_MARGIN}%
+              Preview ({rows.length} linhas) — margens não mapeadas usam {fmtPct(DEFAULT_MARGIN)}
             </div>
             <div className="max-h-48 overflow-auto border rounded-md">
               <Table>
@@ -173,8 +175,8 @@ export default function SupplierImport({ open, onOpenChange, onImport }: Supplie
                       {headers.map((_, j) => (
                         <TableCell key={j} className="text-xs py-1">{String(row[j] ?? "")}</TableCell>
                       ))}
-                      <TableCell className="text-xs py-1 font-medium">{marginOf(row, "marginPecas")}%</TableCell>
-                      <TableCell className="text-xs py-1 font-medium">{marginOf(row, "marginCeramico")}%</TableCell>
+                      <TableCell className="text-xs py-1 font-medium">{fmtPct(marginOf(row, "marginPecas"))}</TableCell>
+                      <TableCell className="text-xs py-1 font-medium">{fmtPct(marginOf(row, "marginCeramico"))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

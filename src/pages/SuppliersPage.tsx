@@ -13,6 +13,7 @@ import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { fmtPct } from "@/lib/utils";
 
 export default function SuppliersPage() {
   const { role, profile } = useAuth();
@@ -140,8 +141,8 @@ export default function SuppliersPage() {
                     {!hideEmail && <TableCell className="text-sm">{s.email}</TableCell>}
                     <TableCell className="text-sm">{s.branch}</TableCell>
                     <TableCell className="text-sm">{s.buyer}</TableCell>
-                    {!hideMargin && <TableCell className="text-sm text-right">{s.marginPecas}%</TableCell>}
-                    {!hideMargin && <TableCell className="text-sm text-right">{s.marginCeramico}%</TableCell>}
+                    {!hideMargin && <TableCell className="text-sm text-right">{fmtPct(s.marginPecas)}</TableCell>}
+                    {!hideMargin && <TableCell className="text-sm text-right">{fmtPct(s.marginCeramico)}</TableCell>}
                     <TableCell>
                       <div className="flex gap-1">
                         {canEdit && (

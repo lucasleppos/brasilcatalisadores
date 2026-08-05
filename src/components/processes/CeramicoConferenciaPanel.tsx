@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage } from "@/lib/purchases";
 import { toast } from "sonner";
-import { fmtNum } from "@/lib/utils";
+import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
 import { buildLabelCode, buildLabelCodeDisplay } from "@/lib/labels";
 import CeramicoLabelPrint, { LabelData } from "./CeramicoLabelPrint";
@@ -262,7 +262,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     if (lotes.some(l => !l.photoUrl)) { toast.error("Todos os lotes devem ter foto"); return; }
     if (lotes.some(l => !l.category.trim() || l.weightGross <= 0)) { toast.error("Todos os lotes precisam de grupo e peso bruto"); return; }
     if (!withinTolerance) {
-      toast.error(`Saldo fora da tolerância de ${(TOLERANCE_PCT * 100).toFixed(0)}%. Ajuste os pesos antes de encerrar.`);
+      toast.error(`Saldo fora da tolerância de ${fmtPct(TOLERANCE_PCT * 100)}. Ajuste os pesos antes de encerrar.`);
       return;
     }
     setSaving(true);
@@ -521,7 +521,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                   <span className="text-muted-foreground">
                     Saldo: <span className={balance < 0 ? "text-destructive font-semibold" : "font-semibold text-foreground"}>{fmtNum(balance, 3)} kg</span>
                   </span>
-                  <span className="text-muted-foreground">Tolerância ±{(TOLERANCE_PCT * 100).toFixed(0)}% ({fmtNum(tolerance, 3)} kg)</span>
+                  <span className="text-muted-foreground">Tolerância ±{fmtPct(TOLERANCE_PCT * 100)} ({fmtNum(tolerance, 3)} kg)</span>
                 </div>
                 {!withinTolerance && lotes.length > 0 && (
                   <p className="text-xs text-destructive flex items-center gap-1">

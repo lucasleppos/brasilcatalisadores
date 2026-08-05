@@ -11,7 +11,7 @@ import { CatalogPart, CatalogGroup, loadParts, loadGroups, createPart, updatePar
 import CatalogImport from "@/components/catalog/CatalogImport";
 import GroupManager from "@/components/catalog/GroupManager";
 import { toast } from "sonner";
-import { fmtNum } from "@/lib/utils";
+import { fmtNum, fmtPct } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
@@ -219,7 +219,7 @@ export default function CatalogPage() {
                   <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     {groups.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name}{isSuperAdmin ? ` (${g.margin}%)` : ""}</SelectItem>
+                      <SelectItem key={g.id} value={g.id}>{g.name}{isSuperAdmin ? ` (${fmtPct(g.margin)})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

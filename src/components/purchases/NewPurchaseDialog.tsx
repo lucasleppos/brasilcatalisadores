@@ -16,7 +16,7 @@ import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseIt
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
-import { fmtNum, fmtBrl, parseNum } from "@/lib/utils";
+import { fmtNum, fmtBrl, fmtPct, parseNum } from "@/lib/utils";
 import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
 import PhotoCapture from "@/components/processes/PhotoCapture";
@@ -398,7 +398,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <p className="text-[10px] text-destructive">Cadastre um fornecedor primeiro.</p>
             )}
             {selectedSupplier && (
-              <p className="text-[10px] text-muted-foreground">Margem do fornecedor: {selectedSupplier.margin}%</p>
+              <p className="text-[10px] text-muted-foreground">Margem do fornecedor: {fmtPct(selectedSupplier.marginPecas)} (peças) · {fmtPct(selectedSupplier.marginCeramico)} (cerâmico)</p>
             )}
           </div>
 

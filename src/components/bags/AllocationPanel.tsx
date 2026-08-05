@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
+import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -329,15 +330,15 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Peso Disponível</p>
-          <p className="text-2xl font-bold">{totalAvailableKg.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
+          <p className="text-2xl font-bold">{fmtNum(totalAvailableKg, 1)} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Valor Disponível</p>
-          <p className="text-2xl font-bold">R$ {totalAvailableValue.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+          <p className="text-2xl font-bold">R$ {fmtNum(totalAvailableValue, 0)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Em Processo (Próximos)</p>
-          <p className="text-2xl font-bold">{inProcessMaterials.length} <span className="text-sm font-normal text-muted-foreground">lotes · {totalInProcessKg.toFixed(1)} kg</span></p>
+          <p className="text-2xl font-bold">{inProcessMaterials.length} <span className="text-sm font-normal text-muted-foreground">lotes · {fmtNum(totalInProcessKg, 1)} kg</span></p>
         </div>
       </div>
 
@@ -360,7 +361,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/50 px-4 py-2">
                 <p className="text-sm">
                   <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? "item selecionado" : "itens selecionados"} ·{" "}
-                  {selectedWeight.toFixed(1)} kg · R$ {selectedValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {fmtKg(selectedWeight, 1)} · {fmtBrl(selectedValue)}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
@@ -411,14 +412,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         <Badge variant="outline">{m.itemType}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {m.weight.toFixed(1)}
+                        {fmtNum(m.weight, 1)}
                         {m.isRealWeight && (
                           <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
                         )}
                       </TableCell>
 
                       <TableCell className="text-right">
-                        {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        {fmtNum(m.paidValue, 2)}
                       </TableCell>
                       <TableCell className="text-right">{m.ptPpm}</TableCell>
                       <TableCell className="text-right">{m.pdPpm}</TableCell>
@@ -467,9 +468,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <TableRow key={m.purchaseItemId}>
                     <TableCell className="font-medium">{m.supplierName}</TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
-                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
                     <TableCell className="text-right">
-                      {m.paidValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {fmtNum(m.paidValue, 2)}
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-emerald-100 text-emerald-800">
@@ -516,9 +517,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{m.weight.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
                     <TableCell className="text-right">
-                      {m.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {fmtNum(m.value, 2)}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
@@ -547,12 +548,12 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 {allocatingMaterials.map((m) => (
                   <div key={m.purchaseItemId} className="flex items-center justify-between gap-2">
                     <span className="truncate">{m.supplierName} · {m.itemType}</span>
-                    <span className="shrink-0 font-medium">{m.weight.toFixed(2)} kg</span>
+                    <span className="shrink-0 font-medium">{fmtKg(m.weight, 2)}</span>
                   </div>
                 ))}
                 <div className="border-t pt-1 mt-1 flex items-center justify-between font-semibold">
                   <span>Total</span>
-                  <span>{allocatingWeight.toFixed(2)} kg · R$ {allocatingValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <span>{fmtKg(allocatingWeight, 2)} · {fmtBrl(allocatingValue)}</span>
                 </div>
               </div>
 
@@ -563,7 +564,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <SelectContent>
                     {openBags.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
-                        {b.bagNumber} — {b.bagLabel} ({b.totalWeight.toFixed(0)}/{b.maxWeight}kg)
+                        {b.bagNumber} — {b.bagLabel} ({fmtNum(b.totalWeight, 0)}/{fmtNum(b.maxWeight, 0)} kg)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -572,7 +573,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
               {selectedBag && (
                 <div className="text-xs text-muted-foreground">
-                  Peso após alocação: {(selectedBag.totalWeight + allocatingWeight).toFixed(1)} / {selectedBag.maxWeight} kg
+                  Peso após alocação: {fmtNum(selectedBag.totalWeight + allocatingWeight, 1)} / {fmtNum(selectedBag.maxWeight, 1)} kg
                   {isNearLimit(selectedBag, allocatingWeight) && (
                     <Badge className="ml-2 bg-yellow-100 text-yellow-800">Acima do limite</Badge>
                   )}
@@ -598,7 +599,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção: Peso acima do limite</AlertDialogTitle>
             <AlertDialogDescription>
-              O bag ficará com {selectedBag ? (selectedBag.totalWeight + allocatingWeight).toFixed(1) : "?"} kg,
+              O bag ficará com {selectedBag ? fmtNum(selectedBag.totalWeight + allocatingWeight, 1) : "?"} kg,
               ultrapassando o limite de {selectedBag?.maxWeight || 1000} kg. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
