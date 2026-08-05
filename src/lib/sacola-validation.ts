@@ -1,3 +1,4 @@
+import { fmtPctFixed } from "@/lib/utils";
 /**
  * Regras de validação para "Peça em Sacola".
  *
@@ -35,7 +36,7 @@ function build(base: number, real: number, marginPct: number): MarginCheck {
     hasBase: true,
     withinMargin,
     useCatalog: withinMargin,
-    label: `${diffPct > 0 ? "+" : ""}${diffPct.toFixed(1).replace(".", ",")}%`,
+    label: `${diffPct > 0 ? "+" : ""}${fmtPctFixed(diffPct, 1)}`,
   };
 }
 
