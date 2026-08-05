@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
+import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -360,7 +361,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/50 px-4 py-2">
                 <p className="text-sm">
                   <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? "item selecionado" : "itens selecionados"} ·{" "}
-                  {selectedWeight.toFixed(1)} kg · R$ {selectedValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {fmtKg(selectedWeight, 1)} · {fmtBrl(selectedValue)}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
