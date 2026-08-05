@@ -37,8 +37,9 @@ const parseMargin = (raw: unknown): number | null => {
   const s = String(raw ?? "").replace("%", "").trim();
   if (!s) return null;
   const n = parseNum(s);
-  return Number.isFinite(n) && n !== 0 ? n : s === "0" ? 0 : n || null;
+  return Number.isFinite(n) ? n : null;
 };
+
 
 export default function SupplierImport({ open, onOpenChange, onImport }: SupplierImportProps) {
   const fileRef = useRef<HTMLInputElement>(null);
