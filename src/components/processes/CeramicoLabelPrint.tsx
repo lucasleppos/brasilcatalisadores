@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
 import { fmtNum } from "@/lib/utils";
 
@@ -19,93 +18,122 @@ export interface LabelData {
   qtyRejected?: number;
 }
 
+const esc = (v: unknown) =>
+  String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-interface Props {
-  labels: LabelData[];
+const STYLES = `
+  @page { size: 100mm 50mm; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  .label {
+    width: 100mm;
+    height: 49.8mm;
+    box-sizing: border-box;
+    padding: 2mm 2.5mm;
+    color: #000;
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 27mm;
+    gap: 2mm;
+    align-items: stretch;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: always;
+    break-after: page;
+  }
+  .label:last-child { page-break-after: auto; break-after: auto; }
+  .info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; overflow: hidden; }
+  .lote {
+    font-size: 12pt; font-weight: 900; line-height: 1.05;
+    border-bottom: 0.4mm solid #000; padding-bottom: 0.8mm; margin-bottom: 0.8mm;
+    white-space: nowrap; overflow: hidden;
+  }
+  .row { font-size: 10pt; font-weight: 700; line-height: 1.25; margin: 0.2mm 0; overflow: hidden; }
+  .row .val { font-weight: 800; }
+  .weights { font-size: 13pt; font-weight: 900; margin-top: 0.8mm; white-space: nowrap; }
+  .qr { display: flex; align-items: center; justify-content: center; }
+  .qr img { width: 27mm; height: 27mm; }
+`;
+
+function labelHtml(l: LabelData, qr: string): string {
+  const mid = l.typeLabel
+    ? `<div class="row"><span>Tipo: </span><span class="val">${esc(l.typeLabel)}</span></div>`
+    : `<div class="row"><span>Grupo: </span><span class="val">${esc(l.group)}</span></div>`;
+  const qty =
+    l.qtyApproved !== undefined || l.qtyRejected !== undefined
+      ? `<div class="row"><span>Aprovadas: </span><span class="val">${l.qtyApproved ?? 0} un</span><span> · Reprovadas: </span><span class="val">${l.qtyRejected ?? 0} un</span></div>`
+      : "";
+  const weight =
+    l.weightGross !== undefined
+      ? `<div class="weights">Peso Bruto: ${esc(fmtNum(l.weightGross, 3))} kg</div>`
+      : "";
+  return `
+    <div class="label">
+      <div class="info">
+        <div class="lote">${esc(l.displayCode || l.code)}</div>
+        <div class="row"><span>Comprador: </span><span class="val">${esc(l.buyer || "—")}</span></div>
+        <div class="row"><span>Fornecedor: </span><span class="val">${esc(l.supplierName)}</span></div>
+        ${mid}
+        ${qty}
+        ${weight}
+      </div>
+      <div class="qr">${qr ? `<img src="${qr}" alt="${esc(l.code)}" />` : ""}</div>
+    </div>`;
 }
 
 /**
- * Thermal label sheet — 100 x 50 mm, 1 label per page.
- * Uses @page rules and @media print to strip browser chrome for direct thermal printing.
- * Render in a hidden container and call window.print() from the caller.
+ * Prints thermal labels (100 x 50 mm, 1 per page) in an isolated hidden iframe,
+ * so nothing from the app layout leaks into the print output (no blank pages).
  */
-export default function CeramicoLabelPrint({ labels }: Props) {
-  const [qrs, setQrs] = useState<Record<string, string>>({});
+export async function printLabelSheet(labels: LabelData[]): Promise<void> {
+  if (labels.length === 0) return;
 
-  useEffect(() => {
-    (async () => {
-      const entries = await Promise.all(
-        labels.map(async (l) => [l.code, await generateQRCodeDataUrl(buildLabelUrl(l.code), 260)] as const),
-      );
-      setQrs(Object.fromEntries(entries));
-    })();
-  }, [labels]);
-
-  return (
-    <div className="ceramico-label-print">
-      <style>{`
-        @media print {
-          @page { size: 100mm 50mm; margin: 0; }
-          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-          body * { visibility: hidden !important; }
-          .ceramico-label-print, .ceramico-label-print * { visibility: visible !important; }
-          .ceramico-label-print { position: absolute; left: 0; top: 0; width: 100mm; }
-          .ceramico-label { page-break-after: always; break-after: page; }
-          .ceramico-label:last-child { page-break-after: auto; break-after: auto; }
-        }
-        .ceramico-label {
-          width: 100mm;
-          height: 50mm;
-          box-sizing: border-box;
-          padding: 2.5mm 3mm;
-          color: #000;
-          background: #fff;
-          font-family: Arial, Helvetica, sans-serif;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 30mm;
-          gap: 2.5mm;
-          align-items: stretch;
-        }
-        .ceramico-label .info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; overflow: hidden; }
-        .ceramico-label .lote {
-          font-size: 13pt; font-weight: 900; letter-spacing: 0.1px;
-          line-height: 1.05; border-bottom: 0.4mm solid #000; padding-bottom: 1mm; margin-bottom: 1mm;
-          white-space: nowrap; overflow: hidden; text-overflow: clip;
-        }
-        .ceramico-label .row { font-size: 11pt; font-weight: 700; line-height: 1.3; margin: 0.4mm 0; }
-        .ceramico-label .row .lbl { font-weight: 700; }
-        .ceramico-label .row .val { font-weight: 800; }
-        .ceramico-label .weights { font-size: 15pt; font-weight: 900; margin-top: 1mm; }
-        .ceramico-label .qr { display: flex; align-items: center; justify-content: center; }
-        .ceramico-label .qr img { width: 30mm; height: 30mm; }
-      `}</style>
-
-      {labels.map((l, idx) => (
-        <div key={`${l.code}-${idx}`} className="ceramico-label">
-          <div className="info">
-            <div className="lote">{l.displayCode || l.code}</div>
-            <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
-            <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
-            {l.typeLabel ? (
-              <div className="row"><span className="lbl">Tipo: </span><span className="val">{l.typeLabel}</span></div>
-            ) : (
-              <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
-            )}
-            {(l.qtyApproved !== undefined || l.qtyRejected !== undefined) && (
-              <div className="row">
-                <span className="lbl">Aprovadas: </span><span className="val">{l.qtyApproved ?? 0} un</span>
-                <span className="lbl"> · Reprovadas: </span><span className="val">{l.qtyRejected ?? 0} un</span>
-              </div>
-            )}
-            {l.weightGross !== undefined && (
-              <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
-            )}
-          </div>
-          <div className="qr">
-            {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
-          </div>
-        </div>
-      ))}
-    </div>
+  const qrCache = new Map<string, string>();
+  await Promise.all(
+    Array.from(new Set(labels.map(l => l.code))).map(async code => {
+      qrCache.set(code, await generateQRCodeDataUrl(buildLabelUrl(code), 260));
+    }),
   );
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>Etiquetas</title><style>${STYLES}</style></head><body>${labels
+    .map(l => labelHtml(l, qrCache.get(l.code) || ""))
+    .join("")}</body></html>`;
+
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  if (!doc) { iframe.remove(); return; }
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  const win = iframe.contentWindow!;
+  // wait for images (QR codes) to decode before printing
+  await new Promise<void>(resolve => {
+    const imgs = Array.from(doc.images);
+    if (imgs.length === 0) return resolve();
+    let left = imgs.length;
+    const done = () => { if (--left <= 0) resolve(); };
+    imgs.forEach(img => {
+      if (img.complete) done();
+      else { img.addEventListener("load", done); img.addEventListener("error", done); }
+    });
+    setTimeout(resolve, 3000);
+  });
+
+  win.focus();
+  win.print();
+  setTimeout(() => iframe.remove(), 1000);
 }
+
+export default printLabelSheet;
