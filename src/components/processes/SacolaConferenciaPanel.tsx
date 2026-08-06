@@ -297,6 +297,38 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     && !returnsInvalid
     && (!isSacola || activePieces.every(p => p.unitWeight > 0));
 
+  const handlePrintLabels = async () => {
+    if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    setSaving(true);
+    try {
+      await persistPieces();
+      await persistReturns();
+    } catch {
+      toast.error("Erro ao salvar antes de imprimir");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+
+    const code = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const base: LabelData = {
+      code,
+      displayCode: code,
+      buyer: purchase.buyer,
+      supplierName: purchase.supplierName,
+      group: "",
+      typeLabel: isSacola ? "Peças em Sacola" : "Peças",
+      qtyApproved: totalQty,
+      qtyRejected: excludedQty + returnedQty,
+      weightGross: totalWeight,
+    };
+    setPrintLabels(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintLabels(null), 500);
+    }, 300);
+  };
+
 
   const handleFinish = async () => {
     if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
