@@ -650,18 +650,28 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </p>
           )}
 
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={handleSave} disabled={saving || pieces.length === 0}>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={handleSave} disabled={saving || pieces.length === 0}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
               Salvar e Continuar
             </Button>
-            <Button className="flex-1" onClick={handleFinish} disabled={saving || !isComplete}>
-              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-              Encerrar ({totalQty}/{declaredQty})
+            <Button variant="outline" onClick={handlePrintLabels} disabled={saving || pieces.length === 0}>
+              <Printer className="h-3 w-3 mr-1" />
+              Imprimir Etiquetas
             </Button>
           </div>
+          <Button className="w-full" onClick={handleFinish} disabled={saving || !isComplete}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+            Encerrar ({totalQty}/{declaredQty})
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+    {printLabels && createPortal(
+      <CeramicoLabelPrint labels={printLabels} />,
+      document.body,
+    )}
+    </>
   );
 }
+
