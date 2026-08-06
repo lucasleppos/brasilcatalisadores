@@ -12,7 +12,13 @@ export interface LabelData {
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
   weightGross: number;
+  /** Optional material type label (ex: "Peças", "Peças em Sacola") */
+  typeLabel?: string;
+  /** Optional approved/rejected quantities (pieces flows) */
+  qtyApproved?: number;
+  qtyRejected?: number;
 }
+
 
 interface Props {
   labels: LabelData[];
