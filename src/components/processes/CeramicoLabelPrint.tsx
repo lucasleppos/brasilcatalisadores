@@ -97,8 +97,9 @@ export default function CeramicoLabelPrint({ labels }: Props) {
                 <span className="lbl"> · Reprovadas: </span><span className="val">{l.qtyRejected ?? 0} un</span>
               </div>
             )}
-            <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
-
+            {l.weightGross !== undefined && (
+              <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
+            )}
           </div>
           <div className="qr">
             {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
