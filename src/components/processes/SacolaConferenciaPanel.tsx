@@ -15,7 +15,7 @@ import { fmtNum, parseNum } from "@/lib/utils";
 import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
 import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-validation";
-import CeramicoLabelPrint, { LabelData } from "./CeramicoLabelPrint";
+import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
 import { buildLabelCodeDisplay } from "@/lib/labels";
 
 const LABEL_COPIES = 3;
@@ -53,7 +53,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [returnedQtyStr, setReturnedQtyStr] = useState("0");
   const [returnedReason, setReturnedReason] = useState("");
-  const [printLabels, setPrintLabels] = useState<LabelData[] | null>(null);
+  
 
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
@@ -321,11 +321,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       qtyApproved: totalQty,
       qtyRejected: excludedQty + returnedQty,
     };
-    setPrintLabels(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setPrintLabels(null), 500);
-    }, 300);
+    try {
+      await printLabelSheet(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
+    } catch {
+      toast.error("Erro ao gerar etiquetas");
+    }
   };
 
 
@@ -668,10 +668,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         </div>
       </DialogContent>
     </Dialog>
-    {printLabels && createPortal(
-      <CeramicoLabelPrint labels={printLabels} />,
-      document.body,
-    )}
     </>
   );
 }
