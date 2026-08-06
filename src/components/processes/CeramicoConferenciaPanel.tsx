@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
 import { buildLabelCode, buildLabelCodeDisplay } from "@/lib/labels";
-import CeramicoLabelPrint, { LabelData } from "./CeramicoLabelPrint";
+import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
 
 const LABEL_COPIES_PER_GROUP = 3;
 
@@ -51,7 +51,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [printLabels, setPrintLabels] = useState<LabelData[] | null>(null);
+  
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -278,13 +278,12 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
     }
   };
 
-  const openPrint = (data: LabelData[]) => {
-    setPrintLabels(data);
-    // wait for the portal to render then trigger print
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setPrintLabels(null), 500);
-    }, 300);
+  const openPrint = async (data: LabelData[]) => {
+    try {
+      await printLabelSheet(data);
+    } catch {
+      toast.error("Erro ao gerar etiquetas");
+    }
   };
 
   const expandCopies = (base: LabelData): LabelData[] =>
@@ -549,11 +548,6 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
           </div>
         </DialogContent>
       </Dialog>
-
-      {printLabels && createPortal(
-        <CeramicoLabelPrint labels={printLabels} />,
-        document.body,
-      )}
     </>
   );
 }
