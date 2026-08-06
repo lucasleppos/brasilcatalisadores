@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus, ArrowDownToLine, Undo2, PackageX } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Minus, ArrowDownToLine, Undo2, PackageX, Printer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, EXCLUDED_CATEGORY } from "@/lib/purchases";
@@ -14,6 +15,11 @@ import { fmtNum, parseNum } from "@/lib/utils";
 import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
 import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-validation";
+import CeramicoLabelPrint, { LabelData } from "./CeramicoLabelPrint";
+import { buildLabelCodeDisplay } from "@/lib/labels";
+
+const LABEL_COPIES = 3;
+
 
 interface ConferenciaPiece {
   id?: string;
@@ -47,6 +53,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [returnedQtyStr, setReturnedQtyStr] = useState("0");
   const [returnedReason, setReturnedReason] = useState("");
+  const [printLabels, setPrintLabels] = useState<LabelData[] | null>(null);
+
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
@@ -289,6 +297,38 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     && !returnsInvalid
     && (!isSacola || activePieces.every(p => p.unitWeight > 0));
 
+  const handlePrintLabels = async () => {
+    if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
+    setSaving(true);
+    try {
+      await persistPieces();
+      await persistReturns();
+    } catch {
+      toast.error("Erro ao salvar antes de imprimir");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+
+    const code = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const base: LabelData = {
+      code,
+      displayCode: code,
+      buyer: purchase.buyer,
+      supplierName: purchase.supplierName,
+      group: "",
+      typeLabel: isSacola ? "Peças em Sacola" : "Peças",
+      qtyApproved: totalQty,
+      qtyRejected: excludedQty + returnedQty,
+      weightGross: totalWeight,
+    };
+    setPrintLabels(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintLabels(null), 500);
+    }, 300);
+  };
+
 
   const handleFinish = async () => {
     if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
@@ -318,7 +358,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
+
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isSacola ? "Conferência — Peça em Sacola" : "Conferência — Peças"}</DialogTitle>
@@ -610,18 +652,28 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </p>
           )}
 
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={handleSave} disabled={saving || pieces.length === 0}>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={handleSave} disabled={saving || pieces.length === 0}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
               Salvar e Continuar
             </Button>
-            <Button className="flex-1" onClick={handleFinish} disabled={saving || !isComplete}>
-              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-              Encerrar ({totalQty}/{declaredQty})
+            <Button variant="outline" onClick={handlePrintLabels} disabled={saving || pieces.length === 0}>
+              <Printer className="h-3 w-3 mr-1" />
+              Imprimir Etiquetas
             </Button>
           </div>
+          <Button className="w-full" onClick={handleFinish} disabled={saving || !isComplete}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+            Encerrar ({totalQty}/{declaredQty})
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+    {printLabels && createPortal(
+      <CeramicoLabelPrint labels={printLabels} />,
+      document.body,
+    )}
+    </>
   );
 }
+

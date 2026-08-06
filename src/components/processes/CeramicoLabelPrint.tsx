@@ -12,7 +12,13 @@ export interface LabelData {
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
   weightGross: number;
+  /** Optional material type label (ex: "Peças", "Peças em Sacola") */
+  typeLabel?: string;
+  /** Optional approved/rejected quantities (pieces flows) */
+  qtyApproved?: number;
+  qtyRejected?: number;
 }
+
 
 interface Props {
   labels: LabelData[];
@@ -80,8 +86,19 @@ export default function CeramicoLabelPrint({ labels }: Props) {
             <div className="lote">{l.displayCode || l.code}</div>
             <div className="row"><span className="lbl">Comprador: </span><span className="val">{l.buyer || "—"}</span></div>
             <div className="row"><span className="lbl">Fornecedor: </span><span className="val">{l.supplierName}</span></div>
-            <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
+            {l.typeLabel ? (
+              <div className="row"><span className="lbl">Tipo: </span><span className="val">{l.typeLabel}</span></div>
+            ) : (
+              <div className="row"><span className="lbl">Grupo: </span><span className="val">{l.group}</span></div>
+            )}
+            {(l.qtyApproved !== undefined || l.qtyRejected !== undefined) && (
+              <div className="row">
+                <span className="lbl">Aprovadas: </span><span className="val">{l.qtyApproved ?? 0} un</span>
+                <span className="lbl"> · Reprovadas: </span><span className="val">{l.qtyRejected ?? 0} un</span>
+              </div>
+            )}
             <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
+
           </div>
           <div className="qr">
             {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
