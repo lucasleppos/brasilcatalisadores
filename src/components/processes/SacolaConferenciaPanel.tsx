@@ -320,7 +320,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       typeLabel: isSacola ? "Peças em Sacola" : "Peças",
       qtyApproved: totalQty,
       qtyRejected: excludedQty + returnedQty,
-      weightGross: totalWeight,
     };
     setPrintLabels(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
     setTimeout(() => {

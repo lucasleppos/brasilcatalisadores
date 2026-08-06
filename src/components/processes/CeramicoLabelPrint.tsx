@@ -11,7 +11,7 @@ export interface LabelData {
   supplierName: string;
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
-  weightGross: number;
+  weightGross?: number;
   /** Optional material type label (ex: "Peças", "Peças em Sacola") */
   typeLabel?: string;
   /** Optional approved/rejected quantities (pieces flows) */
@@ -97,8 +97,9 @@ export default function CeramicoLabelPrint({ labels }: Props) {
                 <span className="lbl"> · Reprovadas: </span><span className="val">{l.qtyRejected ?? 0} un</span>
               </div>
             )}
-            <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
-
+            {l.weightGross !== undefined && (
+              <div className="weights">Peso Bruto: {fmtNum(l.weightGross, 3)} kg</div>
+            )}
           </div>
           <div className="qr">
             {qrs[l.code] ? <img src={qrs[l.code]} alt={l.code} /> : <div style={{ width: "30mm", height: "30mm" }} />}
