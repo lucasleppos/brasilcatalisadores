@@ -11,7 +11,7 @@ export interface LabelData {
   supplierName: string;
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
-  weightGross: number;
+  weightGross?: number;
   /** Optional material type label (ex: "Peças", "Peças em Sacola") */
   typeLabel?: string;
   /** Optional approved/rejected quantities (pieces flows) */
