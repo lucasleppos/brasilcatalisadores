@@ -53,6 +53,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [returnedQtyStr, setReturnedQtyStr] = useState("0");
   const [returnedReason, setReturnedReason] = useState("");
+  const [printLabels, setPrintLabels] = useState<LabelData[] | null>(null);
+
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
