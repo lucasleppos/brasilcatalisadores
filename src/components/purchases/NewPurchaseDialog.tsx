@@ -291,7 +291,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         bulkWeight,
       });
 
-
+      if (newPurchase?.duplicate) {
+        toast({
+          title: "Compra já registrada há instantes",
+          description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
+        });
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
 
       if (newPurchase) {
         for (const url of photos) {
@@ -340,6 +348,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         bulkWeight: bulkWeight || null,
       });
 
+      if (newPurchase?.duplicate) {
+        toast({
+          title: "Compra já registrada há instantes",
+          description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
+        });
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
+
       if (newPurchase) {
         for (const url of photos) {
           await addEvidence({
@@ -357,7 +375,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
     onOpenChange(false);
     onCreated();
+    } finally {
+      setSaving(false);
+    }
   };
+
 
   const showSimpleFields = addType === "peca" || addType === "peca_sacola";
   const showCalcFields = addType === "ceramico" && isEditing; // Only show calc fields for ceramico in edit mode
