@@ -37,10 +37,18 @@ export default function CompletedPage() {
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [authLoading, session?.user?.id]);
 
   const reload = async () => {
-    let all = await loadPurchases();
+    if (authLoading || !session) return;
+    let all: Purchase[];
+    try {
+      all = await loadPurchases();
+    } catch (e) {
+      console.error("Erro ao carregar concluídos:", e);
+      return;
+    }
+
 
     // Rede de segurança: compras com todos os itens já alocados mas presas
     // em "Alocando Bag" (cerâmico) ou "Alocado ao Bag" (peças) são encerradas.
