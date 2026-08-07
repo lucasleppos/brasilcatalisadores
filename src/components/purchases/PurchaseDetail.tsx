@@ -56,6 +56,16 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
           <DialogTitle>Compra {purchase.purchaseNumber} — {purchase.supplierName}</DialogTitle>
         </DialogHeader>
 
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full h-8 text-xs"
+          onClick={() => { printEntryLabel(purchase).catch(() => {}); }}
+        >
+          <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir Etiqueta de Entrada
+        </Button>
+
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-xs text-muted-foreground">Nº Pedido</p>
