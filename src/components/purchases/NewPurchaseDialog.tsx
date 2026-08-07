@@ -93,7 +93,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   useEffect(() => {
     if (open) {
+      setSaving(false);
       loadSuppliers().then(setSuppliers);
+
       if (editPurchase) {
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
