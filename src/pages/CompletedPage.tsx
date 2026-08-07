@@ -19,6 +19,8 @@ interface BagAllocation {
 }
 
 export default function CompletedPage() {
+  const { session, loading: authLoading } = useAuth();
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [bagAllocations, setBagAllocations] = useState<Record<string, BagAllocation[]>>({});
   const [search, setSearch] = useState("");
