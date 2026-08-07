@@ -752,11 +752,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && !isPecaCreate && items.length === 0) || ((isCeramicoMode || isPecaCreate) && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
-            <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleConfirm} disabled={saving || !supplierId || (!isCeramicoMode && !isPecaCreate && items.length === 0) || ((isCeramicoMode || isPecaCreate) && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
+            {saving ? (
+              <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Salvando...</>
+            ) : (
+              <><Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}</>
+            )}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
