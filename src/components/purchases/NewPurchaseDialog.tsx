@@ -264,12 +264,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const itemsLocked = isEditing && items.some(i => i.category === "conferencia" || i.category === "conferencia_excluida");
 
   const handleConfirm = async () => {
+    if (saving) return; // evita duplo clique criando duas compras
     const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier) return;
     if (!isEditing && photos.length === 0) return;
 
+    setSaving(true);
+    try {
     // Simplified creation: ceramico (bulk kg) and peças (units) — items come later
     if ((isCeramicoMode || isPecaCreate) && !isEditing) {
+
       if (bulkWeight <= 0) {
         toast({
           title: isCeramicoMode ? "Informe o peso total recebido" : "Informe o total de peças recebidas",
