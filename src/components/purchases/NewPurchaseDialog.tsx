@@ -53,7 +53,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
   const [photos, setPhotos] = useState<string[]>([]);
   const [tempUploadId] = useState(() => crypto.randomUUID());
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
 
   // Bulk weight (Material a Classificar)
   const [bulkWeightStr, setBulkWeightStr] = useState("");
