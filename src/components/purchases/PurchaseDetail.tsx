@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon } from "lucide-react";
+import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon, Printer } from "lucide-react";
+import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
 import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getItemLabel } from "@/lib/purchases";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
@@ -55,6 +56,16 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
         <DialogHeader>
           <DialogTitle>Compra {purchase.purchaseNumber} — {purchase.supplierName}</DialogTitle>
         </DialogHeader>
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full h-8 text-xs"
+          onClick={() => { printEntryLabel(purchase).catch(() => {}); }}
+        >
+          <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir Etiqueta de Entrada
+        </Button>
+
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>

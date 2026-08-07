@@ -21,6 +21,8 @@ import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
 import PhotoCapture from "@/components/processes/PhotoCapture";
 import { addEvidence } from "@/lib/stage-tasks";
+import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
+
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
@@ -320,8 +322,12 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       toast({ title: "Compra criada com sucesso!" });
       onOpenChange(false);
       onCreated();
+      if (newPurchase) {
+        try { await printEntryLabel(newPurchase); } catch { /* impressão cancelada */ }
+      }
       return;
     }
+
 
     if (items.length === 0) return;
 
@@ -375,11 +381,18 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
 
       toast({ title: "Compra criada com sucesso!" });
+      onOpenChange(false);
+      onCreated();
+      if (newPurchase) {
+        try { await printEntryLabel(newPurchase); } catch { /* impressão cancelada */ }
+      }
+      return;
     }
 
     onOpenChange(false);
     onCreated();
     } finally {
+
       setSaving(false);
     }
   };
