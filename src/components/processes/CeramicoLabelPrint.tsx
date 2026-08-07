@@ -155,4 +155,42 @@ export async function printLabelSheet(labels: LabelData[]): Promise<void> {
   setTimeout(() => iframe.remove(), 1000);
 }
 
+const FLOW_LABEL: Record<string, string> = {
+  ceramico: "Cerâmico",
+  pecas: "Peças",
+  sacola: "Peças em Sacola",
+};
+
+/**
+ * Entry label ("ENTRADA"), printed right when the purchase is created so the
+ * physical material is identified before Conferência.
+ */
+export function buildEntryLabel(
+  purchase: Pick<Purchase, "purchaseNumber" | "date" | "buyer" | "supplierName" | "materialFlow" | "bulkWeight">,
+): LabelData {
+  const isCeramico = purchase.materialFlow === "ceramico";
+  const declared = Number(purchase.bulkWeight ?? 0);
+  return {
+    code: buildLabelCode(purchase.purchaseNumber, purchase.date, 0),
+    displayCode: buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date),
+    stageLabel: "ENTRADA",
+    buyer: purchase.buyer,
+    supplierName: purchase.supplierName,
+    group: "—",
+    typeLabel: FLOW_LABEL[purchase.materialFlow || ""] || "Material",
+    weightGross: isCeramico && declared > 0 ? declared : undefined,
+    qtyDeclared: !isCeramico && declared > 0 ? Math.round(declared) : undefined,
+  };
+}
+
+/** Prints a single entry label for the given purchase. */
+export async function printEntryLabel(
+  purchase: Parameters<typeof buildEntryLabel>[0],
+): Promise<void> {
+  await printLabelSheet([buildEntryLabel(purchase)]);
+}
+
+export default printLabelSheet;
+
+
 export default printLabelSheet;
