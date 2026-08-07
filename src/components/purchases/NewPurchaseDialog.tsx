@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
