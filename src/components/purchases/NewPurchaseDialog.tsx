@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X } from "lucide-react";
+import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
