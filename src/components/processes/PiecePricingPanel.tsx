@@ -1,3 +1,4 @@
+import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,11 +207,13 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <QtyCheckBadge purchase={purchase} />
                 <Button size="sm" variant="outline" onClick={recalcAll} disabled={loading}>
                   <RefreshCw className="h-3.5 w-3.5 mr-1" /> Recalcular
                 </Button>
                 {items.length > 0 && <Badge className="text-sm px-3 py-1">{totalQty} peças</Badge>}
               </div>
+
             </div>
           </DialogHeader>
 

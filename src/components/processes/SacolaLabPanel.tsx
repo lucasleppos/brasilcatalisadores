@@ -1,3 +1,4 @@
+import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -229,7 +230,9 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
             <span>{totalCount} peças conferidas</span>
             <span>{fmtNum(totalWeight, 3)} kg total</span>
           </div>
+          <QtyCheckBadge purchase={purchase} />
         </div>
+
 
         {/* Pieces for analysis */}
         {loadingPieces ? (

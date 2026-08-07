@@ -1,3 +1,4 @@
+import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -315,10 +316,14 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
               <span>{totalCount} peças</span>
               <span>{fmtNum(totalWeight, 3)} kg</span>
             </div>
-            <Badge className="text-sm px-3 py-1">
-              Total: {fmtBrl(totalValue)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <QtyCheckBadge purchase={purchase} />
+              <Badge className="text-sm px-3 py-1">
+                Total: {fmtBrl(totalValue)}
+              </Badge>
+            </div>
           </div>
+
         </DialogHeader>
 
         {/* Search & Filters */}

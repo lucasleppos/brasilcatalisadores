@@ -337,6 +337,59 @@ export function getOriginalItemCount(purchase: Purchase): number {
   return getOriginalItems(purchase).reduce((sum, i) => sum + (i.quantity || 1), 0);
 }
 
+export interface QtyCheck {
+  /** total declarado na criação da compra (unidades para peças, kg para cerâmico) */
+  declared: number;
+  /** total conferido (itens da conferência) */
+  conferred: number;
+  /** peças/grupos separados do fluxo */
+  excluded: number;
+  /** declarado menos separados = meta do fluxo */
+  target: number;
+  matches: boolean;
+  unit: "un" | "kg";
+  /** false quando ainda não há conferência para comparar */
+  applicable: boolean;
+}
+
+/**
+ * Confronto declarado × conferido usado em todas as etapas do fluxo.
+ * Peças / Peça em Sacola comparam unidades; Cerâmico compara peso bruto.
+ */
+export function getQtyCheck(purchase: Purchase): QtyCheck {
+  const conf = getConferenciaItems(purchase);
+  const excludedItems = getExcludedItems(purchase);
+  const isCeramico = purchase.materialFlow === "ceramico";
+
+  const declared = purchase.bulkWeight && purchase.bulkWeight > 0
+    ? (isCeramico ? Number(purchase.bulkWeight) : Math.round(purchase.bulkWeight))
+    : isCeramico
+      ? 0
+      : getOriginalItems(purchase).reduce((s, i) => s + (i.quantity || 1), 0);
+
+  const sum = (arr: PurchaseQuoteItem[]) =>
+    isCeramico
+      ? arr.reduce((s, i) => s + (i.weight || 0), 0)
+      : arr.reduce((s, i) => s + (i.quantity || 1), 0);
+
+  const conferred = sum(conf);
+  const excluded = sum(excludedItems);
+  const target = Math.max(0, declared - excluded);
+  const tolerance = isCeramico ? 0.01 : 0;
+
+  return {
+    declared,
+    conferred,
+    excluded,
+    target,
+    matches: target > 0 && Math.abs(conferred - target) <= tolerance,
+    unit: isCeramico ? "kg" : "un",
+    applicable: conf.length > 0 && declared > 0,
+  };
+}
+
+
+
 /** Returns a human-readable label: weight for cerâmico, count for peças */
 export function getItemLabel(purchase: Purchase): string {
   if (purchase.materialFlow === "ceramico") {
@@ -455,9 +508,67 @@ export async function createPurchase(data: {
   notes?: string;
   erpNumber?: string;
   bulkWeight?: number | null;
-}): Promise<Purchase | null> {
+}): Promise<(Purchase & { duplicate?: boolean }) | null> {
+  // Guarda anti-duplicação: mesma compra criada há poucos segundos (duplo clique / reenvio)
+  const since = new Date(Date.now() - 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from("purchases")
+    .select("*")
+    .eq("supplier_id", data.supplierId)
+    .eq("status", "Em Conferência")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const dup = (recent || []).find(
+    r => Number(r.bulk_weight ?? 0) === Number(data.bulkWeight ?? 0)
+  );
+  if (dup) {
+    const { data: dupItems } = await supabase
+      .from("purchase_items")
+      .select("*")
+      .eq("purchase_id", dup.id);
+    return {
+      id: dup.id,
+      purchaseNumber: dup.purchase_number,
+      erpNumber: dup.erp_number || "",
+      date: dup.date,
+      supplierId: dup.supplier_id,
+      supplierName: dup.supplier_name,
+      buyer: dup.buyer || "",
+      status: dup.status,
+      materialFlow: (dup.material_flow as MaterialFlow) || null,
+      items: (dupItems || []).map((item: any) => ({
+        id: item.id,
+        itemType: item.item_type as PurchaseItemType,
+        quantity: item.quantity,
+        totalValue: item.total_value ? Number(item.total_value) : undefined,
+        weight: item.weight ? Number(item.weight) : undefined,
+        input: item.calc_input as CalculatorInput | undefined,
+        result: item.calc_result as CalculatorResult | undefined,
+        category: item.category || undefined,
+        catalogPartId: item.catalog_part_id || undefined,
+        weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
+        weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
+        seq: item.seq != null ? Number(item.seq) : undefined,
+      })),
+
+      totalBrl: Number(dup.total_brl) || 0,
+      notes: dup.notes || "",
+      statusHistory: (dup.status_history as any[]) || [],
+      weightDeclared: dup.weight_declared != null ? Number(dup.weight_declared) : null,
+      weightReal: dup.weight_real != null ? Number(dup.weight_real) : null,
+      weightLoss: dup.weight_loss != null ? Number(dup.weight_loss) : null,
+      finStatus: (dup.fin_status as CerFinStatus) || null,
+      opStatus: (dup.op_status as CerOpStatus) || null,
+      bulkWeight: dup.bulk_weight != null ? Number(dup.bulk_weight) : null,
+      duplicate: true,
+    };
+  }
+
   const { data: numData } = await supabase.rpc("generate_purchase_number");
   const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR").replace(/\//g, "").slice(0, 4) + new Date().toLocaleDateString("pt-BR").slice(-2) + "-01";
+
 
   const totalBrl = calcTotal(data.items);
   const materialFlow = determineMaterialFlow(data.items);

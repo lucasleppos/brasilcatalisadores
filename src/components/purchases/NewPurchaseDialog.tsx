@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X } from "lucide-react";
+import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
@@ -53,7 +53,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const [addType, setAddType] = useState<PurchaseItemType>("peca");
   const [photos, setPhotos] = useState<string[]>([]);
   const [tempUploadId] = useState(() => crypto.randomUUID());
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
 
   // Bulk weight (Material a Classificar)
   const [bulkWeightStr, setBulkWeightStr] = useState("");
@@ -91,7 +93,9 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   useEffect(() => {
     if (open) {
+      setSaving(false);
       loadSuppliers().then(setSuppliers);
+
       if (editPurchase) {
         setSupplierId(editPurchase.supplierId);
         setNotes(editPurchase.notes);
@@ -264,12 +268,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
   const itemsLocked = isEditing && items.some(i => i.category === "conferencia" || i.category === "conferencia_excluida");
 
   const handleConfirm = async () => {
+    if (saving) return; // evita duplo clique criando duas compras
     const supplier = suppliers.find(s => s.id === supplierId);
     if (!supplier) return;
     if (!isEditing && photos.length === 0) return;
 
+    setSaving(true);
+    try {
     // Simplified creation: ceramico (bulk kg) and peças (units) — items come later
     if ((isCeramicoMode || isPecaCreate) && !isEditing) {
+
       if (bulkWeight <= 0) {
         toast({
           title: isCeramicoMode ? "Informe o peso total recebido" : "Informe o total de peças recebidas",
@@ -287,7 +295,15 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         bulkWeight,
       });
 
-
+      if (newPurchase?.duplicate) {
+        toast({
+          title: "Compra já registrada há instantes",
+          description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
+        });
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
 
       if (newPurchase) {
         for (const url of photos) {
@@ -336,6 +352,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         bulkWeight: bulkWeight || null,
       });
 
+      if (newPurchase?.duplicate) {
+        toast({
+          title: "Compra já registrada há instantes",
+          description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
+        });
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
+
       if (newPurchase) {
         for (const url of photos) {
           await addEvidence({
@@ -353,7 +379,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
     onOpenChange(false);
     onCreated();
+    } finally {
+      setSaving(false);
+    }
   };
+
 
   const showSimpleFields = addType === "peca" || addType === "peca_sacola";
   const showCalcFields = addType === "ceramico" && isEditing; // Only show calc fields for ceramico in edit mode
@@ -722,11 +752,16 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!supplierId || (!isCeramicoMode && !isPecaCreate && items.length === 0) || ((isCeramicoMode || isPecaCreate) && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
-            <Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleConfirm} disabled={saving || !supplierId || (!isCeramicoMode && !isPecaCreate && items.length === 0) || ((isCeramicoMode || isPecaCreate) && bulkWeight <= 0) || (!isEditing && photos.length === 0)}>
+            {saving ? (
+              <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Salvando...</>
+            ) : (
+              <><Send className="mr-1 h-3 w-3" />{isEditing ? "Salvar" : "Criar Compra"}</>
+            )}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
