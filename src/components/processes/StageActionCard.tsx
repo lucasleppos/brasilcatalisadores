@@ -362,6 +362,11 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           )}
         </div>
 
+        {/* Confronto declarado × conferido */}
+        <QtyCheckBadge purchase={purchase} />
+
+
+
         {/* Value */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Valor:</span>
