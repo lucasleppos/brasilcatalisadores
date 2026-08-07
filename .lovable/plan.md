@@ -1,50 +1,26 @@
-# Busca inteligente em todo o app
+# Etiqueta de Entrada na criação da compra
 
-## Objetivo
+Hoje o material só recebe etiqueta na Conferência. A proposta é emitir uma **Etiqueta de Entrada** já no momento da inclusão da compra, para que o volume físico fique identificado desde a chegada.
 
-Trocar as listas suspensas longas (fornecedor, comprador, bag, grupo) por um campo de busca com digitação, e padronizar todos os campos de busca por texto do app para que encontrem resultados mesmo com acento, letra maiúscula/minúscula ou palavras fora de ordem.
+## Comportamento
 
-## 1. Novo componente de seleção com busca
+1. Ao confirmar a criação de uma nova compra (qualquer fluxo: Cerâmico, Peças ou Peças em Sacola), o sistema salva a compra e abre automaticamente a impressão de **1 etiqueta de entrada** (mesmo formato térmico 100x50 mm já usado na Conferência).
+2. Se o operador cancelar a impressão, nada é perdido: a etiqueta pode ser reimpressa depois pelo botão **Imprimir Etiqueta de Entrada** no card da compra em Conferência e na tela de detalhe da compra.
+3. A etiqueta de entrada não substitui as etiquetas por grupo/lote da Conferência — elas continuam sendo geradas em 3 cópias como hoje.
 
-Um único componente reutilizável ("selecionar digitando"):
+## Conteúdo da etiqueta de entrada
 
-- Abre ao clicar, com campo de digitação no topo e a lista filtrada abaixo.
-- Filtra a partir da primeira letra, ignorando acentos, maiúsculas, pontuação (`.`/`-`/`/`) e ordem das palavras: "junio cesar", "JUNIO", "cesar junio" e "junío" encontram "JUNIO CESAR".
-- Navegação por teclado (setas, Enter, Esc), opção "Limpar seleção" quando o filtro é opcional, e mensagem "Nenhum resultado" quando não há correspondência.
-- Mostra informação secundária quando útil (ex.: documento do fornecedor, comprador da bag) para diferenciar nomes parecidos como "ADILSON RIBEIRO - CELULAR 1 / 2".
-
-Aplicado em:
-
-| Local | Campo |
-| --- | --- |
-| Nova Compra / Editar Compra | Fornecedor |
-| Calculadora | Fornecedor |
-| Compras (filtros) | Comprador |
-| Processos (filtros) | Fornecedor, Comprador |
-| Concluídos | Fornecedor, Bag de destino |
-| Bags | Comprador |
-| Análise de Bag / Alocação | Bag |
-| Catálogo (filtro e cadastro de peça) | Grupo |
-| Fornecedores | Comprador |
-
-Selects curtos e fixos (status, tipo de material, fluxo, etapa) continuam como estão — busca não ajuda em 3 a 6 opções.
-
-## 2. Campos de busca por texto
-
-Mesma regra de comparação (sem acento, sem caixa, palavras em qualquer ordem) e melhorias de usabilidade nos campos existentes:
-
-- Compras: fornecedor, nº pedido, comprador, Boleto Syge.
-- Concluídos: fornecedor, nº pedido, Syge.
-- Fornecedores: nome, documento, e-mail.
-- Usuários: nome, e-mail, função.
-- Catálogo: código, referência, marca, veículo.
-- Busca de peça (Conferência de Peças/Sacola e Precificação): busca a partir de 1 caractere, navegação por teclado e destaque do termo encontrado.
-
-Em todos: ícone de lupa, botão "×" para limpar, contador de resultados ("12 de 340") e busca sem travar a digitação em listas grandes.
+- Código do lote: `LOT-AAMMDD-NN` (mesmo padrão da compra) com marcação **ENTRADA**
+- Comprador
+- Fornecedor
+- Tipo: Cerâmico / Peças / Peças em Sacola
+- Cerâmico: Peso Bruto declarado (kg). Peças e Sacola: quantidade declarada (un)
+- QR Code apontando para a compra, igual ao das etiquetas atuais
 
 ## Detalhes técnicos
 
-- Novo `src/components/ui/searchable-select.tsx` sobre `Popover` + `Command` (já presentes no projeto), com `filter` customizado.
-- Novos helpers em `src/lib/utils.ts`: `normalizeText()` (remove diacríticos/caixa/pontuação) e `matchesSearch(haystack, query)` (todos os termos devem estar presentes), reaproveitados pelo componente e por todos os filtros de tabela.
-- `PartSearch.tsx` e a busca de peça em `SacolaPricingPanel.tsx` passam a usar `matchesSearch` no lado do cliente sobre o resultado da consulta, com debounce reduzido para 150 ms.
-- Sem mudanças de banco, de regra de negócio ou de cálculo.
+- `CeramicoLabelPrint.tsx`: adicionar campos opcionais `stageLabel` (ex.: "ENTRADA") e `qtyDeclared` ao `LabelData`, renderizados no mesmo grid; nenhuma etiqueta existente muda de aparência.
+- Novo helper `buildEntryLabel(purchase)` em `src/lib/labels.ts` que monta o `LabelData` de entrada a partir dos dados da compra (código via `buildLabelCode(..., 0)`, display via `buildLabelCodeDisplay`).
+- `NewPurchaseDialog.tsx`: após o `createPurchase` bem-sucedido (e apenas quando não é edição, e quando não é uma criação duplicada detectada), chamar `printLabelSheet([buildEntryLabel(purchase)])`.
+- `StageActionCard.tsx` (etapa Conferência) e `PurchaseDetail.tsx`: botão de reimpressão usando o mesmo helper.
+- Sem alteração de banco de dados, de fluxo de etapas ou de cálculo.
