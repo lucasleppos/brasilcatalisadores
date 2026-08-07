@@ -57,6 +57,11 @@ const STYLES = `
   .row { font-size: 10pt; font-weight: 700; line-height: 1.25; margin: 0.2mm 0; overflow: hidden; }
   .row .val { font-weight: 800; }
   .weights { font-size: 13pt; font-weight: 900; margin-top: 0.8mm; white-space: nowrap; }
+  .stage {
+    display: inline-block; font-size: 8pt; font-weight: 900; letter-spacing: 0.3mm;
+    border: 0.4mm solid #000; border-radius: 0.8mm; padding: 0 1mm; margin-left: 1.5mm;
+    vertical-align: middle;
+  }
   .qr { display: flex; align-items: center; justify-content: center; }
   .qr img { width: 27mm; height: 27mm; }
 `;
@@ -69,23 +74,30 @@ function labelHtml(l: LabelData, qr: string): string {
     l.qtyApproved !== undefined || l.qtyRejected !== undefined
       ? `<div class="row"><span>Aprovadas: </span><span class="val">${l.qtyApproved ?? 0} un</span><span> · Reprovadas: </span><span class="val">${l.qtyRejected ?? 0} un</span></div>`
       : "";
+  const declared =
+    l.qtyDeclared !== undefined
+      ? `<div class="weights">Qtd. Recebida: ${l.qtyDeclared} un</div>`
+      : "";
   const weight =
     l.weightGross !== undefined
       ? `<div class="weights">Peso Bruto: ${esc(fmtNum(l.weightGross, 3))} kg</div>`
       : "";
+  const stage = l.stageLabel ? `<span class="stage">${esc(l.stageLabel)}</span>` : "";
   return `
     <div class="label">
       <div class="info">
-        <div class="lote">${esc(l.displayCode || l.code)}</div>
+        <div class="lote">${esc(l.displayCode || l.code)}${stage}</div>
         <div class="row"><span>Comprador: </span><span class="val">${esc(l.buyer || "—")}</span></div>
         <div class="row"><span>Fornecedor: </span><span class="val">${esc(l.supplierName)}</span></div>
         ${mid}
         ${qty}
+        ${declared}
         ${weight}
       </div>
       <div class="qr">${qr ? `<img src="${qr}" alt="${esc(l.code)}" />` : ""}</div>
     </div>`;
 }
+
 
 /**
  * Prints thermal labels (100 x 50 mm, 1 per page) in an isolated hidden iframe,
