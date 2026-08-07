@@ -46,7 +46,7 @@ interface PendingItem {
   seq?: number;
 }
 
-export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void; editPurchase?: Purchase | null }) {
+export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editPurchase }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void | Promise<void>; editPurchase?: Purchase | null }) {
   const isEditing = !!editPurchase;
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -308,7 +308,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
         });
         onOpenChange(false);
-        onCreated();
+        await onCreated();
         return;
       }
 
@@ -326,7 +326,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
       toast({ title: "Compra criada com sucesso!" });
       onOpenChange(false);
-      onCreated();
+      await onCreated();
       if (newPurchase) {
         try { await printEntryLabel(newPurchase); } catch { /* impressão cancelada */ }
       }
@@ -369,7 +369,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           description: `Pedido ${newPurchase.purchaseNumber} — não foi criada uma cópia.`,
         });
         onOpenChange(false);
-        onCreated();
+        await onCreated();
         return;
       }
 
@@ -387,7 +387,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
       toast({ title: "Compra criada com sucesso!" });
       onOpenChange(false);
-      onCreated();
+      await onCreated();
       if (newPurchase) {
         try { await printEntryLabel(newPurchase); } catch { /* impressão cancelada */ }
       }
@@ -395,7 +395,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
     }
 
     onOpenChange(false);
-    onCreated();
+    await onCreated();
     } finally {
 
       setSaving(false);
