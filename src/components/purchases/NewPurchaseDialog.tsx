@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Trash2, Send, Calculator, AlertTriangle, Package, CheckCircle2, Camera, X, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings } from "@/lib/settings";
@@ -429,14 +430,21 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
           {/* Supplier */}
           <div className="space-y-1">
             <Label className="text-xs">Fornecedor *</Label>
-            <Select value={supplierId} onValueChange={setSupplierId} disabled={isEditing}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecionar fornecedor" /></SelectTrigger>
-              <SelectContent>
-                {suppliers.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={supplierId}
+              onValueChange={setSupplierId}
+              disabled={isEditing}
+              placeholder="Selecionar fornecedor"
+              searchPlaceholder="Digite o nome do fornecedor..."
+              emptyText="Nenhum fornecedor encontrado"
+              options={suppliers.map(s => ({
+                value: s.id,
+                label: s.name,
+                keywords: [s.document || "", s.buyer || ""],
+                hint: [s.document, s.buyer].filter(Boolean).join(" · "),
+              }))}
+            />
+
             {suppliers.length === 0 && (
               <p className="text-[10px] text-destructive">Cadastre um fornecedor primeiro.</p>
             )}
