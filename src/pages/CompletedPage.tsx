@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface BagAllocation {
   purchaseId: string;
