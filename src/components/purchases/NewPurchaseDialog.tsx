@@ -381,11 +381,18 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
       }
 
       toast({ title: "Compra criada com sucesso!" });
+      onOpenChange(false);
+      onCreated();
+      if (newPurchase) {
+        try { await printEntryLabel(newPurchase); } catch { /* impressão cancelada */ }
+      }
+      return;
     }
 
     onOpenChange(false);
     onCreated();
     } finally {
+
       setSaving(false);
     }
   };
