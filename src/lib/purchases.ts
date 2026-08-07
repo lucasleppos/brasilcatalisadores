@@ -337,6 +337,59 @@ export function getOriginalItemCount(purchase: Purchase): number {
   return getOriginalItems(purchase).reduce((sum, i) => sum + (i.quantity || 1), 0);
 }
 
+export interface QtyCheck {
+  /** total declarado na criação da compra (unidades para peças, kg para cerâmico) */
+  declared: number;
+  /** total conferido (itens da conferência) */
+  conferred: number;
+  /** peças/grupos separados do fluxo */
+  excluded: number;
+  /** declarado menos separados = meta do fluxo */
+  target: number;
+  matches: boolean;
+  unit: "un" | "kg";
+  /** false quando ainda não há conferência para comparar */
+  applicable: boolean;
+}
+
+/**
+ * Confronto declarado × conferido usado em todas as etapas do fluxo.
+ * Peças / Peça em Sacola comparam unidades; Cerâmico compara peso bruto.
+ */
+export function getQtyCheck(purchase: Purchase): QtyCheck {
+  const conf = getConferenciaItems(purchase);
+  const excludedItems = getExcludedItems(purchase);
+  const isCeramico = purchase.materialFlow === "ceramico";
+
+  const declared = purchase.bulkWeight && purchase.bulkWeight > 0
+    ? (isCeramico ? Number(purchase.bulkWeight) : Math.round(purchase.bulkWeight))
+    : isCeramico
+      ? 0
+      : getOriginalItems(purchase).reduce((s, i) => s + (i.quantity || 1), 0);
+
+  const sum = (arr: PurchaseQuoteItem[]) =>
+    isCeramico
+      ? arr.reduce((s, i) => s + (i.weight || 0), 0)
+      : arr.reduce((s, i) => s + (i.quantity || 1), 0);
+
+  const conferred = sum(conf);
+  const excluded = sum(excludedItems);
+  const target = Math.max(0, declared - excluded);
+  const tolerance = isCeramico ? 0.01 : 0;
+
+  return {
+    declared,
+    conferred,
+    excluded,
+    target,
+    matches: target > 0 && Math.abs(conferred - target) <= tolerance,
+    unit: isCeramico ? "kg" : "un",
+    applicable: conf.length > 0 && declared > 0,
+  };
+}
+
+
+
 /** Returns a human-readable label: weight for cerâmico, count for peças */
 export function getItemLabel(purchase: Purchase): string {
   if (purchase.materialFlow === "ceramico") {
