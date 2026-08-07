@@ -455,9 +455,53 @@ export async function createPurchase(data: {
   notes?: string;
   erpNumber?: string;
   bulkWeight?: number | null;
-}): Promise<Purchase | null> {
+}): Promise<(Purchase & { duplicate?: boolean }) | null> {
+  // Guarda anti-duplicação: mesma compra criada há poucos segundos (duplo clique / reenvio)
+  const since = new Date(Date.now() - 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from("purchases")
+    .select("*")
+    .eq("supplier_id", data.supplierId)
+    .eq("status", "Em Conferência")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const dup = (recent || []).find(
+    r => Number(r.bulk_weight ?? 0) === Number(data.bulkWeight ?? 0)
+  );
+  if (dup) {
+    const { data: dupItems } = await supabase
+      .from("purchase_items")
+      .select("*")
+      .eq("purchase_id", dup.id);
+    return {
+      id: dup.id,
+      purchaseNumber: dup.purchase_number,
+      erpNumber: dup.erp_number || "",
+      date: dup.date,
+      supplierId: dup.supplier_id,
+      supplierName: dup.supplier_name,
+      buyer: dup.buyer || "",
+      status: dup.status,
+      materialFlow: (dup.material_flow as MaterialFlow) || null,
+      items: mapItems(dupItems || []),
+      totalBrl: Number(dup.total_brl) || 0,
+      notes: dup.notes || "",
+      statusHistory: (dup.status_history as any[]) || [],
+      weightDeclared: dup.weight_declared != null ? Number(dup.weight_declared) : null,
+      weightReal: dup.weight_real != null ? Number(dup.weight_real) : null,
+      weightLoss: dup.weight_loss != null ? Number(dup.weight_loss) : null,
+      finStatus: (dup.fin_status as CerFinStatus) || null,
+      opStatus: (dup.op_status as CerOpStatus) || null,
+      bulkWeight: dup.bulk_weight != null ? Number(dup.bulk_weight) : null,
+      duplicate: true,
+    };
+  }
+
   const { data: numData } = await supabase.rpc("generate_purchase_number");
   const purchaseNumber = numData || new Date().toLocaleDateString("pt-BR").replace(/\//g, "").slice(0, 4) + new Date().toLocaleDateString("pt-BR").slice(-2) + "-01";
+
 
   const totalBrl = calcTotal(data.items);
   const materialFlow = determineMaterialFlow(data.items);
