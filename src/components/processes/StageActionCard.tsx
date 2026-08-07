@@ -366,6 +366,21 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
         {/* Confronto declarado × conferido */}
         <QtyCheckBadge purchase={purchase} />
 
+        {purchase.status === "Em Conferência" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-7 text-[11px]"
+            onClick={async () => {
+              try { await printEntryLabel(purchase); } catch { toast.error("Erro ao gerar etiqueta"); }
+            }}
+          >
+            <Printer className="h-3 w-3 mr-1" /> Imprimir Etiqueta de Entrada
+          </Button>
+        )}
+
+
+
 
 
         {/* Value */}
