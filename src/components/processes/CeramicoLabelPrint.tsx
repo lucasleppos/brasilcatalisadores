@@ -190,7 +190,8 @@ export async function printEntryLabel(
   await printLabelSheet([buildEntryLabel(purchase)]);
 }
 
-export default printLabelSheet;
+
+
 
 
 export default printLabelSheet;
