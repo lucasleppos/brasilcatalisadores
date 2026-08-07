@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface BagAllocation {
   purchaseId: string;
@@ -19,6 +20,8 @@ interface BagAllocation {
 }
 
 export default function CompletedPage() {
+  const { session, loading: authLoading } = useAuth();
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [bagAllocations, setBagAllocations] = useState<Record<string, BagAllocation[]>>({});
   const [search, setSearch] = useState("");
@@ -37,10 +40,18 @@ export default function CompletedPage() {
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [authLoading, session?.user?.id]);
 
   const reload = async () => {
-    let all = await loadPurchases();
+    if (authLoading || !session) return;
+    let all: Purchase[];
+    try {
+      all = await loadPurchases();
+    } catch (e) {
+      console.error("Erro ao carregar concluídos:", e);
+      return;
+    }
+
 
     // Rede de segurança: compras com todos os itens já alocados mas presas
     // em "Alocando Bag" (cerâmico) ou "Alocado ao Bag" (peças) são encerradas.

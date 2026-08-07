@@ -72,7 +72,7 @@ function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {
 }
 
 export default function ProcessBoard() {
-  const { role } = useAuth();
+  const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
   const canAdvance = canDo("processos", "advance_stage");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -81,8 +81,16 @@ export default function ProcessBoard() {
   const [datePreset, setDatePreset] = useState<DateFilterPreset>("month");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
-  const reload = () => loadPurchases().then(setPurchases);
-  useEffect(() => { reload(); }, []);
+  const reload = async () => {
+    if (authLoading || !session) return;
+    try {
+      setPurchases(await loadPurchases());
+    } catch (e) {
+      console.error("Erro ao carregar processos:", e);
+    }
+  };
+  useEffect(() => { reload(); }, [authLoading, session?.user?.id]);
+
 
   const suppliers = useMemo(() => [...new Set(purchases.map((p) => p.supplierName))], [purchases]);
   const buyers = useMemo(() => [...new Set(purchases.map((p) => p.buyer).filter(Boolean))], [purchases]);

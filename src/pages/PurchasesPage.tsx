@@ -19,7 +19,7 @@ import { SortableTableHead } from "@/components/ui/sortable-table-head";
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PurchasesPage() {
-  const { role, profile } = useAuth();
+  const { role, profile, session, loading: authLoading } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const canCreate = canDo("compras", "create");
   const canEdit = canDo("compras", "edit");
@@ -28,6 +28,8 @@ export default function PurchasesPage() {
   const isBuyer = role === "comprador";
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [buyerFilter, setBuyerFilter] = useState<string>("all");
@@ -36,14 +38,38 @@ export default function PurchasesPage() {
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   const reload = async () => {
-    let data = await loadPurchases();
-    // Buyer role: filter to only their purchases
-    if (isBuyer && profile) {
-      data = data.filter(p => p.buyer === profile.full_name);
+    if (authLoading || !session) return;
+    setLoadingList(true);
+    setLoadError(false);
+    try {
+      let data = await loadPurchases();
+      // Buyer role: filter to only their purchases
+      if (isBuyer && profile) {
+        data = data.filter(p => p.buyer === profile.full_name);
+      }
+      setPurchases(data);
+    } catch (e) {
+      console.error("Erro ao carregar compras:", e);
+      setLoadError(true);
+    } finally {
+      setLoadingList(false);
     }
-    setPurchases(data);
   };
-  useEffect(() => { reload(); }, []);
+
+  // Recarrega quando a autenticação/perfil terminam de carregar
+  useEffect(() => { reload(); }, [authLoading, session?.user?.id, role, profile?.id]);
+
+  // Revalida ao voltar para a aba/janela
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === "visible") reload(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [authLoading, session?.user?.id, role, profile?.id]);
+
 
   const buyers = [...new Set(purchases.map(p => p.buyer).filter(Boolean))];
   const activeStatuses = [...new Set(purchases.map(p => p.status))];
@@ -123,13 +149,27 @@ export default function PurchasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.length === 0 ? (
+              {loadingList && purchases.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
+                    Carregando compras...
+                  </TableCell>
+                </TableRow>
+              ) : loadError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-sm">
+                    <p className="text-destructive mb-2">Não foi possível carregar as compras.</p>
+                    <Button size="sm" variant="outline" onClick={reload}>Tentar novamente</Button>
+                  </TableCell>
+                </TableRow>
+              ) : sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
+
                 sorted.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>

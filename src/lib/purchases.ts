@@ -434,7 +434,8 @@ export async function loadPurchases(): Promise<Purchase[]> {
     .select("*")
     .order("date", { ascending: false });
 
-  if (error || !rows) return [];
+  if (error) throw error;
+  if (!rows) return [];
 
   const ids = rows.map((r: any) => r.id);
   const { data: itemRows } = await supabase
