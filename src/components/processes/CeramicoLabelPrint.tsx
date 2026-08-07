@@ -16,7 +16,12 @@ export interface LabelData {
   /** Optional approved/rejected quantities (pieces flows) */
   qtyApproved?: number;
   qtyRejected?: number;
+  /** Optional stage marker printed next to the lot code (ex: "ENTRADA") */
+  stageLabel?: string;
+  /** Optional declared quantity (units) — used on the entry label */
+  qtyDeclared?: number;
 }
+
 
 const esc = (v: unknown) =>
   String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
