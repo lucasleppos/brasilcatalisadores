@@ -21,10 +21,25 @@ porque a conferência das 4 peças foi feita na outra compra (`070826-08`).
    - estado `saving`; `handleConfirm` retorna imediatamente se já estiver salvando;
    - botão desabilitado e com texto/spinner "Salvando..." enquanto a requisição está em curso;
    - `saving` liberado no `finally`, inclusive em caso de erro, e resetado ao abrir/fechar o diálogo.
-2. **Limpeza dos dados**: remover a compra duplicada `070826-07` (a que ficou só com o placeholder),
+2. **Proteção contra compra repetida no banco** (`createPurchase` em `src/lib/purchases.ts`):
+   antes de inserir, checar se já existe compra do mesmo fornecedor criada nos últimos 60 segundos
+   ainda em "Em Conferência" com o mesmo total declarado; nesse caso reaproveitar/retornar a existente
+   em vez de criar outra, e avisar o usuário ("Compra já registrada há instantes").
+3. **Confirmação de quantidades no fluxo** — tornar visível e travado o confronto declarado × conferido:
+   - Conferência (Peça / Peça em Sacola): mostrar contador `conferidas X / meta Y`
+     (meta = declarado − devolvidas − separadas) e bloquear o encerramento da etapa
+     quando X ≠ Y, com mensagem explicando a diferença;
+   - Etapas seguintes (Trituração, Laboratório, Precificação, Aprovação): exibir o mesmo contador
+     no cabeçalho do card e alertar se a contagem de itens em processo divergir da conferida;
+   - Cerâmico: mesma checagem em peso (bruto declarado × soma dos grupos conferidos) com aviso de divergência.
+4. **Limpeza dos dados**: remover a compra duplicada `070826-07` (a que ficou só com o placeholder),
    mantendo `070826-08` com as 4 peças conferidas.
 
 ## Arquivos afetados
 
-- `src/components/purchases/NewPurchaseDialog.tsx` — trava anti-duplo-clique no botão de confirmar.
+- `src/components/purchases/NewPurchaseDialog.tsx` — trava anti-duplo-clique.
+- `src/lib/purchases.ts` — guarda de compra duplicada em `createPurchase` e helper de contagem declarado × conferido.
+- `src/components/processes/SacolaConferenciaPanel.tsx`, `SacolaTrituracaoPanel.tsx`, `SacolaLabPanel.tsx`,
+  `SacolaPricingPanel.tsx`, `PiecePricingPanel.tsx`, `CeramicoConferenciaPanel.tsx` — contador e validação de quantidades.
 - Operação de escrita no banco para excluir a compra duplicada `070826-07` e seu item placeholder.
+
