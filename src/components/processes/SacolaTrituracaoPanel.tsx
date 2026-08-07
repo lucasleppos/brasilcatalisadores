@@ -192,7 +192,9 @@ export default function SacolaTrituracaoPanel({ purchase, open, onOpenChange, on
             <span>{totalQty} peças conferidas</span>
             <span>{fmtNum(totalWeight, 3)} kg total</span>
           </div>
+          <QtyCheckBadge purchase={purchase} />
         </div>
+
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
