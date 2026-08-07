@@ -1,5 +1,7 @@
-import { buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
+import { buildLabelCode, buildLabelCodeDisplay, buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
 import { fmtNum } from "@/lib/utils";
+import type { Purchase } from "@/lib/purchases";
+
 
 export interface LabelData {
   /** Unique internal code (used as QR target + React key) */
