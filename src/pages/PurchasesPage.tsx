@@ -149,13 +149,27 @@ export default function PurchasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.length === 0 ? (
+              {loadingList && purchases.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
+                    Carregando compras...
+                  </TableCell>
+                </TableRow>
+              ) : loadError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-sm">
+                    <p className="text-destructive mb-2">Não foi possível carregar as compras.</p>
+                    <Button size="sm" variant="outline" onClick={reload}>Tentar novamente</Button>
+                  </TableCell>
+                </TableRow>
+              ) : sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhuma compra encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
+
                 sorted.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
