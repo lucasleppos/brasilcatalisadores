@@ -292,7 +292,11 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         supplierId: supplier.id,
         supplierName: supplier.name,
         buyer: supplier.buyer || "",
-        items: [{ id: crypto.randomUUID(), itemType: addType, quantity: 1 }],
+        items: [{
+          id: crypto.randomUUID(),
+          itemType: addType,
+          quantity: isCeramicoMode ? 1 : Math.max(1, Math.round(bulkWeight)),
+        }],
         notes,
         erpNumber,
         bulkWeight,
