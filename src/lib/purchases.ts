@@ -405,10 +405,12 @@ export function getItemLabel(purchase: Purchase): string {
   let count = confItems.reduce((s, i) => s + (i.quantity || 1), 0);
   let weight = confItems.reduce((s, i) => s + (i.weight || 0), 0);
   if (count === 0) {
-    count = getOriginalItemCount(purchase);
+    // sem conferência: o total declarado na criação é a referência
+    count = purchase.bulkWeight && purchase.bulkWeight > 0
+      ? Math.round(purchase.bulkWeight)
+      : getOriginalItemCount(purchase);
     weight = getOriginalItems(purchase).reduce((s, i) => s + (i.weight || 0), 0);
   }
-  if (count === 0 && purchase.bulkWeight) count = purchase.bulkWeight;
   const base = `${count} ${count === 1 ? "peça" : "peças"}`;
   return weight > 0 ? `${base} · ${fmtNum(weight, 3)} kg` : base;
 }
