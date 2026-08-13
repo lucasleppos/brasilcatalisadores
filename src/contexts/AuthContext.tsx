@@ -19,6 +19,8 @@ interface AuthContextValue {
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
+  /** true enquanto o perfil/role ainda não foi carregado para a sessão atual */
+  roleLoading: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextValue>({
   profile: null,
   role: null,
   loading: true,
+  roleLoading: true,
   signOut: async () => {},
 });
 
@@ -39,18 +42,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   const fetchProfileAndRole = async (userId: string) => {
-    const [profileRes, roleRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
-    ]);
+    try {
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      ]);
 
-    if (profileRes.data) {
-      setProfile(profileRes.data as Profile);
-    }
-    if (roleRes.data) {
-      setRole(roleRes.data.role as AppRole);
+      if (profileRes.data) {
+        setProfile(profileRes.data as Profile);
+      }
+      if (roleRes.data) {
+        setRole(roleRes.data.role as AppRole);
+      }
+    } finally {
+      setRoleLoading(false);
     }
   };
 
@@ -70,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null);
           setRole(null);
+          setRoleLoading(false);
         }
         setLoading(false);
       }
@@ -81,6 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfileAndRole(session.user.id);
+      } else {
+        setRoleLoading(false);
       }
       setLoading(false);
     });
@@ -97,10 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProfile(null);
     setRole(null);
+    setRoleLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, role, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, role, loading, roleLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

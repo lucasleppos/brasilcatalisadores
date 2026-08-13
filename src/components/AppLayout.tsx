@@ -11,8 +11,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileLayout } from "@/components/mobile/MobileLayout";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+  return <DesktopLayout>{children}</DesktopLayout>;
+}
+
+function DesktopLayout({ children }: { children: React.ReactNode }) {
   const { profile, user, signOut } = useAuth();
   const navigate = useNavigate();
 

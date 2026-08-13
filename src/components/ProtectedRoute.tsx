@@ -8,10 +8,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, module }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, roleLoading } = useAuth();
   const { canAccess, loading: permLoading } = usePermissions();
 
-  if (loading || permLoading) {
+  if (loading || (user && roleLoading) || permLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

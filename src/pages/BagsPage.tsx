@@ -12,6 +12,10 @@ import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileBagsList from "@/components/bags/MobileBagsList";
+import { MobileSheet } from "@/components/mobile/MobileSheet";
+import { cn } from "@/lib/utils";
 
 export default function BagsPage() {
   const { role, profile } = useAuth();
@@ -25,6 +29,9 @@ export default function BagsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterBuyer, setFilterBuyer] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [mobileSection, setMobileSection] = useState("bags");
+  const isMobile = useIsMobile();
 
   const load = async () => {
     let data = await loadBags();
@@ -49,6 +56,69 @@ export default function BagsPage() {
     if (filterBuyer !== "all" && b.buyer !== filterBuyer) return false;
     return true;
   });
+
+  if (isMobile) {
+    const q = search.trim().toLowerCase();
+    const mobileList = filtered.filter(b =>
+      !q || [b.bagNumber, b.bagLabel, b.buyer].some(f => (f || "").toLowerCase().includes(q))
+    );
+    const SECTIONS = [
+      { key: "bags", label: "Bags" },
+      { key: "alocar", label: "Alocar" },
+      { key: "filiais", label: "Filiais" },
+      { key: "analise", label: "Análise" },
+    ];
+    return (
+      <div className="flex flex-col">
+        <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-border/60">
+          {SECTIONS.map(s => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setMobileSection(s.key)}
+              className={cn(
+                "shrink-0 rounded-full px-3 py-1.5 text-xs border transition-colors",
+                mobileSection === s.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border"
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {mobileSection === "bags" && (
+          <MobileBagsList
+            bags={mobileList}
+            search={search}
+            onSearch={setSearch}
+            canCreate={canCreate}
+            onNew={() => setShowNewDialog(true)}
+            onSelect={setSelectedBag}
+          />
+        )}
+        {mobileSection === "alocar" && (
+          <div className="p-3"><AllocationPanel bags={bags} onAllocated={load} /></div>
+        )}
+        {mobileSection === "filiais" && <div className="p-3"><BranchStockList /></div>}
+        {mobileSection === "analise" && <div className="p-3"><BagAnalysisPanel /></div>}
+
+        <MobileSheet
+          open={!!selectedBag}
+          onOpenChange={(o) => !o && setSelectedBag(null)}
+          title={selectedBag?.bagLabel || selectedBag?.bagNumber || "Bag"}
+          subtitle={selectedBag?.bagNumber}
+        >
+          {selectedBag && (
+            <BagDetail bag={selectedBag} onBack={() => setSelectedBag(null)} onRefresh={load} />
+          )}
+        </MobileSheet>
+
+        {canCreate && <NewBagDialog open={showNewDialog} onOpenChange={setShowNewDialog} onCreated={load} />}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
