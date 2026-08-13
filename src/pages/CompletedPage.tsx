@@ -12,6 +12,8 @@ import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileCompletedList from "@/components/purchases/MobileCompletedList";
 
 interface BagAllocation {
   purchaseId: string;
@@ -21,6 +23,7 @@ interface BagAllocation {
 
 export default function CompletedPage() {
   const { session, loading: authLoading } = useAuth();
+  const isMobile = useIsMobile();
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [bagAllocations, setBagAllocations] = useState<Record<string, BagAllocation[]>>({});
@@ -107,6 +110,21 @@ export default function CompletedPage() {
     const matchSupplier = supplierFilter === "all" || p.supplierName === supplierFilter;
     return matchSearch && matchSupplier;
   });
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileCompletedList
+          purchases={filtered}
+          bagsByPurchase={bagAllocations}
+          search={search}
+          onSearch={setSearch}
+          onSelect={setSelectedPurchase}
+        />
+        <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
+      </>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

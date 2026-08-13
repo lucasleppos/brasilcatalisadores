@@ -137,21 +137,38 @@ Deno.serve(async (req) => {
 
     const userId = inviteData.user.id;
 
-    // Update profile with extra data
-    await adminClient
+    // Create/refresh profile row (no auth trigger exists)
+    const { error: profileError } = await adminClient
       .from("profiles")
-      .update({
-        full_name: sanitizedName,
-        branch: sanitizedBranch,
-        job_title: sanitizedJobTitle,
-      })
-      .eq("id", userId);
+      .upsert(
+        {
+          id: userId,
+          full_name: sanitizedName,
+          branch: sanitizedBranch,
+          job_title: sanitizedJobTitle,
+        },
+        { onConflict: "id" }
+      );
+
+    if (profileError) {
+      return new Response(
+        JSON.stringify({ error: `Failed to create profile: ${profileError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Insert role
-    await adminClient.from("user_roles").insert({
+    const { error: roleError } = await adminClient.from("user_roles").insert({
       user_id: userId,
       role: role,
     });
+
+    if (roleError) {
+      return new Response(
+        JSON.stringify({ error: `Failed to assign role: ${roleError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true, user_id: userId }),

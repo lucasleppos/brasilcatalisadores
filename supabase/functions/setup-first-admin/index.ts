@@ -100,17 +100,47 @@ Deno.serve(async (req) => {
 
     const userId = userData.user.id;
 
-    // Update profile
-    await adminClient
+    // Ensure the super_admin permission profile exists (FK target for user_roles.role)
+    const { data: roleProfile } = await adminClient
+      .from("permissions")
+      .select("role_name")
+      .eq("role_name", "super_admin")
+      .maybeSingle();
+
+    if (!roleProfile) {
+      await adminClient.auth.admin.deleteUser(userId);
+      return new Response(
+        JSON.stringify({ error: "Permission profile 'super_admin' is missing. Setup cannot continue." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create/refresh profile row (no auth trigger exists)
+    const { error: profileError } = await adminClient
       .from("profiles")
-      .update({ full_name: sanitizedName })
-      .eq("id", userId);
+      .upsert({ id: userId, full_name: sanitizedName }, { onConflict: "id" });
+
+    if (profileError) {
+      await adminClient.auth.admin.deleteUser(userId);
+      return new Response(
+        JSON.stringify({ error: `Failed to create profile: ${profileError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Assign super_admin role
-    await adminClient.from("user_roles").insert({
+    const { error: roleError } = await adminClient.from("user_roles").insert({
       user_id: userId,
       role: "super_admin",
     });
+
+    if (roleError) {
+      await adminClient.auth.admin.deleteUser(userId);
+      return new Response(
+        JSON.stringify({ error: `Failed to assign super_admin role: ${roleError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true, user_id: userId }),

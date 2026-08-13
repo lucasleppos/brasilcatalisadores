@@ -15,14 +15,14 @@ import StageActionCard from "./StageActionCard";
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ===== 11 Fixed Process Groups =====
-interface ProcessGroup {
+export interface ProcessGroup {
   label: string;
   statuses: string[];
   /** Also match purchases in parallel phase by sub-flow type */
   parallelMatch?: "fin" | "op";
 }
 
-const PROCESS_GROUPS: ProcessGroup[] = [
+export const PROCESS_GROUPS: ProcessGroup[] = [
   { label: "Inclusão", statuses: ["Aguardando Inclusão"] },
   { label: "Conferência", statuses: ["Aguardando Conferência", "Em Conferência"] },
   {
@@ -65,7 +65,7 @@ const PROCESS_GROUPS: ProcessGroup[] = [
 
 
 /** Check if a user role can see a group (has permission on at least one status in the group) */
-function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {
+export function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {
   if (!role) return false;
   if (role === "super_admin" || role === "admin") return true;
   return group.statuses.some((s) => canUserActOnStage(role, s));

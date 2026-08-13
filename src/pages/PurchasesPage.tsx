@@ -15,12 +15,15 @@ import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobilePurchaseList from "@/components/purchases/MobilePurchaseList";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PurchasesPage() {
   const { role, profile, session, loading: authLoading } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
+  const isMobile = useIsMobile();
   const canCreate = canDo("compras", "create");
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
@@ -93,6 +96,27 @@ export default function PurchasesPage() {
     await deletePurchase(id);
     reload();
   };
+
+  if (isMobile) {
+    return (
+      <>
+        <MobilePurchaseList
+          purchases={sorted}
+          search={search}
+          onSearch={setSearch}
+          loading={loadingList}
+          error={loadError}
+          onRetry={reload}
+          hideTotal={hideTotal}
+          canCreate={canCreate}
+          onNew={() => setNewDialogOpen(true)}
+          onSelect={setSelectedPurchase}
+        />
+        <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
+        {canCreate && <NewPurchaseDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={reload} />}
+      </>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
