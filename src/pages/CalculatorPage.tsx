@@ -63,8 +63,11 @@ export default function CalculatorPage() {
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [settings, setSettings] = useState<import("@/lib/settings").Settings | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const { role } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
 
   useEffect(() => {
     loadHistory().then(setHistory);
