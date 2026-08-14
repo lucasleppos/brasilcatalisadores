@@ -1,8 +1,5 @@
 project_id = "hztiqapjrwqbbkpyaqak"
 
-[functions.invite-user]
-verify_jwt = false
-
 [functions.setup-first-admin]
 verify_jwt = false
 
