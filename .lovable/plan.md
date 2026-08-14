@@ -1,44 +1,41 @@
-# Diagnóstico e correção do convite de usuários
+# Cadastro manual de usuários (apenas Super Admin)
 
-## O que foi verificado agora
+## Objetivo
 
-- A função de convite **está no ar e respondendo**: uma chamada de teste retornou a validação esperada (`Invalid role`), com o token da sessão atual. Ou seja, o front-end tem como falar com o back-end.
-- **Nenhum usuário novo foi criado desde 17/06/2026** (`auth.users` mais recente: gabriel@brasilreciclagem.com.br). Os testes recentes não geraram usuário algum.
-- **Não há registro de log recente da função de convite**, então as tentativas de teste provavelmente falharam antes de chegar ao servidor (erro de rede/permissão no navegador) ou foram feitas em outra sessão.
-- **Nenhum domínio de e-mail está configurado no projeto.** Os e-mails de autenticação saem pelo remetente padrão, que tem limite baixo por hora e alta chance de cair em spam — convite "enviado" sem e-mail chegando.
-- **O convite não define página de destino**: o link do convite não aponta para nenhuma tela do app que permita o convidado definir a senha. Existe `/reset-password`, mas ela não trata o token de convite.
-- A tela de Usuários **não mostra o e-mail nem o status do convite** (pendente/ativo), então quem foi convidado fica indistinguível de quem já usa o sistema.
+Trocar o fluxo de "convite por e-mail" por **cadastro manual direto**, feito exclusivamente pelo Super Admin, e remover os usuários de teste.
 
-## Correções propostas
+## O que muda na tela de Usuários
 
-1. **Tela de Usuários mais informativa**
-   - Listar e-mail e status de cada usuário: "Convite pendente" (sem primeiro acesso) x "Ativo".
-   - Ação de **reenviar convite** e de **cancelar convite** para pendentes.
-   - Mensagens de erro do servidor exibidas por completo (hoje algumas somem).
+- Botão passa a ser **"Novo Usuário"** (não "Convidar Usuário"), visível apenas para o Super Admin.
+- Formulário: **E-mail**, **Senha** (mínimo 8 caracteres, com botão para gerar senha sugerida), **Nome completo**, **Perfil de acesso**, **Filial**, **Cargo**.
+- O usuário é criado já **ativo e confirmado**, sem depender de e-mail. O admin repassa a senha ao colaborador.
+- Após criar, a tela mostra a senha definida uma única vez, com botão de copiar.
+- Nova coluna **E-mail** e coluna **Status** (Ativo / Nunca acessou) na listagem.
+- No editar usuário: opção **"Redefinir senha"** (Super Admin define uma nova senha manualmente).
+- Remoção do botão "Criar Usuários de Teste".
 
-2. **Fluxo do link de convite**
-   - O convite passa a apontar para uma página de aceite do app (`/definir-senha`), que valida o token, pede a senha e leva o usuário direto para dentro do sistema.
-   - Tratamento de link expirado/já usado com opção de pedir novo convite.
+## Regra de acesso
 
-3. **Robustez do back-end de convite**
-   - Erros distintos e claros para: e-mail já cadastrado, limite de envio de e-mail atingido, perfil inválido, falha ao criar perfil/permissão (com desfazimento do usuário parcial).
-   - Retorno do status de envio do e-mail para a interface, em vez de sempre "convite enviado".
+- Criar, editar senha e excluir usuários: **somente Super Admin**, validado no servidor (não só na interface).
+- Perfis que hoje têm `usuarios.create` deixam de poder criar contas; o menu continua visível para consulta conforme a permissão de acesso.
 
-4. **Entrega de e-mail**
-   - Configurar o domínio de envio do projeto para que convites e recuperação de senha cheguem de forma confiável e com a identidade da empresa. Isso exige um domínio próprio (ex.: brasilreciclagem.com.br) e a inclusão dos registros de DNS.
-   - Alternativa imediata, enquanto o domínio não estiver ativo: opção de **criar usuário com senha temporária** (sem depender de e-mail), entregue pelo administrador, com troca obrigatória no primeiro acesso.
+## Exclusão dos usuários de teste
+
+Serão excluídos definitivamente (login, perfil e permissão):
+
+- teste.admin@teste.com (Teste Admin)
+- teste.comprador@teste.com (Teste Comprador)
+- teste.laboratorio@teste.com (Laboratorio)
+- teste.visualizador@teste.com (Operador)
+
+Antes de excluir, verifico se algum deles é autor de registros de processo/histórico; se houver, o registro histórico é preservado (campos de autoria ficam sem vínculo) para não perder rastreabilidade.
 
 ## Detalhes técnicos
 
-- `supabase/functions/invite-user/index.ts`: adicionar `redirectTo` (`${origin}/definir-senha`), diferenciar erros (429/limite de e-mail, `email_exists`), rollback de `auth.users` quando `profiles`/`user_roles` falhar, e nova ação de reenvio.
-- Nova função (ou ação na existente) para listar usuários com `email`, `invited_at`, `last_sign_in_at` via service role — hoje `UsersPage` lê só `profiles`/`user_roles` e deixa `email` vazio.
-- `src/pages/UsersPage.tsx`: colunas Email e Status, botões reenviar/cancelar, tratamento de erro unificado.
-- Nova página `src/pages/AcceptInvitePage.tsx` + rota `/definir-senha`, tratando token de convite (hash/`code`) e `updateUser({ password })`.
-- Envio de e-mail: `setup_email_infra` + templates de auth após verificação de DNS do domínio.
-
-## Ordem de execução
-
-1. Listagem com e-mail/status + erros claros (visibilidade imediata).
-2. Página de aceite + `redirectTo` no convite.
-3. Reenviar/cancelar convite e criação com senha temporária.
-4. Configuração do domínio de e-mail (depende do domínio e do DNS).
+- Nova ação `create` na função `manage-user`: valida sessão, exige perfil `super_admin`, cria o usuário com `auth.admin.createUser({ email, password, email_confirm: true })`, grava `profiles` e `user_roles`, com rollback do usuário se qualquer etapa falhar. Erros claros para e-mail já existente e senha curta.
+- Nova ação `reset_password` (`auth.admin.updateUserById`), também restrita a `super_admin`.
+- `manage-user`: as ações `update`/`delete` passam a exigir `super_admin` além da permissão do módulo.
+- Nova ação `list` (service role) devolvendo `email`, `last_sign_in_at` e perfil, para a listagem exibir e-mail e status — hoje `UsersPage` lê só `profiles`/`user_roles` e deixa o e-mail vazio.
+- `src/pages/UsersPage.tsx`: novo diálogo de criação, colunas Email/Status, remoção do seed de teste; `src/components/users/UserActions.tsx`: redefinir senha.
+- A função `invite-user` e a função `seed-test-users` deixam de ser usadas e serão removidas.
+- Exclusão dos 4 usuários de teste feita via operação administrativa no back-end (não por SQL na tabela de autenticação).
