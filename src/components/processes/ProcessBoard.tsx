@@ -23,10 +23,18 @@ export interface ProcessGroup {
 }
 
 export const PROCESS_GROUPS: ProcessGroup[] = [
-  { label: "Inclusão", statuses: ["Aguardando Inclusão"] },
   { label: "Conferência", statuses: ["Aguardando Conferência", "Em Conferência"] },
   {
-    label: "Prep. Amostra / Análise",
+    label: "Moagem",
+    statuses: [
+      "Peças: Trituração e Amostragem",
+      "Peças: Em Trituração",
+      "Cerâmico: Em Trituração/Homogeneização",
+      "Peças: Em Amostragem",
+    ],
+  },
+  {
+    label: "Laboratorio",
     statuses: [
       "Cerâmico: Amostra Enviada ao Lab",
       "Cerâmico: Lab em Análise",
@@ -35,7 +43,7 @@ export const PROCESS_GROUPS: ProcessGroup[] = [
     ],
   },
   {
-    label: "Precif. / Demonstrativo",
+    label: "Demonstrativo",
     statuses: [
       "Peças: Aguardando Demonstrativo",
       "Peças: Pesagem Realizada",
@@ -52,15 +60,6 @@ export const PROCESS_GROUPS: ProcessGroup[] = [
     ],
   },
   { label: "Corte", statuses: ["Peças: Em Corte"] },
-  {
-    label: "Trit. / Homog. / Amostr.",
-    statuses: [
-      "Peças: Trituração e Amostragem",
-      "Peças: Em Trituração",
-      "Cerâmico: Em Trituração/Homogeneização",
-      "Peças: Em Amostragem",
-    ],
-  },
 ];
 
 
