@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Package, ChevronRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,28 +196,27 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <DialogTitle className="text-lg">Precificação de Peças</DialogTitle>
-                <DialogDescription className="text-xs mt-1">
+        <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-auto sm:max-w-5xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg flex flex-col p-0 gap-0">
+          <DialogHeader className="px-3 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 shrink-0 text-left">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0">
+                <DialogTitle className="text-base sm:text-lg">Precificação de Peças</DialogTitle>
+                <DialogDescription className="text-[11px] sm:text-xs mt-1 break-words">
                   Pedido {purchase.purchaseNumber} · {purchase.supplierName} — cálculo automático pelo catálogo (Pt/Pd/Rh) com margem de peças de {fmtNum(margin, 2)}%
                 </DialogDescription>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <QtyCheckBadge purchase={purchase} />
                 <Button size="sm" variant="outline" onClick={recalcAll} disabled={loading}>
                   <RefreshCw className="h-3.5 w-3.5 mr-1" /> Recalcular
                 </Button>
                 {items.length > 0 && <Badge className="text-sm px-3 py-1">{totalQty} peças</Badge>}
               </div>
-
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col border-t border-border">
-            <div className="grid grid-cols-12 gap-2 px-4 py-2 border-b border-border bg-muted/30 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col border-t border-border">
+            <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-2 border-b border-border bg-muted/30 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <div className="col-span-4">Peça</div>
               <div className="col-span-2 text-right">Qtd / Peso</div>
               <div className="col-span-2 text-right">Calculado unit.</div>
@@ -226,7 +224,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
               <div className="col-span-2 text-right">Subtotal</div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {loading ? (
                 <div className="flex items-center justify-center h-40 text-muted-foreground text-xs">Calculando...</div>
               ) : items.length === 0 ? (
@@ -237,23 +235,66 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                     const qty = item.quantity || 1;
                     const unit = parseNum(unitValues[item.id] || "");
                     const info = item.catalogPartId ? catalog[item.catalogPartId] : undefined;
+                    const valueInput = (
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={unitValues[item.id] ?? ""}
+                        onChange={(e) =>
+                          setUnitValues(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9.,]/g, "") }))
+                        }
+                        placeholder="0,00"
+                        className="h-9 text-right"
+                      />
+                    );
+                    const identity = (
+                      <>
+                        <p className="text-sm font-medium truncate">
+                          <span className="text-muted-foreground text-xs mr-1">Código:</span>
+                          {labelOf(item, idx)}
+                        </p>
+                        {item.catalogPartRef && (
+                          <p className="text-xs text-muted-foreground truncate">Referência: {item.catalogPartRef}</p>
+                        )}
+                        {info && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Pt {fmtNum(info.ptPpm, 0)} · Pd {fmtNum(info.pdPpm, 0)} · Rh {fmtNum(info.rhPpm, 0)} ppm · margem {fmtNum(margin, 2)}%
+                          </p>
+                        )}
+                      </>
+                    );
                     return (
-                      <div key={item.id} className="px-4 py-2.5">
-                        <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-4 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              <span className="text-muted-foreground text-xs mr-1">Código:</span>
-                              {labelOf(item, idx)}
-                            </p>
-                            {item.catalogPartRef && (
-                              <p className="text-xs text-muted-foreground truncate">Referência: {item.catalogPartRef}</p>
-                            )}
-                            {info && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Pt {fmtNum(info.ptPpm, 0)} · Pd {fmtNum(info.pdPpm, 0)} · Rh {fmtNum(info.rhPpm, 0)} ppm · margem {fmtNum(margin, 2)}%
-                              </p>
-                            )}
+                      <div key={item.id} className="px-3 py-3 sm:px-4 sm:py-2.5">
+                        {/* Mobile: cartão */}
+                        <div className="sm:hidden space-y-2">
+                          <div className="min-w-0">{identity}</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <p className="text-muted-foreground">Qtd</p>
+                              <p className="text-sm font-medium">{qty} un</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Peso</p>
+                              <p className="text-sm font-medium">{fmtWeight(item.weight || 0)} kg</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Calculado unit.</p>
+                              <p className="text-sm">{fmtBrl(calcUnit[item.id] || 0)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Subtotal</p>
+                              <p className="text-sm font-semibold">{fmtBrl(unit * qty)}</p>
+                            </div>
                           </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Valor unit. (R$)</p>
+                            {valueInput}
+                          </div>
+                        </div>
+
+                        {/* Desktop: tabela */}
+                        <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-4 min-w-0">{identity}</div>
                           <div className="col-span-2 text-right">
                             <p className="text-sm font-medium">{qty} un</p>
                             <p className="text-xs text-muted-foreground">{fmtWeight(item.weight || 0)} kg</p>
@@ -261,18 +302,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                           <div className="col-span-2 text-right text-sm text-muted-foreground">
                             {fmtBrl(calcUnit[item.id] || 0)}
                           </div>
-                          <div className="col-span-2">
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={unitValues[item.id] ?? ""}
-                              onChange={(e) =>
-                                setUnitValues(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9.,]/g, "") }))
-                              }
-                              placeholder="0,00"
-                              className="h-9 text-right"
-                            />
-                          </div>
+                          <div className="col-span-2">{valueInput}</div>
                           <div className="col-span-2 text-right text-sm font-semibold">{fmtBrl(unit * qty)}</div>
                         </div>
                       </div>
@@ -280,10 +310,10 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
 
             {items.length > 0 && (
-              <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-1">
+              <div className="px-3 py-3 sm:px-4 border-t border-border bg-muted/20 space-y-1 shrink-0">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Total de peças: {totalQty} un</span>
                   <span>Peso total: {fmtWeight(totalWeight)} kg</span>
@@ -296,12 +326,13 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
             )}
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t border-border">
-            <Button variant="outline" onClick={() => setOpen(false)}>Fechar</Button>
-            <Button disabled={saving || loading || items.length === 0} onClick={handleSave}>Salvar precificação</Button>
+          <DialogFooter className="px-3 py-3 sm:px-6 sm:py-4 border-t border-border shrink-0 flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setOpen(false)}>Fechar</Button>
+            <Button className="w-full sm:w-auto" disabled={saving || loading || items.length === 0} onClick={handleSave}>Salvar precificação</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </>
   );
 }
