@@ -148,8 +148,8 @@ export async function uploadStagePhoto(
 
   if (error) return null;
 
-  const { data } = supabase.storage.from("stage-photos").getPublicUrl(path);
-  return data.publicUrl;
+  // Bucket privado: guardamos apenas o caminho; a URL é assinada na leitura.
+  return path;
 }
 
 // ===== Lab Analyses CRUD =====
