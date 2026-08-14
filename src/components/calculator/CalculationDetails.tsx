@@ -25,12 +25,10 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-export default function CalculationDetails({ result }: { result: CalculatorResult }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">Detalhamento do Cálculo</CardTitle></CardHeader>
-      <CardContent className="p-0">
-        <Table>
+export default function CalculationDetails({ result, hideHeader }: { result: CalculatorResult; hideHeader?: boolean }) {
+  const body = (
+    <Table>
+
           <TableHeader>
             <TableRow>
               <TableHead className="text-xs">Etapa</TableHead>
