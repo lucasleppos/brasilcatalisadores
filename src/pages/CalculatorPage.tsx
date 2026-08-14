@@ -370,11 +370,9 @@ export default function CalculatorPage() {
                   </Card>
                 )}
               </div>
-
-              {/* Calculation details - admin only */}
-              <CalculationDetails result={result} />
             </>
           )}
+
 
           {!result && (
             <Card>
