@@ -96,16 +96,26 @@ export default function UsersPage() {
 
   const handleCreate = async () => {
     if (createLoading) return;
-    if (!form.email || !form.password || !form.role) {
+    const email = form.email.trim().toLowerCase();
+    const password = form.password.trim();
+    if (!email || !password || !form.role) {
       toast({ title: "Preencha e-mail, senha e perfil", variant: "destructive" });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "E-mail inválido", description: "Use o formato usuario@dominio.com", variant: "destructive" });
+      return;
+    }
+    if (password.length < 8) {
+      toast({ title: "Senha muito curta", description: "Mínimo de 8 caracteres.", variant: "destructive" });
       return;
     }
     setCreateLoading(true);
     const res = await supabase.functions.invoke("manage-user", {
       body: {
         action: "create",
-        email: form.email,
-        password: form.password,
+        email,
+        password,
         full_name: form.full_name,
         role: form.role,
         branch: form.branch,
