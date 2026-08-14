@@ -80,9 +80,17 @@ export default function CalculationDetails({ result, hideHeader }: { result: Cal
             <Row label="Margem Fornecedor" value={`- ${fmtUsd(result.clientDiscountValue)}`} />
             <Row label="Valor Final USD" value={fmtUsd(result.finalValueUsd)} bold />
             <Row label="Valor Final BRL" value={fmtBrl(result.finalValueBrl)} bold />
-          </TableBody>
-        </Table>
-      </CardContent>
+      </TableBody>
+    </Table>
+  );
+
+  if (hideHeader) return body;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">Detalhamento do Cálculo</CardTitle></CardHeader>
+      <CardContent className="p-0">{body}</CardContent>
     </Card>
   );
 }
+
