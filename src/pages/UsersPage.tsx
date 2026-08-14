@@ -139,7 +139,7 @@ export default function UsersPage() {
       return;
     }
 
-    setCreatedInfo({ email: form.email, password: form.password });
+    setCreatedInfo({ email, password });
     setCreateOpen(false);
     setForm({ email: "", password: "", full_name: "", role: roleProfiles[0]?.role_name || "", branch: "", job_title: "" });
     fetchUsers();
