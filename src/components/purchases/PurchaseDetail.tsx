@@ -1,3 +1,4 @@
+import { openStagePhoto } from "@/lib/stage-photos";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -362,7 +363,7 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
                           {ev.dataType === "note" && <NoteIcon className="h-3 w-3 text-muted-foreground shrink-0" />}
                           <span className="flex-1">
                             {ev.dataType === "photo" && ev.fileUrl && (
-                              <a href={ev.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Ver foto</a>
+                              <button type="button" onClick={() => openStagePhoto(ev.fileUrl!)} className="underline text-primary">Ver foto</button>
                             )}
                             {ev.dataType === "weight" && ev.valueNumeric != null && `${fmtNum(ev.valueNumeric, 4)} kg`}
                             {ev.dataType === "note" && ev.valueText && `"${ev.valueText}"`}

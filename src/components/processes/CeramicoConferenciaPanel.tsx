@@ -1,3 +1,4 @@
+import { StagePhotoThumb } from "@/components/processes/StagePhotoThumb";
 import { useState, useEffect, useRef, useMemo } from "react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -356,12 +357,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         {l.photoUrl ? (
-                          <img
-                            src={l.photoUrl}
-                            alt=""
-                            className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
-                            onClick={() => window.open(l.photoUrl, "_blank")}
-                          />
+                          <StagePhotoThumb value={l.photoUrl} className="h-12 w-12 shrink-0" />
                         ) : (
                           <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
                             <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -480,7 +476,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
               />
               {photoUrl ? (
                 <div className="flex items-center gap-2">
-                  <img src={photoUrl} alt="" className="h-14 w-14 rounded border object-cover" />
+                  <StagePhotoThumb value={photoUrl} className="h-14 w-14" clickable={false} />
                   <Button size="sm" variant="outline" className="h-8" onClick={handlePickPhoto} disabled={uploadingPhoto}>
                     Trocar foto
                   </Button>
