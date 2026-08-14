@@ -1,5 +1,4 @@
 import {
-  Inbox,
   ClipboardCheck,
   FlaskConical,
   DollarSign,
