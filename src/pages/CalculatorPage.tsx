@@ -20,8 +20,11 @@ import {
   saveToHistory,
   SimulationRecord,
 } from "@/lib/calculator";
-import { Calculator, Trash2, Clock, Save, Plus, X, Send } from "lucide-react";
+import { Calculator, Trash2, Clock, Save, Plus, X, Send, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/contexts/AuthContext";
 import CalculationDetails from "@/components/calculator/CalculationDetails";
+
 import QuoteList, { QuoteItem } from "@/components/calculator/QuoteList";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase } from "@/lib/purchases";
