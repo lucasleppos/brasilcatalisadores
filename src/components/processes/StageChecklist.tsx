@@ -1,3 +1,4 @@
+import { openStagePhoto } from "@/lib/stage-photos";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, Camera, Scale, FileText, Loader2, Image, Plus } from "lucide-react";
@@ -166,7 +167,7 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
                 {taskEvidences.map((ev, idx) => (
                   <div key={ev.id} className="text-[10px] text-muted-foreground flex items-center gap-1">
                     {ev.dataType === "photo" && ev.fileUrl && (
-                      <span className="flex items-center gap-1 cursor-pointer" onClick={() => window.open(ev.fileUrl!, "_blank")}>
+                      <span className="flex items-center gap-1 cursor-pointer" onClick={() => openStagePhoto(ev.fileUrl!)}>
                         <Image className="h-3 w-3" />
                         <span className="underline">Foto {idx + 1}</span>
                       </span>
@@ -189,7 +190,7 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
             ) : done && taskEvidences[0] ? (
               <div className="pl-5 text-[10px] text-muted-foreground">
                 {taskEvidences[0].dataType === "photo" && taskEvidences[0].fileUrl && (
-                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => window.open(taskEvidences[0].fileUrl!, "_blank")}>
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => openStagePhoto(taskEvidences[0].fileUrl!)}>
                     <Image className="h-3 w-3" />
                     <span className="underline">Ver foto</span>
                   </div>
