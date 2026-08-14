@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, Pencil, Trash2 } from "lucide-react";
-import { usePermissions, PermissionProfile } from "@/lib/permissions";
+import { Eye, Pencil, Trash2, KeyRound, RefreshCw } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { PermissionProfile } from "@/lib/permissions";
 
 export interface UserRow {
   id: string;
@@ -25,6 +26,7 @@ export interface UserRow {
   job_title: string;
   role: string | null;
   email: string;
+  last_sign_in_at?: string | null;
 }
 
 interface UserActionsProps {
@@ -34,22 +36,33 @@ interface UserActionsProps {
   roleProfiles?: PermissionProfile[];
 }
 
+function generatePassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let out = "";
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
+  for (let i = 0; i < 10; i++) out += chars[bytes[i] % chars.length];
+  return out + "!2";
+}
+
 export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] }: UserActionsProps) {
   const { toast } = useToast();
-  const { canDo } = usePermissions();
-  const canEdit = canDo("usuarios", "edit");
-  const canDelete = canDo("usuarios", "delete");
+  const { role: currentRole } = useAuth();
+  const isSuperAdmin = currentRole === "super_admin";
 
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     full_name: user.full_name,
     branch: user.branch,
     job_title: user.job_title,
-    role: user.role || "visualizador",
+    role: user.role || "",
   });
 
   const isSelf = currentUserId === user.id;
@@ -83,6 +96,26 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
     }
   };
 
+  const handleResetPassword = async () => {
+    if (newPassword.length < 8) {
+      toast({ title: "A senha deve ter no mínimo 8 caracteres", variant: "destructive" });
+      return;
+    }
+    setPwdLoading(true);
+    const res = await supabase.functions.invoke("manage-user", {
+      body: { action: "reset_password", user_id: user.id, password: newPassword },
+    });
+    setPwdLoading(false);
+
+    if (res.error || res.data?.error) {
+      toast({ title: "Erro ao redefinir senha", description: res.data?.error || res.error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "Senha redefinida", description: `Nova senha: ${newPassword}` });
+      setPwdOpen(false);
+      setNewPassword("");
+    }
+  };
+
   const handleDelete = async () => {
     setDeleteLoading(true);
     const res = await supabase.functions.invoke("manage-user", {
@@ -105,15 +138,20 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
         <Button variant="ghost" size="icon" onClick={() => setViewOpen(true)} title="Visualizar">
           <Eye className="h-4 w-4" />
         </Button>
-        {canEdit && (
+        {isSuperAdmin && (
           <Button variant="ghost" size="icon" onClick={() => {
-            setEditForm({ full_name: user.full_name, branch: user.branch, job_title: user.job_title, role: user.role || "visualizador" });
+            setEditForm({ full_name: user.full_name, branch: user.branch, job_title: user.job_title, role: user.role || "" });
             setEditOpen(true);
           }} title="Editar">
             <Pencil className="h-4 w-4" />
           </Button>
         )}
-        {canDelete && (
+        {isSuperAdmin && (
+          <Button variant="ghost" size="icon" onClick={() => { setNewPassword(generatePassword()); setPwdOpen(true); }} title="Redefinir senha">
+            <KeyRound className="h-4 w-4" />
+          </Button>
+        )}
+        {isSuperAdmin && (
           <Button variant="ghost" size="icon" onClick={() => setDeleteOpen(true)} disabled={isSelf} title={isSelf ? "Você não pode excluir a si mesmo" : "Excluir"}>
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -128,9 +166,11 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
           </DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-muted-foreground">Nome</Label><p className="font-medium">{user.full_name || "—"}</p></div>
+            <div><Label className="text-muted-foreground">E-mail</Label><p className="font-medium">{user.email || "—"}</p></div>
             <div><Label className="text-muted-foreground">Filial</Label><p className="font-medium">{user.branch || "—"}</p></div>
             <div><Label className="text-muted-foreground">Cargo</Label><p className="font-medium">{user.job_title || "—"}</p></div>
             <div><Label className="text-muted-foreground">Perfil</Label><p>{user.role ? <Badge variant="secondary">{getRoleLabel(user.role)}</Badge> : <span className="text-muted-foreground text-xs">Sem perfil</span>}</p></div>
+            <div><Label className="text-muted-foreground">Status</Label><p className="font-medium">{user.last_sign_in_at ? "Ativo" : "Nunca acessou"}</p></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewOpen(false)}>Fechar</Button>
@@ -152,7 +192,7 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
             <div className="space-y-2">
               <Label>Perfil de acesso</Label>
               <Select value={editForm.role} onValueChange={(v) => setEditForm((f) => ({ ...f, role: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {roleProfiles.map((r) => (
                     <SelectItem key={r.role_name} value={r.role_name}>{r.label}</SelectItem>
@@ -178,13 +218,38 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
         </DialogContent>
       </Dialog>
 
+      {/* Reset Password Dialog */}
+      <Dialog open={pwdOpen} onOpenChange={setPwdOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha</DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{user.full_name || user.email}</strong> e repasse ao colaborador.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Nova senha (mínimo 8 caracteres)</Label>
+            <div className="flex gap-2">
+              <Input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Button type="button" variant="outline" size="icon" title="Gerar senha" onClick={() => setNewPassword(generatePassword())}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwdOpen(false)}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={pwdLoading}>{pwdLoading ? "Salvando..." : "Redefinir"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{user.full_name || "este usuário"}</strong>? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir <strong>{user.full_name || user.email || "este usuário"}</strong>? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
