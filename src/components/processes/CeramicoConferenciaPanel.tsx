@@ -476,7 +476,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
               />
               {photoUrl ? (
                 <div className="flex items-center gap-2">
-                  <img src={photoUrl} alt="" className="h-14 w-14 rounded border object-cover" />
+                  <StagePhotoThumb value={photoUrl} className="h-14 w-14" clickable={false} />
                   <Button size="sm" variant="outline" className="h-8" onClick={handlePickPhoto} disabled={uploadingPhoto}>
                     Trocar foto
                   </Button>
