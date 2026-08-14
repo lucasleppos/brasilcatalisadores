@@ -20,8 +20,11 @@ import {
   saveToHistory,
   SimulationRecord,
 } from "@/lib/calculator";
-import { Calculator, Trash2, Clock, Save, Plus, X, Send } from "lucide-react";
+import { Calculator, Trash2, Clock, Save, Plus, X, Send, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/contexts/AuthContext";
 import CalculationDetails from "@/components/calculator/CalculationDetails";
+
 import QuoteList, { QuoteItem } from "@/components/calculator/QuoteList";
 import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { createPurchase } from "@/lib/purchases";
@@ -60,8 +63,11 @@ export default function CalculatorPage() {
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [settings, setSettings] = useState<import("@/lib/settings").Settings | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const { role } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
 
   useEffect(() => {
     loadHistory().then(setHistory);
@@ -370,11 +376,9 @@ export default function CalculatorPage() {
                   </Card>
                 )}
               </div>
-
-              {/* Calculation details - admin only */}
-              <CalculationDetails result={result} />
             </>
           )}
+
 
           {!result && (
             <Card>
@@ -389,6 +393,30 @@ export default function CalculatorPage() {
 
       {/* Quote list */}
       <QuoteList items={quoteList} onRemove={removeFromQuoteList} onSendToPurchases={handleSendToPurchases} />
+
+      {/* Calculation details - super admin only, collapsed by default */}
+      {result && role === "super_admin" && (
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/40 transition-colors rounded-lg"
+              >
+                <span className="text-base font-display">Detalhamento do Cálculo</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${detailsOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-0 border-t border-border">
+                <CalculationDetails result={result} hideHeader />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+
 
       {/* Send to Purchases Dialog */}
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
