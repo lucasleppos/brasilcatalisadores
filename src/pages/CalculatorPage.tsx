@@ -223,18 +223,7 @@ export default function CalculatorPage() {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base">Entrada de Dados</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {/* Entry type */}
-              <div className="space-y-1">
-                <Label className="text-xs">Tipo de Entrada</Label>
-                <Select value={entryType} onValueChange={(v) => setEntryType(v as EntryType)}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peca_fechada">Peça Fechada</SelectItem>
-                    <SelectItem value="peca_sacola">Peça em Sacola</SelectItem>
-                    <SelectItem value="grupo">Grupo (cerâmica a granel)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Entry type hidden for now — default remains grupo */}
 
               {/* Manual price */}
               {showManualPrice && (
@@ -252,18 +241,7 @@ export default function CalculatorPage() {
                 </div>
               )}
 
-              {/* Material type */}
-              <div className="space-y-1">
-                <Label className="text-xs">Tipo de Material</Label>
-                <Select value={materialType} onValueChange={(v) => setMaterialType(v as MaterialType)}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="comum">Comum</SelectItem>
-                    <SelectItem value="diesel">Diesel</SelectItem>
-                    <SelectItem value="super">Super</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Material type hidden for now — default remains comum */}
 
               {/* Weights */}
               <div className="grid grid-cols-2 gap-3">
