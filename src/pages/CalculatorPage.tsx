@@ -388,6 +388,30 @@ export default function CalculatorPage() {
       {/* Quote list */}
       <QuoteList items={quoteList} onRemove={removeFromQuoteList} onSendToPurchases={handleSendToPurchases} />
 
+      {/* Calculation details - super admin only, collapsed by default */}
+      {result && role === "super_admin" && (
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/40 transition-colors rounded-lg"
+              >
+                <span className="text-base font-display">Detalhamento do Cálculo</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${detailsOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-0 border-t border-border">
+                <CalculationDetails result={result} hideHeader />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+
+
       {/* Send to Purchases Dialog */}
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
         <DialogContent className="max-w-md">
