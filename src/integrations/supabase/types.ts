@@ -860,6 +860,10 @@ export type Database = {
       generate_bag_number: { Args: never; Returns: string }
       generate_purchase_number: { Args: never; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
+      has_any_module_access: {
+        Args: { _modules: string[]; _user_id: string }
+        Returns: boolean
+      }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       user_can_do: {
         Args: { _action?: string; _module: string; _user_id: string }
