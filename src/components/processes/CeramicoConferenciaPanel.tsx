@@ -1,3 +1,4 @@
+import { StagePhotoThumb } from "@/components/processes/StagePhotoThumb";
 import { useState, useEffect, useRef, useMemo } from "react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
