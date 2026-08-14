@@ -356,12 +356,7 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         {l.photoUrl ? (
-                          <img
-                            src={l.photoUrl}
-                            alt=""
-                            className="h-12 w-12 rounded object-cover border cursor-pointer shrink-0"
-                            onClick={() => window.open(l.photoUrl, "_blank")}
-                          />
+                          <StagePhotoThumb value={l.photoUrl} className="h-12 w-12 shrink-0" />
                         ) : (
                           <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center shrink-0">
                             <ImageIcon className="h-4 w-4 text-muted-foreground" />

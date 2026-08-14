@@ -355,12 +355,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                     />
                     {l.packagePhotoUrl ? (
                       <div className="flex items-center gap-2">
-                        <img
-                          src={l.packagePhotoUrl}
-                          alt=""
-                          className="h-14 w-14 rounded border object-cover cursor-pointer"
-                          onClick={() => window.open(l.packagePhotoUrl, "_blank")}
-                        />
+                        <StagePhotoThumb value={l.packagePhotoUrl} className="h-14 w-14" />
                         <Button size="sm" variant="outline" className="h-8" onClick={() => pickPhoto(i)} disabled={uploadingIdx === i}>
                           Trocar
                         </Button>
