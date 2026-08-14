@@ -18,13 +18,12 @@ interface GroupUI {
 
 /** Rótulo curto + ícone por grupo de processo (usado na barra inferior mobile). */
 export const PROCESS_GROUP_UI: Record<string, GroupUI> = {
-  "Inclusão": { short: "Inclusão", icon: Inbox },
-  "Conferência": { short: "Conferência", icon: ClipboardCheck },
-  "Prep. Amostra / Análise": { short: "Amostra", icon: FlaskConical },
-  "Precif. / Demonstrativo": { short: "Precif.", icon: DollarSign },
+  "Conferência": { short: "Confer.", icon: ClipboardCheck },
+  "Moagem": { short: "Moagem", icon: Cog },
+  "Laboratorio": { short: "Lab", icon: FlaskConical },
+  "Demonstrativo": { short: "Demonstr.", icon: DollarSign },
   "Aprovação": { short: "Aprovação", icon: Stamp },
   "Corte": { short: "Corte", icon: Scissors },
-  "Trit. / Homog. / Amostr.": { short: "Trituração", icon: Cog },
 };
 
 export function groupUI(label: string): GroupUI {
