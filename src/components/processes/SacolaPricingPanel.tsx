@@ -303,14 +303,14 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[95vh] flex flex-col overflow-hidden p-0">
-        <DialogHeader className="px-6 pt-6 pb-3">
+      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-auto sm:max-w-6xl sm:h-[95vh] sm:rounded-lg flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="px-3 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 text-left shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Scale className="h-5 w-5" />
             Comparação Catálogo vs Laboratório
           </DialogTitle>
-          <div className="flex items-center justify-between mt-2">
-            <div className="text-sm text-muted-foreground space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-2">
+            <div className="text-xs sm:text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
               <span className="font-semibold text-foreground">{purchase.supplierName}</span>
               <span className="font-mono">{purchase.purchaseNumber}</span>
               <span>{totalCount} peças</span>
@@ -327,8 +327,8 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         </DialogHeader>
 
         {/* Search & Filters */}
-        <div className="px-6 pb-3 flex items-center gap-3 border-b border-border">
-          <div className="relative flex-1 max-w-xs">
+        <div className="px-3 sm:px-6 pb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 border-b border-border shrink-0">
+          <div className="relative flex-1 w-full sm:max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar peça..."
@@ -337,7 +337,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
               className="pl-9 h-9"
             />
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             <Button
               size="sm"
               variant={filter === "all" ? "default" : "outline"}
@@ -395,11 +395,11 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                 return (
                   <div
                     key={p.itemId}
-                    className={`px-6 py-3 ${displayIdx % 2 === 0 ? "bg-background" : "bg-muted/20"} ${p.pricingSource === null ? "border-l-2 border-l-amber-400" : "border-l-2 border-l-green-400"}`}
+                    className={`px-3 sm:px-6 py-3 ${displayIdx % 2 === 0 ? "bg-background" : "bg-muted/20"} ${p.pricingSource === null ? "border-l-2 border-l-amber-400" : "border-l-2 border-l-green-400"}`}
                   >
-                    <div className="grid grid-cols-12 gap-4 items-start">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
                       {/* Col 1: Piece info */}
-                      <div className="col-span-2 space-y-0.5">
+                      <div className="sm:col-span-2 space-y-0.5">
                         <p className="text-sm font-mono font-semibold">#{p.seq} {p.code}</p>
                         {p.reference && <p className="text-xs text-muted-foreground truncate">{p.reference}</p>}
                         <p className="text-xs text-muted-foreground">
@@ -418,7 +418,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
 
                       {/* Col 2: PPM Comparison */}
-                      <div className="col-span-4">
+                      <div className="sm:col-span-4">
                         <div className="grid grid-cols-4 gap-1 text-xs">
                           <div className="font-medium text-muted-foreground"></div>
                           <div className="font-medium text-muted-foreground text-center">Catálogo</div>
@@ -443,8 +443,8 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                       </div>
 
                       {/* Col 3: Values + Selection */}
-                      <div className="col-span-6">
-                        <div className="flex items-center gap-3">
+                      <div className="sm:col-span-6">
+                        <div className="flex flex-wrap items-end gap-3">
                           {/* Catalog value */}
                           <div className="flex-1 space-y-1">
                             <Label className="text-[10px] text-muted-foreground">💰 Catálogo (R$)</Label>
@@ -471,12 +471,12 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
                           </div>
 
                           {/* Diff */}
-                          <div className="w-14 text-center pt-4">
+                          <div className="w-14 text-center pb-2">
                             <span className={`text-xs font-semibold ${valDiff.color}`}>{valDiff.label}</span>
                           </div>
 
                           {/* Radio selection */}
-                          <div className="pt-3">
+                          <div className="pb-1.5">
                             <RadioGroup
                               value={p.pricingSource || ""}
                               onValueChange={val => updatePiece(idx, { pricingSource: val as "catalogo" | "calculadora" })}
@@ -512,7 +512,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border space-y-3">
+        <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-border space-y-3 shrink-0">
           <div className="flex items-center gap-3">
             <Progress value={totalCount > 0 ? (definedCount / totalCount) * 100 : 0} className="h-2 flex-1" />
             <span className={`text-xs font-semibold whitespace-nowrap ${isComplete ? "text-green-600" : "text-amber-600"}`}>
@@ -520,17 +520,17 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm">
               <span className="text-muted-foreground">Total do Pedido: </span>
               <span className="font-bold text-lg">{fmtBrl(totalValue)}</span>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleSave}>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={handleSave}>
                 <Save className="h-4 w-4 mr-1" />
                 Salvar e Continuar
               </Button>
-              <Button onClick={handleConfirm} disabled={saving || !isComplete}>
+              <Button className="w-full sm:w-auto" onClick={handleConfirm} disabled={saving || !isComplete}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
                 Confirmar Precificação
               </Button>

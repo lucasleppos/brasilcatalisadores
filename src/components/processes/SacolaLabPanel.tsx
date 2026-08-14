@@ -212,7 +212,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none overflow-y-auto sm:w-auto sm:max-w-lg sm:h-auto sm:max-h-[90vh] sm:rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5" />
