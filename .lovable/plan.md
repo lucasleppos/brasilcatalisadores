@@ -1,36 +1,43 @@
-# Importar pedido em PDF na inclusão de compra
+# Módulo de Filiais — avaliação do material e plano de implementação
 
-Sim, é possível. Testei o arquivo enviado (`Pedido_de_catalisador_14-08.pdf`) e o conteúdo é texto real (não imagem escaneada), com tabela bem estruturada. Consegui extrair todas as 19 linhas com Código, Referência, Modelo, Qtd., Valor unitário e Peso unitário, além do resumo (24 peças, 34,940 kg, R$ 18.759,38).
+Li a migration (`20260815_modulo_filiais.sql`) e o prompt. O material é sólido e coerente com o app: reaproveita `purchases`/`purchase_items` (sem compra paralela), usa `weight_declared`/`weight_real`/`erp_number`/`location` que já existem, e as políticas RLS seguem o padrão atual (`has_role`, `user_can_do`, `has_any_module_access`). Testei o PDF de pedido enviado ontem: o texto é extraível, a tabela é reconhecível, e o "0,920g" realmente precisa ser lido como kg.
 
-## O que será construído
+## Ajustes necessários no material antes de rodar
 
-Botão **"Importar pedido (PDF)"** no diálogo de Nova Compra (fluxo Peça/Sacola):
+1. **Faltam os `GRANT`s.** Neste projeto, tabela em `public` sem GRANT fica inacessível pela API mesmo com RLS correta. Vou incluir, para cada nova tabela e para a view: `GRANT SELECT, INSERT, UPDATE, DELETE ... TO authenticated` e `GRANT ALL ... TO service_role` (sem `anon`).
+2. **Falta política de UPDATE em `branch_settlements`** (o fechamento de período atualiza os lançamentos, mas o settlement em si só tem insert/select/delete) — incluir UPDATE restrito a `settle`.
+3. **`branches` duplica a lista hardcoded** em `src/lib/bags.ts` (`BRANCHES_WITH_OWN_BAG` / `WITHOUT`). Na fase 1 mantenho as duas em paralelo (seed idêntico) e só depois migro `bags.ts` para ler da tabela, para não quebrar alocação de Bags.
+4. **Novo status "Aguardando Transferência"** exige varredura dos lugares que assumem "Em Conferência" como estado inicial (board de processos, KPIs, mobile, `getNextStatus`). Trato como estado pré-fluxo, fora das máquinas de estado existentes.
 
-1. Operador seleciona o PDF do outro sistema.
-2. O app lê o PDF no próprio navegador e extrai as linhas da tabela de itens.
-3. Abre uma tela de revisão com a lista extraída:
-   - Código, Referência, Modelo/Veículo, Quantidade, Peso unitário, Valor unitário.
-   - Cada linha é cruzada com o catálogo por Código e, se não achar, por Referência.
-   - Status por linha: **Encontrada no catálogo** (vincula automaticamente) ou **Não encontrada** (permite buscar manualmente no catálogo ou marcar para cadastro posterior).
-   - Linhas podem ser editadas ou desmarcadas antes de importar.
-4. Ao confirmar, os itens entram na compra respeitando a quantidade de cada linha (uma peça com Qtd. 3 gera 3 unidades, seguindo a regra atual de numeração `seq`).
-5. Resumo de validação: total de peças e peso extraídos do PDF x total efetivamente importado, com alerta se divergir.
+## Implementação em fases
 
-## Pontos a confirmar
+**Fase 1 — Base (schema + dados)**
+- Migration adaptada: tabelas `branches`, `branch_transfers`, `branch_ledger_entries`, `branch_settlements`, view `branch_ledger_balance`, colunas novas em `purchases`, índices, módulo de permissão `filiais`, mais os GRANTs e a política faltante.
+- `src/lib/branches.ts`: CRUD de filiais, lotes de transferência, lançamentos do livro-razão, saldo e fechamento de período (padrão de `src/lib/bags.ts`).
+- Página de cadastro de Filiais + item "Filiais" no menu com `RoleGate` do módulo `filiais`.
 
-- No arquivo, o peso unitário aparece como "0,920g" mas o total do pedido é "34,940 kg". Vou tratar os valores como **kg** (coerente com o total e com o app), ignorando o sufixo "g" do PDF.
-- O valor unitário do PDF será importado como **referência informativa** (preço do fornecedor/outro sistema), sem sobrescrever a precificação do app — a etapa de Precificação continua mandando.
+**Fase 2 — Importação do PDF de pedido**
+- `src/lib/pedido-pdf-import.ts` com `pdfjs-dist`, suportando N pedidos por arquivo, junção de linhas quebradas ("R$" + valor) e peso sempre em kg.
+- `ImportPedidoDialog.tsx`: revisão editável obrigatória — confirmar/remover item (motivo: faltou / quebrado / código errado), ajustar quantidade, adicionar peça extra via `PartSearch`, e lançar granel sem código (tipo de material + peso).
+- Fornecedor casado por CPF em `suppliers.document`, criado automaticamente se não existir.
+- Ao confirmar: `createPurchase()` estendido com `branchId`, `weightDeclared`, `declaredValueBrl`, `sourcePedidoNumber`, `location: 'filial'`, `transfer_status: 'pendente'` e status inicial "Aguardando Transferência".
 
-## Detalhes técnicos
+**Fase 3 — Lotes de transferência**
+- `BranchStockList.tsx` evolui para visão por lote (Aberto → Em Trânsito → Recebido → Conferido), com compras vinculadas, peso/valor declarado, e ações de adicionar compras / mudar status.
+- Marcar "Recebido" move todas as compras do lote para "Em Conferência", entrando no pipeline normal já existente.
+- Conferência de chegada na matriz reaproveitando o padrão de `QtyCheckBadge` e dos painéis de conferência.
 
-- Parsing no cliente com `pdfjs-dist` (extração de texto por posição, agrupando por linha), sem depender de OCR ou backend. Se o PDF vier escaneado (sem camada de texto), o app avisa que o arquivo não pode ser lido.
-- Parser isolado em `src/lib/pdf-order-import.ts`, com regras de reconhecimento de cabeçalho (`Código | Referência | Modelo | Qtd. | Valor | Peso`) e normalização numérica brasileira via `parseNum`.
-- Novo componente `src/components/purchases/PdfOrderImportDialog.tsx` (upload + revisão + match no catálogo, reutilizando `PartSearch`).
-- Integração em `src/components/purchases/NewPurchaseDialog.tsx`: os itens revisados alimentam a lista de itens existente, mantendo a trava anti-duplicação atual.
-- Nenhuma mudança de schema: usa `catalog_parts` (code/reference/weight) e `purchase_items.catalog_part_id`.
+**Fase 4 — Confronto e Conta Corrente**
+- Página de Confronto por Filial: declarado x real (peso e valor), diferença em R$ e %, filtros de filial e período; botão "Lançar na conta corrente" com valores pré-preenchidos e confirmação manual obrigatória.
+- Página de Conta Corrente: saldo em aberto, tabela de lançamentos, "Fechar Período" com badge "Liquidado".
 
-## Fora do escopo (nesta etapa)
+## Notas técnicas
 
-- Cadastro automático de peças novas no catálogo (fica como ação manual no diálogo de revisão).
-- Leitura de PDFs escaneados via OCR.
-- Importação de múltiplos pedidos no mesmo arquivo.
+- Sem tabela paralela de compra: filial é apenas origem (`branch_id`) + estágios iniciais extras.
+- `pdfjs-dist` roda no cliente; PDF escaneado (sem camada de texto) é rejeitado com aviso claro.
+- Formatação via `fmtBrl`/`fmtNum`/`fmtKg` de `src/lib/utils.ts`; toda escrita com loading + toast.
+- `src/integrations/supabase/types.ts` é regenerado automaticamente após a migration.
+
+## Sugestão de escopo agora
+
+Começar pelas **Fases 1 e 2** (base + importação do PDF, que é o ganho imediato na inclusão de pedidos) e seguir para 3 e 4 depois de validar em teste real. Se preferir tudo de uma vez, também é viável, só fica um bloco grande para validar.
