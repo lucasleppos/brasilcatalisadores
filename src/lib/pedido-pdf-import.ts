@@ -193,11 +193,12 @@ function parseItemLine(raw: RawItemLine): ParsedPedidoItem | null {
 /** Extrai um ou mais pedidos do PDF gerado pelo app externo de catalisadores */
 export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
   const raw = await extractLines(file);
-  const lines = joinBrokenLines(raw);
+  const norm = normalizeLines(raw);
+  const texts = norm.map((n) => n.text);
 
   // Divide o arquivo em blocos por "Pedido Nº"
   const starts: number[] = [];
-  lines.forEach((l, i) => {
+  texts.forEach((l, i) => {
     if (/Pedido\s*N[ºo°]/i.test(l)) starts.push(i);
   });
   if (starts.length === 0) return [];
@@ -205,37 +206,55 @@ export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
   const pedidos: ParsedPedido[] = [];
 
   for (let s = 0; s < starts.length; s++) {
-    const block = lines.slice(starts[s], starts[s + 1] ?? lines.length);
-    const joined = block.join("\n");
+    const block = norm.slice(starts[s], starts[s + 1] ?? norm.length);
+    const blockTexts = block.map((b) => b.text);
+    const joined = blockTexts.join("\n");
 
     const numMatch = joined.match(/Pedido\s*N[ºo°]\s*:?\s*(\S+)/i);
     const pedidoNumber = numMatch ? numMatch[1] : "";
 
     const docMatch = joined.match(/(?:CPF|CNPJ)\s*:?\s*([\d.\-/\s]{11,20})/i);
-    const supplierDocument = docMatch ? onlyDigits(docMatch[1]) : "";
+    let supplierDocument = docMatch ? onlyDigits(docMatch[1]) : "";
 
+    // Nome do fornecedor: pode vir na mesma linha do rótulo ou na linha seguinte
+    // ("Cliente   CPF" / "JULIO SERGIO GONÇALVES - JULIO SERGIO   006.133.971-77")
     let supplierName = "";
-    const cliIdx = block.findIndex((l) => /^Cliente\b/i.test(l));
+    const cliIdx = blockTexts.findIndex((l) => /^Cliente\b/i.test(l));
     if (cliIdx > -1) {
-      const inline = block[cliIdx].replace(/^Cliente\s*:?\s*/i, "").trim();
-      supplierName = inline || (block[cliIdx + 1] || "").trim();
+      const inline = blockTexts[cliIdx].replace(/^Cliente\s*:?\s*/i, "").replace(/\s*(?:CPF|CNPJ)\s*:?\s*$/i, "").trim();
+      const candidate = /[A-Za-zÀ-ÿ]{3}/.test(inline) ? inline : (blockTexts[cliIdx + 1] || "").trim();
+      // remove o documento que vem na mesma linha (coluna à direita)
+      const docInline = candidate.match(/([\d]{3}\.?[\d]{3}\.?[\d]{3}-?[\d]{2}|[\d]{2}\.?[\d]{3}\.?[\d]{3}\/?[\d]{4}-?[\d]{2})\s*$/);
+      if (docInline) {
+        if (!supplierDocument) supplierDocument = onlyDigits(docInline[1]);
+        supplierName = candidate.slice(0, docInline.index).trim();
+      } else {
+        supplierName = candidate;
+      }
+      supplierName = supplierName.replace(/\s*(?:CPF|CNPJ).*$/i, "").trim();
     }
-    supplierName = supplierName.replace(/\s*CPF.*$/i, "").trim();
 
-    const dateMatch = joined.match(/Data do Pedido\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i);
-    const orderDate = dateMatch ? dateMatch[1] : "";
+    // Data: na linha do rótulo ou na linha seguinte ("Data do Pedido  Status" / "14/08/2026  pendente")
+    let orderDate = "";
+    const dtIdx = blockTexts.findIndex((l) => /Data do Pedido/i.test(l));
+    if (dtIdx > -1) {
+      const sameLine = blockTexts[dtIdx].match(/(\d{2}\/\d{2}\/\d{4})/);
+      const nextLine = (blockTexts[dtIdx + 1] || "").match(/(\d{2}\/\d{2}\/\d{4})/);
+      orderDate = sameLine?.[1] || nextLine?.[1] || "";
+    }
 
     const items: ParsedPedidoItem[] = [];
-    for (const line of block) {
-      if (/^C[óo]digo\b/i.test(line)) continue;
-      if (/Total|Resumo|Quantidade Total|Peso Total|Valor Total/i.test(line)) continue;
-      const item = parseItemLine(line);
+    for (const entry of block) {
+      if (/^C[óo]digo\b/i.test(entry.text)) continue;
+      if (/Total|Resumo|Quantidade Total|Peso Total|Valor Total/i.test(entry.text)) continue;
+      const item = parseItemLine(entry);
       if (item) items.push(item);
     }
 
     const footerWeight = joined.match(/Peso Total do Pedido\s*:?\s*([\d.,]+)/i);
     const footerValue = joined.match(/Valor Total do Pedido\s*:?\s*R\$\s*([\d.,]+)/i);
 
+    // Valor e peso do PDF são unitários: totais = unitário × quantidade
     const totalWeightKg = items.reduce((a, i) => a + i.unitWeightKg * i.quantity, 0);
     const totalValueBrl = items.reduce((a, i) => a + i.unitValueBrl * i.quantity, 0);
 
@@ -251,6 +270,7 @@ export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
       footerValueBrl: footerValue ? brNum(footerValue[1]) : null,
     });
   }
+
 
   return pedidos.filter((p) => p.pedidoNumber || p.items.length > 0);
 }
