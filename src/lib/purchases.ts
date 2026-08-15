@@ -3,6 +3,7 @@ import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
 import { fmtNum } from "./utils";
+import { AWAITING_TRANSFER_STATUS } from "./branches";
 
 // ===== Material Flow Types =====
 export type MaterialFlow = "pecas" | "ceramico" | "sacola";
@@ -311,6 +312,10 @@ export interface Purchase {
   finStatus: CerFinStatus | null;
   opStatus: CerOpStatus | null;
   bulkWeight: number | null;
+  branchId?: string | null;
+  declaredValueBrl?: number | null;
+  transferBatchId?: string | null;
+  sourcePedidoNumber?: string | null;
 }
 
 /** Categoria dos itens separados na conferência (fora da margem de peso) */
@@ -500,6 +505,10 @@ export async function loadPurchases(): Promise<Purchase[]> {
     finStatus: (r.fin_status as CerFinStatus) || null,
     opStatus: (r.op_status as CerOpStatus) || null,
     bulkWeight: r.bulk_weight != null ? Number(r.bulk_weight) : null,
+    branchId: (r as any).branch_id || null,
+    declaredValueBrl: (r as any).declared_value_brl != null ? Number((r as any).declared_value_brl) : null,
+    transferBatchId: (r as any).transfer_batch_id || null,
+    sourcePedidoNumber: (r as any).source_pedido_number || null,
   }));
 }
 
@@ -511,6 +520,11 @@ export async function createPurchase(data: {
   notes?: string;
   erpNumber?: string;
   bulkWeight?: number | null;
+  /** Compra originada de filial (módulo Filiais) */
+  branchId?: string | null;
+  weightDeclared?: number | null;
+  declaredValueBrl?: number | null;
+  sourcePedidoNumber?: string | null;
 }): Promise<(Purchase & { duplicate?: boolean }) | null> {
   // Guarda anti-duplicação: mesma compra criada há poucos segundos (duplo clique / reenvio)
   const since = new Date(Date.now() - 60_000).toISOString();
@@ -581,12 +595,22 @@ export async function createPurchase(data: {
   let statusHistory: { status: string; date: string }[];
   
   const now = new Date().toISOString();
-  initialStatus = "Em Conferência";
-  statusHistory = [
-    { status: "Aguardando Inclusão", date: now },
-    { status: "Aguardando Conferência", date: now },
-    { status: "Em Conferência", date: now },
-  ];
+  const isBranchPurchase = !!data.branchId;
+  if (isBranchPurchase) {
+    // Compra de filial: aguarda o lote físico chegar na matriz antes da conferência
+    initialStatus = AWAITING_TRANSFER_STATUS;
+    statusHistory = [
+      { status: "Aguardando Inclusão", date: now },
+      { status: AWAITING_TRANSFER_STATUS, date: now },
+    ];
+  } else {
+    initialStatus = "Em Conferência";
+    statusHistory = [
+      { status: "Aguardando Inclusão", date: now },
+      { status: "Aguardando Conferência", date: now },
+      { status: "Em Conferência", date: now },
+    ];
+  }
 
   const { data: row, error } = await supabase
     .from("purchases")
@@ -602,6 +626,16 @@ export async function createPurchase(data: {
       notes: data.notes || "",
       status_history: statusHistory,
       bulk_weight: data.bulkWeight ?? null,
+      ...(isBranchPurchase
+        ? {
+            branch_id: data.branchId,
+            declared_value_brl: data.declaredValueBrl ?? totalBrl,
+            weight_declared: data.weightDeclared ?? null,
+            source_pedido_number: data.sourcePedidoNumber || null,
+            location: "filial",
+            transfer_status: "pendente",
+          }
+        : {}),
     })
     .select()
     .single();

@@ -137,6 +137,191 @@ export type Database = {
         }
         Relationships: []
       }
+      branch_ledger_entries: {
+        Row: {
+          amount_brl: number
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          entry_type: string
+          id: string
+          purchase_id: string | null
+          reason: string
+          settlement_id: string | null
+          value_declared: number | null
+          value_real: number | null
+          weight_declared: number | null
+          weight_real: number | null
+        }
+        Insert: {
+          amount_brl: number
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          entry_type: string
+          id?: string
+          purchase_id?: string | null
+          reason: string
+          settlement_id?: string | null
+          value_declared?: number | null
+          value_real?: number | null
+          weight_declared?: number | null
+          weight_real?: number | null
+        }
+        Update: {
+          amount_brl?: number
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          entry_type?: string
+          id?: string
+          purchase_id?: string | null
+          reason?: string
+          settlement_id?: string | null
+          value_declared?: number | null
+          value_real?: number | null
+          weight_declared?: number | null
+          weight_real?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_ledger_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_ledger_entries_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_ledger_entries_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "branch_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_settlements: {
+        Row: {
+          branch_id: string
+          closed_at: string
+          closed_by: string | null
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          total_brl: number
+        }
+        Insert: {
+          branch_id: string
+          closed_at?: string
+          closed_by?: string | null
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          total_brl?: number
+        }
+        Update: {
+          branch_id?: string
+          closed_at?: string
+          closed_by?: string | null
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          total_brl?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_settlements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_transfers: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_transfers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          active: boolean
+          code: string
+          contact_person: string | null
+          created_at: string
+          has_local_stock: boolean
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          contact_person?: string | null
+          created_at?: string
+          has_local_stock?: boolean
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          contact_person?: string | null
+          created_at?: string
+          has_local_stock?: boolean
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
       catalog_groups: {
         Row: {
           created_at: string
@@ -574,10 +759,12 @@ export type Database = {
       }
       purchases: {
         Row: {
+          branch_id: string | null
           bulk_weight: number | null
           buyer: string
           created_at: string | null
           date: string
+          declared_value_brl: number | null
           erp_number: string | null
           fin_status: string | null
           id: string
@@ -586,21 +773,25 @@ export type Database = {
           notes: string | null
           op_status: string | null
           purchase_number: string
+          source_pedido_number: string | null
           status: string
           status_history: Json | null
           supplier_id: string
           supplier_name: string
           total_brl: number | null
+          transfer_batch_id: string | null
           transfer_status: string | null
           weight_declared: number | null
           weight_loss: number | null
           weight_real: number | null
         }
         Insert: {
+          branch_id?: string | null
           bulk_weight?: number | null
           buyer?: string
           created_at?: string | null
           date?: string
+          declared_value_brl?: number | null
           erp_number?: string | null
           fin_status?: string | null
           id?: string
@@ -609,21 +800,25 @@ export type Database = {
           notes?: string | null
           op_status?: string | null
           purchase_number: string
+          source_pedido_number?: string | null
           status?: string
           status_history?: Json | null
           supplier_id: string
           supplier_name: string
           total_brl?: number | null
+          transfer_batch_id?: string | null
           transfer_status?: string | null
           weight_declared?: number | null
           weight_loss?: number | null
           weight_real?: number | null
         }
         Update: {
+          branch_id?: string | null
           bulk_weight?: number | null
           buyer?: string
           created_at?: string | null
           date?: string
+          declared_value_brl?: number | null
           erp_number?: string | null
           fin_status?: string | null
           id?: string
@@ -632,17 +827,34 @@ export type Database = {
           notes?: string | null
           op_status?: string | null
           purchase_number?: string
+          source_pedido_number?: string | null
           status?: string
           status_history?: Json | null
           supplier_id?: string
           supplier_name?: string
           total_brl?: number | null
+          transfer_batch_id?: string | null
           transfer_status?: string | null
           weight_declared?: number | null
           weight_loss?: number | null
           weight_real?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchases_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_transfer_batch_id_fkey"
+            columns: ["transfer_batch_id"]
+            isOneToOne: false
+            referencedRelation: "branch_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       settings: {
         Row: {
@@ -854,7 +1066,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      branch_ledger_balance: {
+        Row: {
+          balance_brl: number | null
+          branch_id: string | null
+          open_entries: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_ledger_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_bag_number: { Args: never; Returns: string }

@@ -10,7 +10,8 @@ import {
   UserCog,
   Shield,
   BookOpen,
-  CheckCircle2 } from
+  CheckCircle2,
+  Building2 } from
 "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { usePermissions } from "@/lib/permissions";
@@ -38,6 +39,7 @@ const menuItems: MenuItem[] = [
 { title: "Fornecedores", url: "/fornecedores", icon: Users, module: "fornecedores" },
 { title: "Processos", url: "/processos", icon: Activity, module: "processos" },
 { title: "Bags", url: "/bags", icon: ShoppingBag, module: "bags" },
+{ title: "Filiais", url: "/filiais", icon: Building2, module: "filiais" },
 { title: "Concluídos", url: "/concluidos", icon: CheckCircle2, module: "concluidos" },
 { title: "Relatórios", url: "/relatorios", icon: BarChart3, module: "relatorios" },
 { title: "Calculadora", url: "/calculadora", icon: Calculator, module: "calculadora" },
