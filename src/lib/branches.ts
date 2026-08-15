@@ -215,6 +215,36 @@ export async function updateTransferStatus(id: string, status: TransferStatus): 
   return true;
 }
 
+/** Volta o lote de "Em Trânsito" para "Aberto" (envio registrado por engano) */
+export async function revertTransferStatus(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("branch_transfers")
+    .update({ status: "aberto", sent_at: null })
+    .eq("id", id)
+    .eq("status", "em_transito");
+  return !error;
+}
+
+/** Código legível do lote: CODIGOFILIAL-DDMMYY-NN (sequência do dia na filial) */
+export function transferCode(
+  transfer: BranchTransfer,
+  branch: Branch | undefined,
+  allTransfers: BranchTransfer[]
+): string {
+  const d = new Date(transfer.createdAt);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  const dayKey = d.toDateString();
+  const sameDay = allTransfers
+    .filter((t) => t.branchId === transfer.branchId && new Date(t.createdAt).toDateString() === dayKey)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const seq = sameDay.findIndex((t) => t.id === transfer.id) + 1;
+  const prefix = (branch?.code || branch?.name || "FIL").slice(0, 6).toUpperCase();
+  return `${prefix}-${dd}${mm}${yy}-${String(Math.max(seq, 1)).padStart(2, "0")}`;
+}
+
+
 /** Move as compras do lote de "Aguardando Transferência" para "Em Conferência" */
 async function releaseTransferPurchases(transferId: string) {
   const { data: rows } = await supabase

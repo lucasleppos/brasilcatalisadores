@@ -1,16 +1,17 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Building2, FileUp, Plus, Truck, Loader2, Trash2 } from "lucide-react";
+import { Building2, FileUp, Plus, Truck, Loader2, Trash2, Undo2, Download, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { fmtBrl, fmtKg, fmtPctFixed } from "@/lib/utils";
 import { usePermissions } from "@/lib/permissions";
@@ -30,7 +31,10 @@ import {
   loadTransfers,
   createTransfer,
   updateTransferStatus,
+  revertTransferStatus,
+  transferCode,
   addPurchaseToTransfer,
+  removePurchaseFromTransfer,
   loadLedgerEntries,
   createLedgerEntry,
   loadBranchBalance,
@@ -41,6 +45,7 @@ import { Purchase, loadPurchases } from "@/lib/purchases";
 import ImportPedidoDialog from "@/components/branches/ImportPedidoDialog";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+const parseBrl = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
 
 export default function BranchesPage() {
   const { user } = useAuth();
@@ -99,6 +104,7 @@ export default function BranchesPage() {
   }, [selectedBranch, refreshLedger]);
 
   const branchName = (id?: string | null) => branches.find((b) => b.id === id)?.name || "—";
+  const branchById = (id?: string | null) => branches.find((b) => b.id === id);
 
   const pendingPurchases = purchases.filter(
     (p) => p.branchId && p.status === AWAITING_TRANSFER_STATUS && !p.transferBatchId
@@ -147,7 +153,14 @@ export default function BranchesPage() {
   };
 
   // ===== Lotes =====
-  const newTransfer = async (branchId: string) => {
+  const [selectedPending, setSelectedPending] = useState<string[]>([]);
+  const [loteFilterBranch, setLoteFilterBranch] = useState<string>("todas");
+  const [loteFilterStatus, setLoteFilterStatus] = useState<string>("todos");
+
+  const togglePending = (id: string) =>
+    setSelectedPending((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const newTransfer = async (branchId: string, attachIds: string[] = []) => {
     setBusy(true);
     try {
       const t = await createTransfer(branchId);
@@ -155,17 +168,56 @@ export default function BranchesPage() {
         toast({ title: "Erro ao abrir o lote", variant: "destructive" });
         return;
       }
-      toast({ title: "Lote aberto" });
+      for (const pid of attachIds) await addPurchaseToTransfer(pid, t.id);
+      toast({ title: "Lote aberto", description: attachIds.length ? `${attachIds.length} compra(s) vinculada(s).` : undefined });
+      setSelectedPending([]);
       refresh();
     } finally {
       setBusy(false);
     }
   };
 
-  const advanceTransfer = async (t: BranchTransfer) => {
+  const attachMany = async (transferId: string, ids: string[]) => {
+    setBusy(true);
+    try {
+      let ok = true;
+      for (const pid of ids) ok = (await addPurchaseToTransfer(pid, transferId)) && ok;
+      toast({
+        title: ok ? `${ids.length} compra(s) vinculada(s)` : "Erro ao vincular",
+        variant: ok ? undefined : "destructive",
+      });
+      setSelectedPending([]);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const detach = async (purchaseId: string) => {
+    const ok = await removePurchaseFromTransfer(purchaseId);
+    toast({ title: ok ? "Compra removida do lote" : "Erro ao remover", variant: ok ? undefined : "destructive" });
+    if (ok) refresh();
+  };
+
+  const advanceTransfer = async (t: BranchTransfer, linked: Purchase[]) => {
     const order: TransferStatus[] = ["aberto", "em_transito", "recebido", "conferido"];
     const next = order[order.indexOf(t.status) + 1];
     if (!next) return;
+    if (next === "em_transito" && linked.length === 0) {
+      toast({ title: "Vincule ao menos uma compra ao lote", variant: "destructive" });
+      return;
+    }
+    if (next === "conferido") {
+      const missing = linked.filter((p) => p.weightReal == null);
+      if (missing.length > 0) {
+        toast({
+          title: "Conferência incompleta",
+          description: `${missing.length} compra(s) ainda sem peso real registrado na matriz.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setBusy(true);
     try {
       const ok = await updateTransferStatus(t.id, next);
@@ -183,16 +235,42 @@ export default function BranchesPage() {
     }
   };
 
-  const attach = async (purchaseId: string, transferId: string) => {
-    const ok = await addPurchaseToTransfer(purchaseId, transferId);
-    toast({ title: ok ? "Compra vinculada ao lote" : "Erro ao vincular", variant: ok ? undefined : "destructive" });
-    if (ok) refresh();
+  const revertTransfer = async (t: BranchTransfer) => {
+    if (t.status !== "em_transito") return;
+    setBusy(true);
+    try {
+      const ok = await revertTransferStatus(t.id);
+      toast({ title: ok ? "Lote voltou para Aberto" : "Erro ao voltar etapa", variant: ok ? undefined : "destructive" });
+      if (ok) refresh();
+    } finally {
+      setBusy(false);
+    }
   };
 
+  const visibleTransfers = transfers.filter(
+    (t) =>
+      (loteFilterBranch === "todas" || t.branchId === loteFilterBranch) &&
+      (loteFilterStatus === "todos" || t.status === loteFilterStatus)
+  );
+
   // ===== Confronto =====
+  const [confrontoFrom, setConfrontoFrom] = useState("");
+  const [confrontoTo, setConfrontoTo] = useState("");
+
+  const launchedPurchaseIds = useMemo(
+    () => new Set(ledger.filter((e) => e.purchaseId).map((e) => e.purchaseId as string)),
+    [ledger]
+  );
+
   const reconciliationRows = purchases
-    .filter((p) => p.branchId && (p.weightReal != null || p.totalBrl != null))
+    .filter((p) => p.branchId && p.weightReal != null)
     .filter((p) => !selectedBranch || p.branchId === selectedBranch)
+    .filter((p) => {
+      const d = p.date?.slice(0, 10) || "";
+      if (confrontoFrom && d < confrontoFrom) return false;
+      if (confrontoTo && d > confrontoTo) return false;
+      return true;
+    })
     .map((p) => {
       const wDecl = Number(p.weightDeclared) || 0;
       const wReal = Number(p.weightReal) || 0;
@@ -208,40 +286,84 @@ export default function BranchesPage() {
         vReal,
         vDiff: vReal - vDecl,
         vPct: vDecl > 0 ? ((vReal - vDecl) / vDecl) * 100 : 0,
+        launched: launchedPurchaseIds.has(p.id),
       };
     });
 
-  const [ledgerDialog, setLedgerDialog] = useState<(typeof reconciliationRows)[number] | null>(null);
-  const [ledgerForm, setLedgerForm] = useState({ amount: "0", type: "debito" as "credito" | "debito", reason: "" });
+  const totals = reconciliationRows.reduce(
+    (a, r) => ({
+      wDecl: a.wDecl + r.wDecl,
+      wReal: a.wReal + r.wReal,
+      vDecl: a.vDecl + r.vDecl,
+      vReal: a.vReal + r.vReal,
+    }),
+    { wDecl: 0, wReal: 0, vDecl: 0, vReal: 0 }
+  );
 
-  const openLedgerDialog = (row: (typeof reconciliationRows)[number]) => {
+  type ReconRow = (typeof reconciliationRows)[number];
+  const [ledgerDialog, setLedgerDialog] = useState<ReconRow | "manual" | null>(null);
+  const [ledgerForm, setLedgerForm] = useState({ amount: "0", type: "debito" as "credito" | "debito", reason: "", base: "valor" as "valor" | "peso" });
+
+  const weightDiffBrl = (row: ReconRow) => {
+    // Valor por kg declarado, aplicado à diferença de peso
+    const perKg = row.wDecl > 0 ? row.vDecl / row.wDecl : 0;
+    return Math.abs(row.wDiff) * perKg;
+  };
+
+  const openLedgerDialog = (row: ReconRow) => {
+    if (row.launched && !confirm("Esta compra já possui lançamento na conta corrente. Deseja lançar novamente?")) return;
     setLedgerDialog(row);
     setLedgerForm({
+      base: "valor",
       amount: Math.abs(row.vDiff).toFixed(2).replace(".", ","),
       type: row.vDiff >= 0 ? "credito" : "debito",
       reason: `Diferença do pedido ${row.purchase.sourcePedidoNumber || row.purchase.purchaseNumber}`,
     });
   };
 
+  const openManualLedger = () => {
+    if (!selectedBranch) {
+      toast({ title: "Selecione uma filial", variant: "destructive" });
+      return;
+    }
+    setLedgerDialog("manual");
+    setLedgerForm({ base: "valor", amount: "", type: "debito", reason: "" });
+  };
+
+  const changeBase = (base: "valor" | "peso") => {
+    const row = ledgerDialog && ledgerDialog !== "manual" ? ledgerDialog : null;
+    if (!row) return;
+    const value = base === "valor" ? Math.abs(row.vDiff) : weightDiffBrl(row);
+    const sign = base === "valor" ? row.vDiff : row.wDiff;
+    setLedgerForm((f) => ({
+      ...f,
+      base,
+      amount: value.toFixed(2).replace(".", ","),
+      type: sign >= 0 ? "credito" : "debito",
+    }));
+  };
+
   const saveLedger = async () => {
     if (!ledgerDialog) return;
-    const amount = parseFloat(ledgerForm.amount.replace(/\./g, "").replace(",", ".")) || 0;
+    const amount = parseBrl(ledgerForm.amount);
     if (amount <= 0 || !ledgerForm.reason.trim()) {
       toast({ title: "Informe valor e motivo", variant: "destructive" });
       return;
     }
+    const row = ledgerDialog === "manual" ? null : ledgerDialog;
+    const branchId = row ? row.purchase.branchId! : selectedBranch;
     setBusy(true);
     try {
       const created = await createLedgerEntry({
-        branchId: ledgerDialog.purchase.branchId!,
-        purchaseId: ledgerDialog.purchase.id,
+        branchId,
+        purchaseId: row?.purchase.id ?? null,
         entryType: ledgerForm.type,
         amountBrl: amount,
         reason: ledgerForm.reason.trim(),
-        weightDeclared: ledgerDialog.wDecl,
-        weightReal: ledgerDialog.wReal,
-        valueDeclared: ledgerDialog.vDecl,
-        valueReal: ledgerDialog.vReal,
+        weightDeclared: row?.wDecl ?? null,
+        weightReal: row?.wReal ?? null,
+        valueDeclared: row?.vDecl ?? null,
+        valueReal: row?.vReal ?? null,
       });
       if (!created) {
         toast({ title: "Erro ao lançar na conta corrente", variant: "destructive" });
@@ -249,18 +371,66 @@ export default function BranchesPage() {
       }
       toast({ title: "Lançamento registrado" });
       setLedgerDialog(null);
-      refreshLedger(ledgerDialog.purchase.branchId!);
+      refreshLedger(branchId);
     } finally {
       setBusy(false);
     }
   };
 
+  // ===== Conta corrente =====
+  const [ledgerFilter, setLedgerFilter] = useState<"aberto" | "liquidado" | "todos">("todos");
+  const visibleLedger = ledger.filter((e) =>
+    ledgerFilter === "todos" ? true : ledgerFilter === "aberto" ? !e.settlementId : !!e.settlementId
+  );
+
+  const exportLedgerCsv = () => {
+    const rows = [
+      ["Data", "Tipo", "Valor", "Motivo", "Situação"],
+      ...visibleLedger.map((e) => [
+        new Date(e.createdAt).toLocaleDateString("pt-BR"),
+        e.entryType === "credito" ? "Crédito" : "Débito",
+        e.amountBrl.toFixed(2).replace(".", ","),
+        e.reason.replace(/;/g, ","),
+        e.settlementId ? "Liquidado" : "Em aberto",
+      ]),
+    ];
+    const csv = rows.map((r) => r.join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `extrato-${(branchById(selectedBranch)?.code || "filial").toLowerCase()}-${todayIso()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ===== Fechamento =====
   const [period, setPeriod] = useState({ start: todayIso().slice(0, 8) + "01", end: todayIso() });
 
+  const periodPreview = useMemo(() => {
+    const inRange = ledger.filter((e) => {
+      if (e.settlementId) return false;
+      const d = e.createdAt.slice(0, 10);
+      return d >= period.start && d <= period.end;
+    });
+    const credito = inRange.filter((e) => e.entryType === "credito").reduce((a, e) => a + e.amountBrl, 0);
+    const debito = inRange.filter((e) => e.entryType === "debito").reduce((a, e) => a + e.amountBrl, 0);
+    return { count: inRange.length, credito, debito, saldo: credito - debito };
+  }, [ledger, period]);
+
   const closePeriod = async () => {
     if (!selectedBranch) return;
-    if (!confirm("Fechar o período? Os lançamentos em aberto serão marcados como liquidados.")) return;
+    if (periodPreview.count === 0) {
+      toast({ title: "Nenhum lançamento em aberto no período", variant: "destructive" });
+      return;
+    }
+    if (
+      !confirm(
+        `Fechar o período?\n${periodPreview.count} lançamento(s)\nCréditos: ${fmtBrl(periodPreview.credito)}\nDébitos: ${fmtBrl(
+          periodPreview.debito
+        )}\nSaldo: ${fmtBrl(periodPreview.saldo)}`
+      )
+    )
+      return;
     setBusy(true);
     try {
       const s = await closeSettlementPeriod({
@@ -315,15 +485,54 @@ export default function BranchesPage() {
         {/* ===== Pedidos aguardando transferência ===== */}
         <TabsContent value="pedidos" className="space-y-3">
           <Card>
-            <CardHeader><CardTitle className="text-base">Aguardando transferência ({pendingPurchases.length})</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Aguardando transferência ({pendingPurchases.length})</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-2">
               {pendingPurchases.length === 0 && (
                 <p className="text-sm text-muted-foreground">Nenhum pedido pendente de envio para a matriz.</p>
               )}
+
+              {canEdit && selectedPending.length > 0 && (() => {
+                const branchIds = new Set(
+                  pendingPurchases.filter((p) => selectedPending.includes(p.id)).map((p) => p.branchId)
+                );
+                const single = branchIds.size === 1 ? ([...branchIds][0] as string) : null;
+                const openTransfers = single ? transfers.filter((t) => t.branchId === single && t.status === "aberto") : [];
+                return (
+                  <div className="border rounded-md p-3 bg-muted/40 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <p className="text-sm flex-1">{selectedPending.length} pedido(s) selecionado(s)</p>
+                    {!single ? (
+                      <p className="text-xs text-destructive">Selecione pedidos de uma única filial para agrupar.</p>
+                    ) : (
+                      <Select
+                        onValueChange={(v) =>
+                          v === "__new" ? newTransfer(single, selectedPending) : attachMany(v, selectedPending)
+                        }
+                      >
+                        <SelectTrigger className="sm:w-64"><SelectValue placeholder="Vincular selecionados a um lote" /></SelectTrigger>
+                        <SelectContent>
+                          {openTransfers.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {transferCode(t, branchById(t.branchId), transfers)}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="__new">+ Abrir novo lote</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedPending([])}>Limpar</Button>
+                  </div>
+                );
+              })()}
+
               {pendingPurchases.map((p) => {
                 const openTransfers = transfers.filter((t) => t.branchId === p.branchId && t.status === "aberto");
                 return (
                   <div key={p.id} className="border rounded-md p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                    {canEdit && (
+                      <Checkbox checked={selectedPending.includes(p.id)} onCheckedChange={() => togglePending(p.id)} />
+                    )}
                     <div className="flex-1">
                       <p className="font-medium">
                         {p.purchaseNumber} · {p.supplierName}
@@ -334,12 +543,14 @@ export default function BranchesPage() {
                       </p>
                     </div>
                     {canEdit && (
-                      <Select onValueChange={(v) => (v === "__new" ? newTransfer(p.branchId!) : attach(p.id, v))}>
+                      <Select
+                        onValueChange={(v) => (v === "__new" ? newTransfer(p.branchId!, [p.id]) : attachMany(v, [p.id]))}
+                      >
                         <SelectTrigger className="sm:w-56"><SelectValue placeholder="Vincular a um lote" /></SelectTrigger>
                         <SelectContent>
                           {openTransfers.map((t) => (
                             <SelectItem key={t.id} value={t.id}>
-                              Lote {t.id.slice(0, 8)} · {TRANSFER_STATUS_LABELS[t.status]}
+                              {transferCode(t, branchById(t.branchId), transfers)}
                             </SelectItem>
                           ))}
                           <SelectItem value="__new">+ Abrir novo lote</SelectItem>
@@ -355,26 +566,64 @@ export default function BranchesPage() {
 
         {/* ===== Lotes ===== */}
         <TabsContent value="lotes" className="space-y-3">
-          {transfers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lote de transferência criado.</p>}
-          {transfers.map((t) => {
+          <div className="grid gap-2 sm:grid-cols-2 max-w-xl">
+            <div>
+              <Label className="text-xs">Filial</Label>
+              <Select value={loteFilterBranch} onValueChange={setLoteFilterBranch}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Status</Label>
+              <Select value={loteFilterStatus} onValueChange={setLoteFilterStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {(Object.keys(TRANSFER_STATUS_LABELS) as TransferStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>{TRANSFER_STATUS_LABELS[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {visibleTransfers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lote de transferência.</p>}
+          {visibleTransfers.map((t) => {
             const linked = purchases.filter((p) => p.transferBatchId === t.id);
             const weight = linked.reduce((a, p) => a + (Number(p.weightDeclared) || 0), 0);
             const value = linked.reduce((a, p) => a + (Number(p.declaredValueBrl) || 0), 0);
+            const checked = linked.filter((p) => p.weightReal != null).length;
+            const arrived = t.status === "recebido" || t.status === "conferido";
             return (
               <Card key={t.id}>
-                <CardHeader className="pb-2 flex flex-row items-start justify-between gap-3">
+                <CardHeader className="pb-2 flex flex-col sm:flex-row items-start justify-between gap-3">
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Truck className="h-4 w-4" /> Lote {t.id.slice(0, 8)} · {branchName(t.branchId)}
+                      <Truck className="h-4 w-4" /> {transferCode(t, branchById(t.branchId), transfers)} · {branchName(t.branchId)}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">
                       {linked.length} compra(s) · {fmtKg(weight, 3)} · {fmtBrl(value)}
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      Enviado: {t.sentAt ? new Date(t.sentAt).toLocaleDateString("pt-BR") : "—"} · Recebido:{" "}
+                      {t.receivedAt ? new Date(t.receivedAt).toLocaleDateString("pt-BR") : "—"}
+                      {arrived && ` · Conferidas ${checked}/${linked.length}`}
+                    </p>
+                    {t.notes && <p className="text-xs text-muted-foreground mt-1">Obs.: {t.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={t.status === "conferido" ? "default" : "secondary"}>{TRANSFER_STATUS_LABELS[t.status]}</Badge>
+                    {canEdit && t.status === "em_transito" && (
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => revertTransfer(t)}>
+                        <Undo2 className="h-4 w-4 mr-1" /> Voltar etapa
+                      </Button>
+                    )}
                     {canEdit && t.status !== "conferido" && (
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => advanceTransfer(t)}>
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => advanceTransfer(t, linked)}>
                         Avançar
                       </Button>
                     )}
@@ -386,9 +635,23 @@ export default function BranchesPage() {
                   ) : (
                     <ul className="text-sm space-y-1">
                       {linked.map((p) => (
-                        <li key={p.id} className="flex justify-between gap-2">
-                          <span>{p.purchaseNumber} · {p.supplierName}</span>
-                          <span className="text-muted-foreground">{p.status}</span>
+                        <li key={p.id} className="flex items-center justify-between gap-2 border-b last:border-0 py-1">
+                          <span className="flex-1">
+                            {p.purchaseNumber} · {p.supplierName}
+                            {arrived && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {p.weightReal != null
+                                  ? `real ${fmtKg(Number(p.weightReal), 3)}`
+                                  : "aguardando conferência"}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground text-xs">{p.status}</span>
+                          {canEdit && t.status === "aberto" && (
+                            <Button size="icon" variant="ghost" onClick={() => detach(p.id)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -401,16 +664,56 @@ export default function BranchesPage() {
 
         {/* ===== Confronto ===== */}
         <TabsContent value="confronto" className="space-y-3">
-          <div className="max-w-xs">
-            <Label>Filial</Label>
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-2 sm:grid-cols-3 max-w-2xl">
+            <div>
+              <Label className="text-xs">Filial</Label>
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">De</Label>
+              <Input type="date" value={confrontoFrom} onChange={(e) => setConfrontoFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Até</Label>
+              <Input type="date" value={confrontoTo} onChange={(e) => setConfrontoTo(e.target.value)} />
+            </div>
           </div>
-          <div className="border rounded-md overflow-x-auto">
+
+          {/* Mobile: cartões */}
+          <div className="space-y-2 md:hidden">
+            {reconciliationRows.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma compra conferida para confronto.</p>
+            )}
+            {reconciliationRows.map((r) => (
+              <Card key={r.purchase.id}>
+                <CardContent className="p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">{r.purchase.purchaseNumber}</p>
+                    {r.launched && <Badge variant="outline">Lançado</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{r.purchase.supplierName}</p>
+                  <p className="text-sm">Peso: {fmtKg(r.wDecl, 3)} → {fmtKg(r.wReal, 3)}{" "}
+                    <span className={r.wDiff < 0 ? "text-destructive" : "text-emerald-600"}>({fmtPctFixed(r.wPct)})</span>
+                  </p>
+                  <p className="text-sm">Valor: {fmtBrl(r.vDecl)} → {fmtBrl(r.vReal)}{" "}
+                    <span className={r.vDiff < 0 ? "text-destructive" : "text-emerald-600"}>({fmtPctFixed(r.vPct)})</span>
+                  </p>
+                  {canLedger && (
+                    <Button size="sm" variant="outline" className="w-full mt-1" onClick={() => openLedgerDialog(r)}>
+                      Lançar na conta corrente
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="border rounded-md overflow-x-auto hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -426,12 +729,15 @@ export default function BranchesPage() {
               </TableHeader>
               <TableBody>
                 {reconciliationRows.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Nenhuma compra para confronto.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Nenhuma compra conferida para confronto.</TableCell></TableRow>
                 )}
                 {reconciliationRows.map((r) => (
                   <TableRow key={r.purchase.id}>
                     <TableCell>
-                      <p className="font-medium">{r.purchase.purchaseNumber}</p>
+                      <p className="font-medium flex items-center gap-2">
+                        {r.purchase.purchaseNumber}
+                        {r.launched && <Badge variant="outline">Lançado</Badge>}
+                      </p>
                       <p className="text-xs text-muted-foreground">{r.purchase.supplierName}</p>
                     </TableCell>
                     <TableCell>{fmtKg(r.wDecl, 3)}</TableCell>
@@ -453,6 +759,22 @@ export default function BranchesPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {reconciliationRows.length > 0 && (
+                  <TableRow className="font-medium bg-muted/40">
+                    <TableCell>Totais</TableCell>
+                    <TableCell>{fmtKg(totals.wDecl, 3)}</TableCell>
+                    <TableCell>{fmtKg(totals.wReal, 3)}</TableCell>
+                    <TableCell className={totals.wReal - totals.wDecl < 0 ? "text-destructive" : "text-emerald-600"}>
+                      {fmtKg(totals.wReal - totals.wDecl, 3)}
+                    </TableCell>
+                    <TableCell>{fmtBrl(totals.vDecl)}</TableCell>
+                    <TableCell>{fmtBrl(totals.vReal)}</TableCell>
+                    <TableCell className={totals.vReal - totals.vDecl < 0 ? "text-destructive" : "text-emerald-600"}>
+                      {fmtBrl(totals.vReal - totals.vDecl)}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -471,14 +793,14 @@ export default function BranchesPage() {
               </Select>
             </div>
             <Card className="sm:col-span-2">
-              <CardContent className="p-4 flex items-center justify-between">
+              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Saldo em aberto</p>
                   <p className="text-xl font-bold">{fmtBrl(balance.balanceBrl)}</p>
                   <p className="text-xs text-muted-foreground">{balance.openEntries} lançamento(s) em aberto</p>
                 </div>
                 {canSettle && (
-                  <div className="flex flex-col sm:flex-row items-end gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                     <div>
                       <Label className="text-xs">De</Label>
                       <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-9" />
@@ -494,7 +816,58 @@ export default function BranchesPage() {
             </Card>
           </div>
 
-          <div className="border rounded-md overflow-x-auto">
+          {canSettle && (
+            <p className="text-xs text-muted-foreground">
+              No período selecionado: {periodPreview.count} lançamento(s) · créditos {fmtBrl(periodPreview.credito)} · débitos{" "}
+              {fmtBrl(periodPreview.debito)} · saldo {fmtBrl(periodPreview.saldo)}
+            </p>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <Select value={ledgerFilter} onValueChange={(v) => setLedgerFilter(v as any)}>
+              <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="aberto">Em aberto</SelectItem>
+                <SelectItem value="liquidado">Liquidados</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              {canLedger && (
+                <Button variant="outline" size="sm" onClick={openManualLedger}>
+                  <Plus className="h-4 w-4 mr-1" /> Lançamento avulso
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={exportLedgerCsv} disabled={visibleLedger.length === 0}>
+                <Download className="h-4 w-4 mr-1" /> Exportar CSV
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile: cartões */}
+          <div className="space-y-2 md:hidden">
+            {visibleLedger.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lançamento.</p>}
+            {visibleLedger.map((e) => (
+              <Card key={e.id}>
+                <CardContent className="p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Badge variant={e.entryType === "credito" ? "default" : "secondary"}>
+                      {e.entryType === "credito" ? "Crédito" : "Débito"}
+                    </Badge>
+                    <span className={e.entryType === "credito" ? "text-emerald-600 font-medium" : "text-destructive font-medium"}>
+                      {fmtBrl(e.amountBrl)}
+                    </span>
+                  </div>
+                  <p className="text-sm">{e.reason}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(e.createdAt).toLocaleDateString("pt-BR")} · {e.settlementId ? "Liquidado" : "Em aberto"}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="border rounded-md overflow-x-auto hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -506,10 +879,10 @@ export default function BranchesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledger.length === 0 && (
+                {visibleLedger.length === 0 && (
                   <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Nenhum lançamento.</TableCell></TableRow>
                 )}
-                {ledger.map((e) => (
+                {visibleLedger.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell>{new Date(e.createdAt).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>
@@ -640,12 +1013,32 @@ export default function BranchesPage() {
       {/* Dialog lançamento */}
       <Dialog open={!!ledgerDialog} onOpenChange={(v) => !v && setLedgerDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Lançar na conta corrente</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{ledgerDialog === "manual" ? "Lançamento avulso" : "Lançar na conta corrente"}</DialogTitle>
+          </DialogHeader>
           {ledgerDialog && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {ledgerDialog.purchase.purchaseNumber} · declarado {fmtBrl(ledgerDialog.vDecl)} · real {fmtBrl(ledgerDialog.vReal)}
-              </p>
+              {ledgerDialog !== "manual" && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {ledgerDialog.purchase.purchaseNumber} · declarado {fmtBrl(ledgerDialog.vDecl)} · real {fmtBrl(ledgerDialog.vReal)}
+                  </p>
+                  <div>
+                    <Label>Base sugerida</Label>
+                    <Select value={ledgerForm.base} onValueChange={(v) => changeBase(v as "valor" | "peso")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="valor">
+                          Diferença de valor · {fmtBrl(Math.abs(ledgerDialog.vDiff))}
+                        </SelectItem>
+                        <SelectItem value="peso">
+                          Diferença de peso · {fmtKg(Math.abs(ledgerDialog.wDiff), 3)} ≈ {fmtBrl(weightDiffBrl(ledgerDialog))}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Tipo</Label>
