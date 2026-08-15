@@ -1,6 +1,9 @@
 # Correção da importação de pedido em PDF
 
-Testei o PDF enviado (Pedido Nº 15744): ele tem 19 itens, mas o parser atual só consegue ler 14, e não captura nome do fornecedor nem a data do pedido. As três falhas têm causa confirmada no texto extraído.
+Testei o PDF enviado (Pedido Nº 15744): ele tem 19 linhas de item que somam 24 peças (algumas linhas têm 2 ou 3 unidades do mesmo código), mas o parser atual só consegue ler 14 linhas, e não captura nome do fornecedor nem a data do pedido. As falhas têm causa confirmada no texto extraído.
+
+Confirmei também que os totais do pedido são calculados por quantidade: peso 34,940 kg = soma de (peso unitário × qtd) e valor R$ 18.759,38 = soma de (valor unitário × qtd). Ou seja, valor e peso do PDF são unitários e devem ser multiplicados pela quantidade.
+
 
 ## O que está acontecendo
 
