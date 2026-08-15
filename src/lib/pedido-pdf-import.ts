@@ -184,14 +184,17 @@ function parseItemLine(raw: RawItemLine): ParsedPedidoItem | null {
       const head = n[1].trim();
       const quantity = parseInt(n[2], 10) || 0;
       if (!head || quantity <= 0) return null;
+      const parts = splitHead(head);
       return {
-        ...splitHead(head),
+        ...parts,
+        vehicleModel: [parts.vehicleModel, raw.modelSuffix].filter(Boolean).join(" ").trim(),
         quantity,
         unitValueBrl: raw.forcedValue,
         unitWeightKg: brNum(n[3]),
       };
     }
   }
+
 
   return null;
 }
