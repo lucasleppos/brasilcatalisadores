@@ -311,9 +311,16 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
 
               {(pedido.footerWeightKg != null && Math.abs(pedido.footerWeightKg - pedido.totalWeightKg) > 0.01) && (
                 <p className="text-sm text-amber-600">
-                  Atenção: peso somado dos itens ({fmtKg(pedido.totalWeightKg, 3)}) difere do total impresso no PDF ({fmtKg(pedido.footerWeightKg, 3)}).
+                  Atenção: peso somado dos itens ({fmtKg(pedido.totalWeightKg, 3)}) difere do total impresso no PDF ({fmtKg(pedido.footerWeightKg, 3)}). Confira os itens antes de criar a compra.
                 </p>
               )}
+
+              {(pedido.footerValueBrl != null && Math.abs(pedido.footerValueBrl - pedido.totalValueBrl) > 0.05) && (
+                <p className="text-sm text-amber-600">
+                  Atenção: valor somado dos itens ({fmtBrl(pedido.totalValueBrl)}) difere do total impresso no PDF ({fmtBrl(pedido.footerValueBrl)}). Confira os itens antes de criar a compra.
+                </p>
+              )}
+
 
               {/* Desktop */}
               <div className="hidden md:block border rounded-md overflow-x-auto">
