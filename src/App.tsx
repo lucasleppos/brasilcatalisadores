@@ -21,6 +21,7 @@ import UsersPage from "@/pages/UsersPage";
 import ProfilePage from "@/pages/ProfilePage";
 import PermissionsPage from "@/pages/PermissionsPage";
 import CatalogPage from "@/pages/CatalogPage";
+import BranchesPage from "@/pages/BranchesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/fornecedores" element={<ProtectedRoute module="fornecedores"><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/processos" element={<ProtectedRoute module="processos"><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/bags" element={<ProtectedRoute module="bags"><AppLayout><BagsPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/filiais" element={<ProtectedRoute module="filiais"><AppLayout><BranchesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/concluidos" element={<ProtectedRoute module="concluidos"><AppLayout><CompletedPage /></AppLayout></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute module="relatorios"><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
             <Route path="/calculadora" element={<ProtectedRoute module="calculadora"><AppLayout><CalculatorPage /></AppLayout></ProtectedRoute>} />
