@@ -74,18 +74,52 @@ async function extractLines(file: File): Promise<string[]> {
   return lines;
 }
 
+interface RawItemLine {
+  text: string;
+  /** Valor unitário quando a célula "R$ 1.234,56" veio quebrada em outra linha */
+  forcedValue?: number;
+}
+
+const isBareRs = (l: string) => /^R\$$/.test(l.trim());
+const isBareNumber = (l: string) => /^[\d.,]+$/.test(l.trim()) && /\d/.test(l);
+
 /**
- * Junta linhas quebradas: "R$" sozinho (ou sem número) é unido à linha seguinte.
+ * Normaliza linhas para leitura de itens.
+ * O PDF quebra a célula de valor em duas linhas quando passa de mil:
+ *   "R$" / "CC* SERIE CC HONDA - HONDA 2 0,890g" / "1.014,90"
+ * (ou "R$" / "1.014,90" / linha do item, dependendo da ordem das rows).
  */
-function joinBrokenLines(lines: string[]): string[] {
-  const out: string[] = [];
-  for (const line of lines) {
-    const prev = out[out.length - 1];
-    if (prev && /R\$\s*$/.test(prev)) {
-      out[out.length - 1] = `${prev}${line}`.replace(/\s+/g, " ").trim();
+function normalizeLines(lines: string[]): RawItemLine[] {
+  const out: RawItemLine[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] || "").trim();
+    if (!line) continue;
+
+    if (isBareRs(line)) {
+      const a = (lines[i + 1] || "").trim();
+      const b = (lines[i + 2] || "").trim();
+      if (a && !isBareNumber(a) && isBareNumber(b)) {
+        out.push({ text: a, forcedValue: brNum(b) });
+        i += 2;
+        continue;
+      }
+      if (isBareNumber(a) && b && !isBareNumber(b)) {
+        out.push({ text: b, forcedValue: brNum(a) });
+        i += 2;
+        continue;
+      }
+      continue; // "R$" solto sem par identificável
+    }
+
+    // "algo R$" no fim da linha: o número está na linha seguinte
+    if (/R\$\s*$/.test(line)) {
+      const next = (lines[i + 1] || "").trim();
+      out.push({ text: `${line}${next}`.replace(/\s+/g, " ").trim() });
+      i += 1;
       continue;
     }
-    out.push(line);
+
+    out.push({ text: line });
   }
   return out;
 }
@@ -93,27 +127,16 @@ function joinBrokenLines(lines: string[]): string[] {
 const ITEM_RE =
   /^(.+?)\s+(\d+)\s+R\$\s*([\d.,]+)\s+([\d.,]+)\s*(?:g|kg|Kg|KG)?\s*(?:\[?(?:no|yes|sim|não|nao)\]?)?$/i;
 
-/**
- * Tenta interpretar uma linha de item.
- * Formato: Código Referência Modelo Qtd. R$ Valor Peso [Entregue]
- * A parte inicial (código + referência + modelo) é fatiada heuristicamente:
- * o primeiro token é o Código, o último bloco após " - " pertence ao Modelo.
- */
-function parseItemLine(line: string): ParsedPedidoItem | null {
-  const m = line.match(ITEM_RE);
-  if (!m) return null;
+/** Linha de item sem o valor (célula quebrada): "Código Ref Modelo Qtd Peso" */
+const ITEM_NO_VALUE_RE =
+  /^(.+?)\s+(\d+)\s+([\d.,]+)\s*(?:g|kg|Kg|KG)\s*(?:\[?(?:no|yes|sim|não|nao)\]?)?$/i;
 
-  const head = m[1].trim();
-  const quantity = parseInt(m[2], 10) || 0;
-  const unitValueBrl = brNum(m[3]);
-  const unitWeightKg = brNum(m[4]);
-  if (!head || quantity <= 0) return null;
-
+/** Fatia "Código Referência Modelo" heuristicamente */
+function splitHead(head: string): { code: string; reference: string; vehicleModel: string } {
   const tokens = head.split(/\s+/);
   const code = tokens.shift() || "";
   const rest = tokens.join(" ");
 
-  // "Modelo" costuma vir como "MARCA - MODELO"; a referência é o que vem antes.
   const dashIdx = rest.indexOf(" - ");
   let reference = rest;
   let vehicleModel = "";
@@ -124,9 +147,48 @@ function parseItemLine(line: string): ParsedPedidoItem | null {
     reference = beforeTokens.join(" ").trim() || brand;
     vehicleModel = `${brand}${rest.slice(dashIdx)}`.trim();
   }
-
-  return { code, reference, vehicleModel, quantity, unitValueBrl, unitWeightKg };
+  return { code, reference, vehicleModel };
 }
+
+/**
+ * Tenta interpretar uma linha de item.
+ * Formato: Código Referência Modelo Qtd. R$ Valor Peso [Entregue]
+ * Valor e peso são SEMPRE unitários — a multiplicação pela quantidade é feita depois.
+ */
+function parseItemLine(raw: RawItemLine): ParsedPedidoItem | null {
+  const line = raw.text;
+
+  const m = line.match(ITEM_RE);
+  if (m) {
+    const head = m[1].trim();
+    const quantity = parseInt(m[2], 10) || 0;
+    if (!head || quantity <= 0) return null;
+    return {
+      ...splitHead(head),
+      quantity,
+      unitValueBrl: brNum(m[3]),
+      unitWeightKg: brNum(m[4]),
+    };
+  }
+
+  if (raw.forcedValue != null) {
+    const n = line.match(ITEM_NO_VALUE_RE);
+    if (n) {
+      const head = n[1].trim();
+      const quantity = parseInt(n[2], 10) || 0;
+      if (!head || quantity <= 0) return null;
+      return {
+        ...splitHead(head),
+        quantity,
+        unitValueBrl: raw.forcedValue,
+        unitWeightKg: brNum(n[3]),
+      };
+    }
+  }
+
+  return null;
+}
+
 
 /** Extrai um ou mais pedidos do PDF gerado pelo app externo de catalisadores */
 export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
