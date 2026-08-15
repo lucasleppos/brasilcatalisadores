@@ -78,16 +78,18 @@ interface RawItemLine {
   text: string;
   /** Valor unitário quando a célula "R$ 1.234,56" veio quebrada em outra linha */
   forcedValue?: number;
+  /** Texto do modelo que ficou em linhas vizinhas por quebra de célula */
+  modelSuffix?: string;
 }
 
-const isBareRs = (l: string) => /^R\$$/.test(l.trim());
 const isBareNumber = (l: string) => /^[\d.,]+$/.test(l.trim()) && /\d/.test(l);
 
 /**
  * Normaliza linhas para leitura de itens.
- * O PDF quebra a célula de valor em duas linhas quando passa de mil:
+ * Quando o valor unitário passa de mil, o PDF quebra a célula em três rows:
  *   "R$" / "CC* SERIE CC HONDA - HONDA 2 0,890g" / "1.014,90"
- * (ou "R$" / "1.014,90" / linha do item, dependendo da ordem das rows).
+ * e o modelo longo pode vazar para as mesmas rows:
+ *   "VOLKSWAGEN - AMAROK 2.0 R$" / "2H0131765A 2H0214AC 1 3,040g" / "biturbo 1.958,82"
  */
 function normalizeLines(lines: string[]): RawItemLine[] {
   const out: RawItemLine[] = [];
@@ -95,27 +97,31 @@ function normalizeLines(lines: string[]): RawItemLine[] {
     const line = (lines[i] || "").trim();
     if (!line) continue;
 
-    if (isBareRs(line)) {
-      const a = (lines[i + 1] || "").trim();
-      const b = (lines[i + 2] || "").trim();
-      if (a && !isBareNumber(a) && isBareNumber(b)) {
-        out.push({ text: a, forcedValue: brNum(b) });
-        i += 2;
-        continue;
-      }
-      if (isBareNumber(a) && b && !isBareNumber(b)) {
-        out.push({ text: b, forcedValue: brNum(a) });
-        i += 2;
-        continue;
-      }
-      continue; // "R$" solto sem par identificável
-    }
-
-    // "algo R$" no fim da linha: o número está na linha seguinte
     if (/R\$\s*$/.test(line)) {
-      const next = (lines[i + 1] || "").trim();
-      out.push({ text: `${line}${next}`.replace(/\s+/g, " ").trim() });
-      i += 1;
+      const prefix = line.replace(/R\$\s*$/, "").trim();
+      const itemLine = (lines[i + 1] || "").trim();
+      const tail = (lines[i + 2] || "").trim();
+      const tailValue = tail.match(/([\d.,]+)\s*$/);
+
+      if (itemLine && !isBareNumber(itemLine) && tailValue) {
+        const extra = tail.slice(0, tailValue.index).trim();
+        out.push({
+          text: itemLine,
+          forcedValue: brNum(tailValue[1]),
+          modelSuffix: [prefix, extra].filter(Boolean).join(" ").trim() || undefined,
+        });
+        i += 2;
+        continue;
+      }
+
+      // Ordem invertida: "R$" / "1.014,90" / linha do item
+      if (isBareNumber(itemLine) && tail && !isBareNumber(tail)) {
+        out.push({ text: tail, forcedValue: brNum(itemLine), modelSuffix: prefix || undefined });
+        i += 2;
+        continue;
+      }
+
+      if (prefix) out.push({ text: prefix });
       continue;
     }
 
@@ -123,6 +129,7 @@ function normalizeLines(lines: string[]): RawItemLine[] {
   }
   return out;
 }
+
 
 const ITEM_RE =
   /^(.+?)\s+(\d+)\s+R\$\s*([\d.,]+)\s+([\d.,]+)\s*(?:g|kg|Kg|KG)?\s*(?:\[?(?:no|yes|sim|não|nao)\]?)?$/i;
