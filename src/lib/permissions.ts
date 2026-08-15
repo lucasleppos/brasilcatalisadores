@@ -77,6 +77,17 @@ export const MODULE_DEFINITIONS: Record<string, {
     actions: [],
     fields: [],
   },
+  filiais: {
+    label: "Filiais",
+    actions: [
+      { key: "create", label: "Criar" },
+      { key: "edit", label: "Editar" },
+      { key: "delete", label: "Excluir" },
+      { key: "ledger", label: "Conta Corrente" },
+      { key: "settle", label: "Fechar Período" },
+    ],
+    fields: [],
+  },
   catalogo: {
     label: "Catálogo",
     actions: [
