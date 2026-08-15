@@ -74,46 +74,76 @@ async function extractLines(file: File): Promise<string[]> {
   return lines;
 }
 
+interface RawItemLine {
+  text: string;
+  /** Valor unitário quando a célula "R$ 1.234,56" veio quebrada em outra linha */
+  forcedValue?: number;
+  /** Texto do modelo que ficou em linhas vizinhas por quebra de célula */
+  modelSuffix?: string;
+}
+
+const isBareNumber = (l: string) => /^[\d.,]+$/.test(l.trim()) && /\d/.test(l);
+
 /**
- * Junta linhas quebradas: "R$" sozinho (ou sem número) é unido à linha seguinte.
+ * Normaliza linhas para leitura de itens.
+ * Quando o valor unitário passa de mil, o PDF quebra a célula em três rows:
+ *   "R$" / "CC* SERIE CC HONDA - HONDA 2 0,890g" / "1.014,90"
+ * e o modelo longo pode vazar para as mesmas rows:
+ *   "VOLKSWAGEN - AMAROK 2.0 R$" / "2H0131765A 2H0214AC 1 3,040g" / "biturbo 1.958,82"
  */
-function joinBrokenLines(lines: string[]): string[] {
-  const out: string[] = [];
-  for (const line of lines) {
-    const prev = out[out.length - 1];
-    if (prev && /R\$\s*$/.test(prev)) {
-      out[out.length - 1] = `${prev}${line}`.replace(/\s+/g, " ").trim();
+function normalizeLines(lines: string[]): RawItemLine[] {
+  const out: RawItemLine[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] || "").trim();
+    if (!line) continue;
+
+    if (/R\$\s*$/.test(line)) {
+      const prefix = line.replace(/R\$\s*$/, "").trim();
+      const itemLine = (lines[i + 1] || "").trim();
+      const tail = (lines[i + 2] || "").trim();
+      const tailValue = tail.match(/([\d.,]+)\s*$/);
+
+      if (itemLine && !isBareNumber(itemLine) && tailValue) {
+        const extra = tail.slice(0, tailValue.index).trim();
+        out.push({
+          text: itemLine,
+          forcedValue: brNum(tailValue[1]),
+          modelSuffix: [prefix, extra].filter(Boolean).join(" ").trim() || undefined,
+        });
+        i += 2;
+        continue;
+      }
+
+      // Ordem invertida: "R$" / "1.014,90" / linha do item
+      if (isBareNumber(itemLine) && tail && !isBareNumber(tail)) {
+        out.push({ text: tail, forcedValue: brNum(itemLine), modelSuffix: prefix || undefined });
+        i += 2;
+        continue;
+      }
+
+      if (prefix) out.push({ text: prefix });
       continue;
     }
-    out.push(line);
+
+    out.push({ text: line });
   }
   return out;
 }
 
+
 const ITEM_RE =
   /^(.+?)\s+(\d+)\s+R\$\s*([\d.,]+)\s+([\d.,]+)\s*(?:g|kg|Kg|KG)?\s*(?:\[?(?:no|yes|sim|não|nao)\]?)?$/i;
 
-/**
- * Tenta interpretar uma linha de item.
- * Formato: Código Referência Modelo Qtd. R$ Valor Peso [Entregue]
- * A parte inicial (código + referência + modelo) é fatiada heuristicamente:
- * o primeiro token é o Código, o último bloco após " - " pertence ao Modelo.
- */
-function parseItemLine(line: string): ParsedPedidoItem | null {
-  const m = line.match(ITEM_RE);
-  if (!m) return null;
+/** Linha de item sem o valor (célula quebrada): "Código Ref Modelo Qtd Peso" */
+const ITEM_NO_VALUE_RE =
+  /^(.+?)\s+(\d+)\s+([\d.,]+)\s*(?:g|kg|Kg|KG)\s*(?:\[?(?:no|yes|sim|não|nao)\]?)?$/i;
 
-  const head = m[1].trim();
-  const quantity = parseInt(m[2], 10) || 0;
-  const unitValueBrl = brNum(m[3]);
-  const unitWeightKg = brNum(m[4]);
-  if (!head || quantity <= 0) return null;
-
+/** Fatia "Código Referência Modelo" heuristicamente */
+function splitHead(head: string): { code: string; reference: string; vehicleModel: string } {
   const tokens = head.split(/\s+/);
   const code = tokens.shift() || "";
   const rest = tokens.join(" ");
 
-  // "Modelo" costuma vir como "MARCA - MODELO"; a referência é o que vem antes.
   const dashIdx = rest.indexOf(" - ");
   let reference = rest;
   let vehicleModel = "";
@@ -124,18 +154,61 @@ function parseItemLine(line: string): ParsedPedidoItem | null {
     reference = beforeTokens.join(" ").trim() || brand;
     vehicleModel = `${brand}${rest.slice(dashIdx)}`.trim();
   }
-
-  return { code, reference, vehicleModel, quantity, unitValueBrl, unitWeightKg };
+  return { code, reference, vehicleModel };
 }
+
+/**
+ * Tenta interpretar uma linha de item.
+ * Formato: Código Referência Modelo Qtd. R$ Valor Peso [Entregue]
+ * Valor e peso são SEMPRE unitários — a multiplicação pela quantidade é feita depois.
+ */
+function parseItemLine(raw: RawItemLine): ParsedPedidoItem | null {
+  const line = raw.text;
+
+  const m = line.match(ITEM_RE);
+  if (m) {
+    const head = m[1].trim();
+    const quantity = parseInt(m[2], 10) || 0;
+    if (!head || quantity <= 0) return null;
+    return {
+      ...splitHead(head),
+      quantity,
+      unitValueBrl: brNum(m[3]),
+      unitWeightKg: brNum(m[4]),
+    };
+  }
+
+  if (raw.forcedValue != null) {
+    const n = line.match(ITEM_NO_VALUE_RE);
+    if (n) {
+      const head = n[1].trim();
+      const quantity = parseInt(n[2], 10) || 0;
+      if (!head || quantity <= 0) return null;
+      const parts = splitHead(head);
+      return {
+        ...parts,
+        vehicleModel: [parts.vehicleModel, raw.modelSuffix].filter(Boolean).join(" ").trim(),
+        quantity,
+        unitValueBrl: raw.forcedValue,
+        unitWeightKg: brNum(n[3]),
+      };
+    }
+  }
+
+
+  return null;
+}
+
 
 /** Extrai um ou mais pedidos do PDF gerado pelo app externo de catalisadores */
 export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
   const raw = await extractLines(file);
-  const lines = joinBrokenLines(raw);
+  const norm = normalizeLines(raw);
+  const texts = norm.map((n) => n.text);
 
   // Divide o arquivo em blocos por "Pedido Nº"
   const starts: number[] = [];
-  lines.forEach((l, i) => {
+  texts.forEach((l, i) => {
     if (/Pedido\s*N[ºo°]/i.test(l)) starts.push(i);
   });
   if (starts.length === 0) return [];
@@ -143,37 +216,55 @@ export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
   const pedidos: ParsedPedido[] = [];
 
   for (let s = 0; s < starts.length; s++) {
-    const block = lines.slice(starts[s], starts[s + 1] ?? lines.length);
-    const joined = block.join("\n");
+    const block = norm.slice(starts[s], starts[s + 1] ?? norm.length);
+    const blockTexts = block.map((b) => b.text);
+    const joined = blockTexts.join("\n");
 
     const numMatch = joined.match(/Pedido\s*N[ºo°]\s*:?\s*(\S+)/i);
     const pedidoNumber = numMatch ? numMatch[1] : "";
 
     const docMatch = joined.match(/(?:CPF|CNPJ)\s*:?\s*([\d.\-/\s]{11,20})/i);
-    const supplierDocument = docMatch ? onlyDigits(docMatch[1]) : "";
+    let supplierDocument = docMatch ? onlyDigits(docMatch[1]) : "";
 
+    // Nome do fornecedor: pode vir na mesma linha do rótulo ou na linha seguinte
+    // ("Cliente   CPF" / "JULIO SERGIO GONÇALVES - JULIO SERGIO   006.133.971-77")
     let supplierName = "";
-    const cliIdx = block.findIndex((l) => /^Cliente\b/i.test(l));
+    const cliIdx = blockTexts.findIndex((l) => /^Cliente\b/i.test(l));
     if (cliIdx > -1) {
-      const inline = block[cliIdx].replace(/^Cliente\s*:?\s*/i, "").trim();
-      supplierName = inline || (block[cliIdx + 1] || "").trim();
+      const inline = blockTexts[cliIdx].replace(/^Cliente\s*:?\s*/i, "").replace(/\s*(?:CPF|CNPJ)\s*:?\s*$/i, "").trim();
+      const candidate = /[A-Za-zÀ-ÿ]{3}/.test(inline) ? inline : (blockTexts[cliIdx + 1] || "").trim();
+      // remove o documento que vem na mesma linha (coluna à direita)
+      const docInline = candidate.match(/([\d]{3}\.?[\d]{3}\.?[\d]{3}-?[\d]{2}|[\d]{2}\.?[\d]{3}\.?[\d]{3}\/?[\d]{4}-?[\d]{2})\s*$/);
+      if (docInline) {
+        if (!supplierDocument) supplierDocument = onlyDigits(docInline[1]);
+        supplierName = candidate.slice(0, docInline.index).trim();
+      } else {
+        supplierName = candidate;
+      }
+      supplierName = supplierName.replace(/\s*(?:CPF|CNPJ).*$/i, "").trim();
     }
-    supplierName = supplierName.replace(/\s*CPF.*$/i, "").trim();
 
-    const dateMatch = joined.match(/Data do Pedido\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i);
-    const orderDate = dateMatch ? dateMatch[1] : "";
+    // Data: na linha do rótulo ou na linha seguinte ("Data do Pedido  Status" / "14/08/2026  pendente")
+    let orderDate = "";
+    const dtIdx = blockTexts.findIndex((l) => /Data do Pedido/i.test(l));
+    if (dtIdx > -1) {
+      const sameLine = blockTexts[dtIdx].match(/(\d{2}\/\d{2}\/\d{4})/);
+      const nextLine = (blockTexts[dtIdx + 1] || "").match(/(\d{2}\/\d{2}\/\d{4})/);
+      orderDate = sameLine?.[1] || nextLine?.[1] || "";
+    }
 
     const items: ParsedPedidoItem[] = [];
-    for (const line of block) {
-      if (/^C[óo]digo\b/i.test(line)) continue;
-      if (/Total|Resumo|Quantidade Total|Peso Total|Valor Total/i.test(line)) continue;
-      const item = parseItemLine(line);
+    for (const entry of block) {
+      if (/^C[óo]digo\b/i.test(entry.text)) continue;
+      if (/Total|Resumo|Quantidade Total|Peso Total|Valor Total/i.test(entry.text)) continue;
+      const item = parseItemLine(entry);
       if (item) items.push(item);
     }
 
     const footerWeight = joined.match(/Peso Total do Pedido\s*:?\s*([\d.,]+)/i);
     const footerValue = joined.match(/Valor Total do Pedido\s*:?\s*R\$\s*([\d.,]+)/i);
 
+    // Valor e peso do PDF são unitários: totais = unitário × quantidade
     const totalWeightKg = items.reduce((a, i) => a + i.unitWeightKg * i.quantity, 0);
     const totalValueBrl = items.reduce((a, i) => a + i.unitValueBrl * i.quantity, 0);
 
@@ -189,6 +280,7 @@ export async function parsePedidoPdf(file: File): Promise<ParsedPedido[]> {
       footerValueBrl: footerValue ? brNum(footerValue[1]) : null,
     });
   }
+
 
   return pedidos.filter((p) => p.pedidoNumber || p.items.length > 0);
 }
