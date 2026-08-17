@@ -597,13 +597,14 @@ export async function createPurchase(data: {
   const now = new Date().toISOString();
   const isBranchPurchase = !!data.branchId;
   if (isBranchPurchase) {
-    // Compra de filial: aguarda o lote físico chegar na matriz antes da conferência
-    initialStatus = AWAITING_TRANSFER_STATUS;
+    // Compra de filial: primeiro a filial confere as peças, depois vai ao estoque
+    initialStatus = BRANCH_CONFERENCE_STATUS;
     statusHistory = [
       { status: "Aguardando Inclusão", date: now },
-      { status: AWAITING_TRANSFER_STATUS, date: now },
+      { status: BRANCH_CONFERENCE_STATUS, date: now },
     ];
   } else {
+
     initialStatus = "Em Conferência";
     statusHistory = [
       { status: "Aguardando Inclusão", date: now },
