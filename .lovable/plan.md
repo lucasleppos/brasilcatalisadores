@@ -81,7 +81,7 @@ Ao confirmar o recebimento, as compras entram no pipeline normal da matriz (Em C
 
 - Novo status `Filial: Em Conferência` em `src/lib/purchases.ts` (pré-fluxo, fora das máquinas de estado), com filtro para excluir compras de filial em pré-transferência de `PurchasesPage`, `CompletedPage` e `ProcessBoard`.
 - `ImportPedidoDialog` passa a criar a compra com esse status e a gravar cada item importado com `seq`, `pedido` de origem e situação pendente de conferência.
-- Novo `src/components/branches/BranchConferenciaPanel.tsx` para a conferência item a item; recusas usam a categoria de item já existente para material separado do fluxo (`conferencia_excluida`) mais o motivo em `stage_evidence`.
+- Novo `src/components/branches/BranchConferenciaPanel.tsx` para a conferência item a item por marcação; itens não marcados usam a categoria de item já existente para material separado do fluxo (`conferencia_excluida`).
 - Funções novas em `src/lib/branches.ts`: `loadBranchPurchasesByStage`, `saveBranchConferencia`, `finishBranchConferencia` (recalcula `weight_declared` / `declared_value_brl` e muda o status para "Aguardando Transferência").
 - `BranchesPage` ganha as abas Conferência e Estoque; a aba Lotes recebe o relatório do lote e o botão de confirmação de recebimento.
 - Sem novas tabelas: aproveita `purchases`, `purchase_items`, `branch_transfers` e `stage_evidence`. Só será necessária uma migration se decidirmos gravar o motivo da recusa em coluna própria dos itens em vez de `stage_evidence`.
