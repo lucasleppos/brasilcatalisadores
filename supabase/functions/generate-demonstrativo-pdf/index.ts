@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
           doc.rect(margin, y, contentWidth, rowH, "F");
         }
         doc.text(`${item.seq ?? i + 1}`, pX[0] + 2, y + 4);
-        doc.text(`Código: ${cp?.code || "Manual"}`, pX[1] + 2, y + 4);
+        doc.text(`Código: ${cp?.code || item.part_code || "Manual"}`, pX[1] + 2, y + 4);
         if (cp?.reference) doc.text(`Referência: ${cp.reference}`, pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         if (w > 0) doc.text(`${fmt(w, 4)} kg`, pX[2] + 2, y + 8);
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : "Manual";
+          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
 
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : "Manual";
+          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
           const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
@@ -412,7 +412,7 @@ Deno.serve(async (req) => {
 
         doc.text(`${item.seq ?? i + 1}`, colX[0] + 2, y + 4);
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-        const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
+        const typeLabel = cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (item.part_code || item.part_reference || typeLabels[item.item_type] || item.item_type);
         doc.text(typeLabel, colX[1] + 2, y + 4);
         for (let li = 0; li < qtyWeightLines.length; li++) {
           doc.text(qtyWeightLines[li], colX[2] + 2, y + 4 + li * 4);
@@ -451,7 +451,7 @@ Deno.serve(async (req) => {
         .map((it: any) => {
           const a = labAgg[it.id];
           const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (typeLabels[it.item_type] || it.item_type);
+          const label = cp ? (cp.code || cp.reference) : (it.part_code || it.part_reference || typeLabels[it.item_type] || it.item_type);
           return { label: label || "—", pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
         });
       const orphanIds = Object.keys(labAgg).filter(id => !currentIds.has(id)).sort();

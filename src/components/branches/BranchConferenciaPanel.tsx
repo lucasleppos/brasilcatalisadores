@@ -22,6 +22,8 @@ interface Row {
   checked: boolean;
   label: string;
   reference: string;
+  vehicle: string;
+  pedidoNumber: string;
   quantity: number;
   weight: number;
   value: number;
@@ -42,6 +44,7 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -49,8 +52,12 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
       purchase.items.map((i) => ({
         id: i.id,
         checked: i.category !== EXCLUDED_CATEGORY,
-        label: i.catalogPartCode || (i.itemType === "ceramico" ? "Granel" : "sem código"),
-        reference: i.catalogPartRef || (i.itemType === "ceramico" ? "granel" : "—"),
+        label:
+          i.catalogPartCode || i.partCode || (i.itemType === "ceramico" ? "Granel" : "sem código"),
+        reference:
+          i.catalogPartRef || i.partReference || (i.itemType === "ceramico" ? "granel" : "—"),
+        vehicle: i.partVehicle || "",
+        pedidoNumber: i.pedidoNumber || "",
         quantity: i.quantity || 1,
         weight: Number(i.weight) || 0,
         value: Number(i.totalValue) || 0,
@@ -59,7 +66,16 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
       }))
     );
     setShowCatalog(false);
+    setSearch("");
   }, [open, purchase.id, purchase.items]);
+
+  const norm = (v: string) =>
+    v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const visibleRows = useMemo(() => {
+    const q = norm(search.trim());
+    if (!q) return rows;
+    return rows.filter((r) => norm(`${r.label} ${r.reference} ${r.vehicle} ${r.pedidoNumber}`).includes(q));
+  }, [rows, search]);
 
   const approved = rows.filter((r) => r.checked);
   const rejected = rows.filter((r) => !r.checked);
@@ -84,6 +100,8 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
         checked: true,
         label: part.code || part.reference,
         reference: part.reference,
+        vehicle: `${part.brand} - ${part.vehicle}`.trim(),
+        pedidoNumber: "",
         quantity: 1,
         weight: Number(part.weight) || 0,
         value: 0,
@@ -103,6 +121,8 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
         checked: true,
         label: "Granel",
         reference: "granel",
+        vehicle: "",
+        pedidoNumber: "",
         quantity: 1,
         weight: 0,
         value: 0,
@@ -128,6 +148,9 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
           weight: r.weight,
           total_value: r.value,
           catalog_part_id: r.catalogPartId || null,
+          part_code: r.label || null,
+          part_reference: r.reference || null,
+          part_vehicle: r.vehicle || null,
           category: r.checked ? null : EXCLUDED_CATEGORY,
         }))
       )
@@ -208,6 +231,13 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
             </Button>
           </div>
 
+          <Input
+            placeholder="Buscar por código, referência, modelo ou pedido…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9"
+          />
+
           {showCatalog && (
             <Card>
               <CardContent className="p-3">
@@ -218,7 +248,12 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
           )}
 
           <div className="space-y-2">
-            {rows.map((r, idx) => (
+            {visibleRows.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma peça encontrada para a busca.</p>
+            )}
+            {visibleRows.map((r) => {
+              const idx = rows.findIndex((x) => x.id === r.id);
+              return (
               <div
                 key={r.id}
                 className={`border rounded-md p-3 flex flex-col sm:flex-row sm:items-center gap-3 ${
@@ -228,9 +263,14 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
                 <Checkbox checked={r.checked} onCheckedChange={(v) => patch(r.id, { checked: !!v })} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">
-                    {idx + 1}. {r.label}
+                    {idx + 1}. <span className="font-mono">{r.label}</span>
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">{r.reference}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {[r.reference, r.vehicle].filter((v) => v && v !== "—").join(" · ") || "—"}
+                  </p>
+                  {r.pedidoNumber && (
+                    <p className="text-xs text-muted-foreground">pedido {r.pedidoNumber}</p>
+                  )}
                 </div>
                 {r.isNew ? (
                   <div className="flex flex-wrap items-end gap-2">
@@ -281,7 +321,9 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
+
             {rows.length === 0 && <p className="text-sm text-muted-foreground">Nenhum item nesta compra.</p>}
           </div>
         </div>

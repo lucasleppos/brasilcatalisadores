@@ -246,6 +246,9 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
             itemType: "ceramico",
             weight: i.unitWeightKg * i.quantity,
             totalValue: i.unitValueBrl * i.quantity,
+            partCode: i.bulkMaterial || "Granel",
+            partReference: "granel",
+            pedidoNumber: i.pedidoNumber || undefined,
           }];
         }
         return Array.from({ length: i.quantity }).map(() => ({
@@ -255,6 +258,10 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
           weight: i.unitWeightKg,
           totalValue: i.unitValueBrl,
           catalogPartId: i.catalogPartId,
+          partCode: i.code || undefined,
+          partReference: i.reference || undefined,
+          partVehicle: i.vehicleModel || undefined,
+          pedidoNumber: i.pedidoNumber || undefined,
         }));
       });
 

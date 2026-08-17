@@ -119,6 +119,12 @@ export default function BranchesPage() {
     (p) => p.branchId && p.status === BRANCH_CONFERENCE_STATUS
   );
 
+  /** Códigos das peças aptas de uma compra (para relatório/lista) */
+  const aptCodes = (p: Purchase) =>
+    p.items
+      .filter((i) => i.category !== EXCLUDED_CATEGORY)
+      .map((i) => i.catalogPartCode || i.partCode || (i.itemType === "ceramico" ? "granel" : "s/código"));
+
   /** Unidades aptas (marcadas) e não marcadas de uma compra de filial */
   const unitCounts = (p: Purchase) => {
     const apt = p.items.filter((i) => i.category !== EXCLUDED_CATEGORY);
@@ -267,18 +273,20 @@ export default function BranchesPage() {
 
   const exportTransferReport = (t: BranchTransfer, linked: Purchase[]) => {
     const rows = [
-      ["Compra", "Fornecedor", "Un aptas", "Un recusadas", "Peso declarado (kg)", "Valor declarado (R$)"],
-      ...linked.map((p) => {
-        const c = unitCounts(p);
-        return [
+      ["Compra", "Fornecedor", "Pedido", "Código", "Referência", "Un", "Peso (kg)", "Valor (R$)", "Situação"],
+      ...linked.flatMap((p) =>
+        p.items.map((i) => [
           p.purchaseNumber,
           p.supplierName.replace(/;/g, ","),
-          String(c.apt),
-          String(c.out),
-          (Number(p.weightDeclared) || 0).toFixed(3).replace(".", ","),
-          (Number(p.declaredValueBrl) || 0).toFixed(2).replace(".", ","),
-        ];
-      }),
+          i.pedidoNumber || "",
+          i.catalogPartCode || i.partCode || "",
+          (i.catalogPartRef || i.partReference || "").replace(/;/g, ","),
+          i.itemType === "ceramico" ? "granel" : String(i.quantity || 1),
+          (Number(i.weight) || 0).toFixed(3).replace(".", ","),
+          (Number(i.totalValue) || 0).toFixed(2).replace(".", ","),
+          i.category === EXCLUDED_CATEGORY ? "recusada" : "apta",
+        ])
+      ),
     ];
     const csv = rows.map((r) => r.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
@@ -759,6 +767,10 @@ export default function BranchesPage() {
                                   : "aguardando conferência"}
                               </span>
                             )}
+                          </span>
+                          <span className="text-muted-foreground text-xs hidden sm:block max-w-[16rem] truncate font-mono">
+                            {aptCodes(p).slice(0, 4).join(", ")}
+                            {aptCodes(p).length > 4 ? ` +${aptCodes(p).length - 4}` : ""}
                           </span>
                           <span className="text-muted-foreground text-xs">{p.status}</span>
                           {canEdit && t.status === "aberto" && (
