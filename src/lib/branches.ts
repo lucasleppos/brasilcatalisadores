@@ -402,3 +402,92 @@ export async function closeSettlementPeriod(input: {
 
   return mapSettlement(settlement);
 }
+
+// ===== Conferência da filial =====
+
+/** Compras da filial aguardando conferência do usuário da filial */
+export async function loadBranchConferencePurchaseIds(): Promise<string[]> {
+  const { data } = await supabase
+    .from("purchases")
+    .select("id")
+    .eq("status", BRANCH_CONFERENCE_STATUS);
+  return (data || []).map((r: any) => r.id);
+}
+
+const EXCLUDED = "conferencia_excluida";
+
+/**
+ * Marca os itens aprovados (flag) da conferência da filial.
+ * Itens não marcados ficam registrados como separados do fluxo.
+ */
+export async function saveBranchConferencia(
+  purchaseId: string,
+  checkedItemIds: string[]
+): Promise<boolean> {
+  const { data: rows } = await supabase
+    .from("purchase_items")
+    .select("id")
+    .eq("purchase_id", purchaseId);
+
+  const checked = new Set(checkedItemIds);
+  const approved = (rows || []).filter((r: any) => checked.has(r.id)).map((r: any) => r.id);
+  const rejected = (rows || []).filter((r: any) => !checked.has(r.id)).map((r: any) => r.id);
+
+  let ok = true;
+  if (approved.length > 0) {
+    const { error } = await supabase.from("purchase_items").update({ category: null }).in("id", approved);
+    ok = !error && ok;
+  }
+  if (rejected.length > 0) {
+    const { error } = await supabase.from("purchase_items").update({ category: EXCLUDED }).in("id", rejected);
+    ok = !error && ok;
+  }
+  return ok;
+}
+
+/**
+ * Conclui a conferência da filial: grava as marcações, recalcula peso/valor
+ * declarados com base apenas nos itens marcados e joga a compra no estoque
+ * da filial (aguardando transferência).
+ */
+export async function finishBranchConferencia(
+  purchaseId: string,
+  checkedItemIds: string[]
+): Promise<boolean> {
+  const saved = await saveBranchConferencia(purchaseId, checkedItemIds);
+  if (!saved) return false;
+
+  const { data: rows } = await supabase
+    .from("purchase_items")
+    .select("id, weight, total_value, quantity")
+    .eq("purchase_id", purchaseId);
+
+  const checked = new Set(checkedItemIds);
+  const approved = (rows || []).filter((r: any) => checked.has(r.id));
+  const weight = approved.reduce((a: number, r: any) => a + (Number(r.weight) || 0), 0);
+  const value = approved.reduce((a: number, r: any) => a + (Number(r.total_value) || 0), 0);
+
+  const { data: purchase } = await supabase
+    .from("purchases")
+    .select("status_history")
+    .eq("id", purchaseId)
+    .maybeSingle();
+
+  const history = [
+    ...(((purchase?.status_history as any[]) || [])),
+    { status: AWAITING_TRANSFER_STATUS, date: new Date().toISOString() },
+  ];
+
+  const { error } = await supabase
+    .from("purchases")
+    .update({
+      status: AWAITING_TRANSFER_STATUS,
+      status_history: history,
+      weight_declared: weight,
+      declared_value_brl: value,
+      total_brl: value,
+    })
+    .eq("id", purchaseId);
+
+  return !error;
+}
