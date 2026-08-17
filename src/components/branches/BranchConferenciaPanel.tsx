@@ -321,7 +321,9 @@ export default function BranchConferenciaPanel({ purchase, open, onOpenChange, o
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
+
             {rows.length === 0 && <p className="text-sm text-muted-foreground">Nenhum item nesta compra.</p>}
           </div>
         </div>
