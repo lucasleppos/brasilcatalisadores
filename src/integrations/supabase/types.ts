@@ -697,6 +697,10 @@ export type Database = {
           created_at: string | null
           id: string
           item_type: string
+          part_code: string | null
+          part_reference: string | null
+          part_vehicle: string | null
+          pedido_number: string | null
           pricing_source: string | null
           purchase_id: string
           quantity: number | null
@@ -714,6 +718,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type: string
+          part_code?: string | null
+          part_reference?: string | null
+          part_vehicle?: string | null
+          pedido_number?: string | null
           pricing_source?: string | null
           purchase_id: string
           quantity?: number | null
@@ -731,6 +739,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type?: string
+          part_code?: string | null
+          part_reference?: string | null
+          part_vehicle?: string | null
+          pedido_number?: string | null
           pricing_source?: string | null
           purchase_id?: string
           quantity?: number | null
