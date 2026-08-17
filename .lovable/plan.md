@@ -30,22 +30,24 @@ Compras importadas aguardando conferência (2)                [Importar pedido (
 Ao clicar em **Conferir** abre o painel item a item:
 
 ```text
-Conferência · 170826-03 · João da Silva                        Aptas 21 · Inaptas 3
+Conferência · 170826-03 · João da Silva                    Marcadas 21 · Fora 3
 -------------------------------------------------------------------------------
-# Pedido  Código      Referência        Un   Peso     Valor       Situação
-1 4512    ABC-123     Ford Ka 1.0       2    1,840 kg R$ 1.500,00 [Apta] [Inapta]
-2 4512    XYZ-990     Gol G5            1    0,920 kg R$   780,00 [Apta] [Inapta v]
-                                                        motivo: quebrada  Un aceita: 0
-3 4513    (granel)    Cerâmico solto    -    2,300 kg R$ 1.900,00 [Apta] [Inapta]
+[v] # Pedido  Código      Referência        Un   Peso      Valor
+[v] 1 4512    ABC-123     Ford Ka 1.0       2    1,840 kg  R$ 1.500,00
+[ ] 2 4512    XYZ-990     Gol G5            1    0,920 kg  R$   780,00
+[v] 3 4513    (granel)    Cerâmico solto    -    2,300 kg  R$ 1.900,00
 -------------------------------------------------------------------------------
-Aptas: 21 un · 10,640 kg · R$ 16.120,00      [+ Peça extra] [+ Granel]
-Inaptas: 3 un · 1,840 kg · R$ 2.639,38 (motivo obrigatório)
+Marcadas (aptas): 21 un · 10,640 kg · R$ 16.120,00   [Marcar todas] [Limpar]
+Não marcadas (inaptas/devolvidas): 3 un · 1,840 kg · R$ 2.639,38
+                                    [+ Peça extra] [+ Granel]
                                     [Salvar parcial]  [Concluir conferência]
 ```
 
-- Cada linha pode ser marcada apta/inapta, com ajuste de unidades aceitas e motivo obrigatório na recusa (faltou / quebrada / código errado / outro).
-- Peças inaptas não são apagadas: ficam registradas na compra como separadas do fluxo, para rastreabilidade e conferência da matriz.
-- **Concluir conferência** exige todas as linhas decididas, recalcula peso e valor declarados apenas com o que foi aprovado e move a compra para o estoque da filial.
+- Cada linha tem apenas uma caixa de marcação: marcada = apta, recebida e contabilizada; não marcada = inapta/devolvida. Sem motivo obrigatório e sem botão de recusa.
+- Atalhos "Marcar todas" / "Limpar" para agilizar pedidos grandes.
+- Itens não marcados não são apagados: ficam registrados na compra como separados do fluxo, para rastreabilidade e conferência da matriz.
+- **Concluir conferência** recalcula peso e valor declarados somando apenas os itens marcados e move a compra para o estoque da filial.
+
 
 **2. Estoque da filial (aguardando transferência)**
 
@@ -79,7 +81,7 @@ Ao confirmar o recebimento, as compras entram no pipeline normal da matriz (Em C
 
 - Novo status `Filial: Em Conferência` em `src/lib/purchases.ts` (pré-fluxo, fora das máquinas de estado), com filtro para excluir compras de filial em pré-transferência de `PurchasesPage`, `CompletedPage` e `ProcessBoard`.
 - `ImportPedidoDialog` passa a criar a compra com esse status e a gravar cada item importado com `seq`, `pedido` de origem e situação pendente de conferência.
-- Novo `src/components/branches/BranchConferenciaPanel.tsx` para a conferência item a item; recusas usam a categoria de item já existente para material separado do fluxo (`conferencia_excluida`) mais o motivo em `stage_evidence`.
+- Novo `src/components/branches/BranchConferenciaPanel.tsx` para a conferência item a item por marcação; itens não marcados usam a categoria de item já existente para material separado do fluxo (`conferencia_excluida`).
 - Funções novas em `src/lib/branches.ts`: `loadBranchPurchasesByStage`, `saveBranchConferencia`, `finishBranchConferencia` (recalcula `weight_declared` / `declared_value_brl` e muda o status para "Aguardando Transferência").
 - `BranchesPage` ganha as abas Conferência e Estoque; a aba Lotes recebe o relatório do lote e o botão de confirmação de recebimento.
-- Sem novas tabelas: aproveita `purchases`, `purchase_items`, `branch_transfers` e `stage_evidence`. Só será necessária uma migration se decidirmos gravar o motivo da recusa em coluna própria dos itens em vez de `stage_evidence`.
+- Sem novas tabelas e sem migration: aproveita `purchases`, `purchase_items`, `branch_transfers` e `stage_evidence`.
