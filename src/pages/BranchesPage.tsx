@@ -24,6 +24,7 @@ import {
   TransferStatus,
   TRANSFER_STATUS_LABELS,
   AWAITING_TRANSFER_STATUS,
+  BRANCH_CONFERENCE_STATUS,
   loadBranches,
   createBranch,
   updateBranch,
@@ -41,8 +42,9 @@ import {
   loadSettlements,
   closeSettlementPeriod,
 } from "@/lib/branches";
-import { Purchase, loadPurchases } from "@/lib/purchases";
+import { Purchase, loadPurchases, EXCLUDED_CATEGORY } from "@/lib/purchases";
 import ImportPedidoDialog from "@/components/branches/ImportPedidoDialog";
+import BranchConferenciaPanel from "@/components/branches/BranchConferenciaPanel";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const parseBrl = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
@@ -109,6 +111,22 @@ export default function BranchesPage() {
   const pendingPurchases = purchases.filter(
     (p) => p.branchId && p.status === AWAITING_TRANSFER_STATUS && !p.transferBatchId
   );
+
+  // ===== Conferência da filial =====
+  const [conferPurchase, setConferPurchase] = useState<Purchase | null>(null);
+
+  const conferencePurchases = purchases.filter(
+    (p) => p.branchId && p.status === BRANCH_CONFERENCE_STATUS
+  );
+
+  /** Unidades aptas (marcadas) e não marcadas de uma compra de filial */
+  const unitCounts = (p: Purchase) => {
+    const apt = p.items.filter((i) => i.category !== EXCLUDED_CATEGORY);
+    const out = p.items.filter((i) => i.category === EXCLUDED_CATEGORY);
+    const qty = (list: typeof p.items) =>
+      list.reduce((a, i) => a + (i.itemType === "ceramico" ? 0 : i.quantity || 1), 0);
+    return { apt: qty(apt), out: qty(out) };
+  };
 
   // ===== Filiais (cadastro) =====
   const [form, setForm] = useState({ name: "", code: "", contactPerson: "", phone: "", hasLocalStock: false, active: true });
@@ -245,6 +263,30 @@ export default function BranchesPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const exportTransferReport = (t: BranchTransfer, linked: Purchase[]) => {
+    const rows = [
+      ["Compra", "Fornecedor", "Un aptas", "Un recusadas", "Peso declarado (kg)", "Valor declarado (R$)"],
+      ...linked.map((p) => {
+        const c = unitCounts(p);
+        return [
+          p.purchaseNumber,
+          p.supplierName.replace(/;/g, ","),
+          String(c.apt),
+          String(c.out),
+          (Number(p.weightDeclared) || 0).toFixed(3).replace(".", ","),
+          (Number(p.declaredValueBrl) || 0).toFixed(2).replace(".", ","),
+        ];
+      }),
+    ];
+    const csv = rows.map((r) => r.join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lote-${transferCode(t, branchById(t.branchId), transfers)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const visibleTransfers = transfers.filter(
@@ -473,20 +515,74 @@ export default function BranchesPage() {
         )}
       </div>
 
-      <Tabs defaultValue="pedidos">
+      <Tabs defaultValue="conferencia">
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+          <TabsTrigger value="conferencia">
+            Conferência{conferencePurchases.length > 0 ? ` (${conferencePurchases.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="pedidos">Estoque</TabsTrigger>
           <TabsTrigger value="lotes">Lotes</TabsTrigger>
           <TabsTrigger value="confronto">Confronto</TabsTrigger>
           <TabsTrigger value="conta">Conta Corrente</TabsTrigger>
           <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
         </TabsList>
 
+        {/* ===== Conferência da filial ===== */}
+        <TabsContent value="conferencia" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
+                Compras importadas aguardando conferência ({conferencePurchases.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {conferencePurchases.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma compra aguardando conferência. Importe um pedido em PDF para começar.
+                </p>
+              )}
+              {conferencePurchases.map((p) => {
+                const c = unitCounts(p);
+                return (
+                  <div key={p.id} className="border rounded-md p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">
+                        {p.purchaseNumber} · {p.supplierName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {branchName(p.branchId)} · {c.apt + c.out} un · {fmtKg(Number(p.weightDeclared) || 0, 3)} ·{" "}
+                        {fmtBrl(Number(p.declaredValueBrl) || 0)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        pedidos de origem: {p.sourcePedidoNumber || "—"}
+                      </p>
+                    </div>
+                    {canEdit && (
+                      <Button size="sm" onClick={() => setConferPurchase(p)}>
+                        Conferir
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ===== Pedidos aguardando transferência ===== */}
         <TabsContent value="pedidos" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Aguardando transferência ({pendingPurchases.length})</CardTitle>
+              <CardTitle className="text-base">
+                Estoque da filial · aguardando transferência ({pendingPurchases.length})
+              </CardTitle>
+              {pendingPurchases.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Total conferido: {pendingPurchases.reduce((a, p) => a + unitCounts(p).apt, 0)} un ·{" "}
+                  {fmtKg(pendingPurchases.reduce((a, p) => a + (Number(p.weightDeclared) || 0), 0), 3)} ·{" "}
+                  {fmtBrl(pendingPurchases.reduce((a, p) => a + (Number(p.declaredValueBrl) || 0), 0))}
+                </p>
+              )}
             </CardHeader>
             <CardContent className="space-y-2">
               {pendingPurchases.length === 0 && (
@@ -501,7 +597,17 @@ export default function BranchesPage() {
                 const openTransfers = single ? transfers.filter((t) => t.branchId === single && t.status === "aberto") : [];
                 return (
                   <div className="border rounded-md p-3 bg-muted/40 flex flex-col sm:flex-row sm:items-center gap-2">
-                    <p className="text-sm flex-1">{selectedPending.length} pedido(s) selecionado(s)</p>
+                    {(() => {
+                      const sel = pendingPurchases.filter((p) => selectedPending.includes(p.id));
+                      const un = sel.reduce((a, p) => a + unitCounts(p).apt, 0);
+                      const w = sel.reduce((a, p) => a + (Number(p.weightDeclared) || 0), 0);
+                      const v = sel.reduce((a, p) => a + (Number(p.declaredValueBrl) || 0), 0);
+                      return (
+                        <p className="text-sm flex-1">
+                          {sel.length} compra(s) · {un} un · {fmtKg(w, 3)} · {fmtBrl(v)}
+                        </p>
+                      );
+                    })()}
                     {!single ? (
                       <p className="text-xs text-destructive">Selecione pedidos de uma única filial para agrupar.</p>
                     ) : (
@@ -622,6 +728,9 @@ export default function BranchesPage() {
                         <Undo2 className="h-4 w-4 mr-1" /> Voltar etapa
                       </Button>
                     )}
+                    <Button size="sm" variant="ghost" onClick={() => exportTransferReport(t, linked)}>
+                      <Download className="h-4 w-4 mr-1" /> Relatório
+                    </Button>
                     {canEdit && t.status !== "conferido" && (
                       <Button size="sm" variant="outline" disabled={busy} onClick={() => advanceTransfer(t, linked)}>
                         Avançar
@@ -638,6 +747,11 @@ export default function BranchesPage() {
                         <li key={p.id} className="flex items-center justify-between gap-2 border-b last:border-0 py-1">
                           <span className="flex-1">
                             {p.purchaseNumber} · {p.supplierName}
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {unitCounts(p).apt} un aptas
+                              {unitCounts(p).out > 0 ? ` · ${unitCounts(p).out} recusadas` : ""} ·{" "}
+                              {fmtKg(Number(p.weightDeclared) || 0, 3)} · {fmtBrl(Number(p.declaredValueBrl) || 0)}
+                            </span>
                             {arrived && (
                               <span className="text-xs text-muted-foreground ml-2">
                                 {p.weightReal != null
