@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity } from "lucide-react";
 import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_OP_STATUSES } from "@/lib/purchases";
+import { isBranchPreTransfer } from "@/lib/branches";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import { subDays, isAfter, parseISO } from "date-fns";
@@ -83,7 +84,7 @@ export default function ProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases(await loadPurchases());
+      setPurchases((await loadPurchases()).filter(p => !isBranchPreTransfer(p)));
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }

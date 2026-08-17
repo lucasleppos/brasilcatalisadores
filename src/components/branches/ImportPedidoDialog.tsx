@@ -287,7 +287,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
 
       toast({
         title: `Compra ${created.purchaseNumber} criada`,
-        description: `${totalQty} un · ${fmtKg(totalWeight, 3)} · ${fmtBrl(totalValue)} — aguardando transferência.`,
+        description: `${totalQty} un · ${fmtKg(totalWeight, 3)} · ${fmtBrl(totalValue)} — aguardando conferência da filial.`,
       });
 
       // Se o arquivo tinha pedidos de outros fornecedores, segue para o próximo grupo

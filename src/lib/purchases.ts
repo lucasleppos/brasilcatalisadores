@@ -3,7 +3,7 @@ import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
 import { fmtNum } from "./utils";
-import { AWAITING_TRANSFER_STATUS } from "./branches";
+import { BRANCH_CONFERENCE_STATUS } from "./branches";
 
 // ===== Material Flow Types =====
 export type MaterialFlow = "pecas" | "ceramico" | "sacola";
@@ -597,13 +597,14 @@ export async function createPurchase(data: {
   const now = new Date().toISOString();
   const isBranchPurchase = !!data.branchId;
   if (isBranchPurchase) {
-    // Compra de filial: aguarda o lote físico chegar na matriz antes da conferência
-    initialStatus = AWAITING_TRANSFER_STATUS;
+    // Compra de filial: primeiro a filial confere as peças, depois vai ao estoque
+    initialStatus = BRANCH_CONFERENCE_STATUS;
     statusHistory = [
       { status: "Aguardando Inclusão", date: now },
-      { status: AWAITING_TRANSFER_STATUS, date: now },
+      { status: BRANCH_CONFERENCE_STATUS, date: now },
     ];
   } else {
+
     initialStatus = "Em Conferência";
     statusHistory = [
       { status: "Aguardando Inclusão", date: now },

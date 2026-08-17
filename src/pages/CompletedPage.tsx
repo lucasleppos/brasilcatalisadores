@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, Search, Eye, ChevronRight, ChevronDown } from "lucide-react";
 import { Purchase, loadPurchases, getItemLabel, getStatusColor, syncCeramicoAllocation } from "@/lib/purchases";
+import { isBranchPreTransfer } from "@/lib/branches";
 import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
@@ -49,7 +50,7 @@ export default function CompletedPage() {
     if (authLoading || !session) return;
     let all: Purchase[];
     try {
-      all = await loadPurchases();
+      all = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
     } catch (e) {
       console.error("Erro ao carregar concluídos:", e);
       return;
@@ -64,7 +65,7 @@ export default function CompletedPage() {
     );
     if (pending.length > 0) {
       const results = await Promise.all(pending.map(p => syncCeramicoAllocation(p.id)));
-      if (results.some(Boolean)) all = await loadPurchases();
+      if (results.some(Boolean)) all = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
     }
 
     // Concluídos: encerrados + aguardando alocação em bag
