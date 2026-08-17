@@ -267,18 +267,20 @@ export default function BranchesPage() {
 
   const exportTransferReport = (t: BranchTransfer, linked: Purchase[]) => {
     const rows = [
-      ["Compra", "Fornecedor", "Un aptas", "Un recusadas", "Peso declarado (kg)", "Valor declarado (R$)"],
-      ...linked.map((p) => {
-        const c = unitCounts(p);
-        return [
+      ["Compra", "Fornecedor", "Pedido", "Código", "Referência", "Un", "Peso (kg)", "Valor (R$)", "Situação"],
+      ...linked.flatMap((p) =>
+        p.items.map((i) => [
           p.purchaseNumber,
           p.supplierName.replace(/;/g, ","),
-          String(c.apt),
-          String(c.out),
-          (Number(p.weightDeclared) || 0).toFixed(3).replace(".", ","),
-          (Number(p.declaredValueBrl) || 0).toFixed(2).replace(".", ","),
-        ];
-      }),
+          i.pedidoNumber || "",
+          i.catalogPartCode || i.partCode || "",
+          (i.catalogPartRef || i.partReference || "").replace(/;/g, ","),
+          i.itemType === "ceramico" ? "granel" : String(i.quantity || 1),
+          (Number(i.weight) || 0).toFixed(3).replace(".", ","),
+          (Number(i.totalValue) || 0).toFixed(2).replace(".", ","),
+          i.category === EXCLUDED_CATEGORY ? "recusada" : "apta",
+        ])
+      ),
     ];
     const csv = rows.map((r) => r.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
