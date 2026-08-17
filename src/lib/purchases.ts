@@ -286,6 +286,12 @@ export interface PurchaseQuoteItem {
   catalogPartId?: string;
   catalogPartCode?: string;
   catalogPartRef?: string;
+  /** Dados descritivos da peça quando ela não vem do catálogo (ex.: importação de PDF) */
+  partCode?: string;
+  partReference?: string;
+  partVehicle?: string;
+  /** Número do pedido de origem (importação de PDF da filial) */
+  pedidoNumber?: string;
   weightReal?: number;
   weightLoss?: number;
   /** Número fixo da peça/grupo definido na conferência */
@@ -479,6 +485,10 @@ export async function loadPurchases(): Promise<Purchase[]> {
       catalogPartId: item.catalog_part_id || undefined,
       catalogPartCode: cp?.code || undefined,
       catalogPartRef: cp?.reference || undefined,
+      partCode: item.part_code || undefined,
+      partReference: item.part_reference || undefined,
+      partVehicle: item.part_vehicle || undefined,
+      pedidoNumber: item.pedido_number || undefined,
       weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
       weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
       seq: (item as any).seq != null ? Number((item as any).seq) : undefined,
@@ -565,6 +575,10 @@ export async function createPurchase(data: {
         result: item.calc_result as CalculatorResult | undefined,
         category: item.category || undefined,
         catalogPartId: item.catalog_part_id || undefined,
+        partCode: item.part_code || undefined,
+        partReference: item.part_reference || undefined,
+        partVehicle: item.part_vehicle || undefined,
+        pedidoNumber: item.pedido_number || undefined,
         weightReal: item.weight_real != null ? Number(item.weight_real) : undefined,
         weightLoss: item.weight_loss != null ? Number(item.weight_loss) : undefined,
         seq: item.seq != null ? Number(item.seq) : undefined,
@@ -655,6 +669,10 @@ export async function createPurchase(data: {
         calc_result: (i.result as any) || null,
         category: i.category || null,
         catalog_part_id: i.catalogPartId || null,
+        part_code: i.partCode || null,
+        part_reference: i.partReference || null,
+        part_vehicle: i.partVehicle || null,
+        pedido_number: i.pedidoNumber || null,
       }))
     );
   }
@@ -928,6 +946,10 @@ export async function registerAnalysis(
     result: i.calc_result as CalculatorResult | undefined,
     category: i.category || undefined,
     catalogPartId: i.catalog_part_id || undefined,
+    partCode: i.part_code || undefined,
+    partReference: i.part_reference || undefined,
+    partVehicle: i.part_vehicle || undefined,
+    pedidoNumber: i.pedido_number || undefined,
     weightReal: i.weight_real != null ? Number(i.weight_real) : undefined,
     weightLoss: i.weight_loss != null ? Number(i.weight_loss) : undefined,
     seq: i.seq != null ? Number(i.seq) : undefined,
@@ -977,6 +999,10 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
       calc_result: (i.result as any) || null,
       category: i.category || null,
       catalog_part_id: i.catalogPartId || null,
+      part_code: i.partCode || null,
+      part_reference: i.partReference || null,
+      part_vehicle: i.partVehicle || null,
+      pedido_number: i.pedidoNumber || null,
       seq: i.seq ?? null,
     };
     if (existingIds.has(i.id)) {
