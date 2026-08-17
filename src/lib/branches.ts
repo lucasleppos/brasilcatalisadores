@@ -63,6 +63,15 @@ export interface BranchSettlement {
 /** Status inicial de uma compra de filial, antes de chegar na matriz */
 export const AWAITING_TRANSFER_STATUS = "Aguardando Transferência";
 
+/** Compra importada aguardando a conferência do usuário da filial */
+export const BRANCH_CONFERENCE_STATUS = "Filial: Em Conferência";
+
+/** Compra de filial ainda em pré-fluxo (não visível nos módulos da matriz) */
+export function isBranchPreTransfer(p: { branchId?: string | null; status: string }): boolean {
+  return !!p.branchId && (p.status === BRANCH_CONFERENCE_STATUS || p.status === AWAITING_TRANSFER_STATUS);
+}
+
+
 // ===== Mappers =====
 
 function mapBranch(r: any): Branch {
