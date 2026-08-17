@@ -3,7 +3,7 @@ import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
 import { fmtNum } from "./utils";
-import { AWAITING_TRANSFER_STATUS, BRANCH_CONFERENCE_STATUS } from "./branches";
+import { BRANCH_CONFERENCE_STATUS } from "./branches";
 
 // ===== Material Flow Types =====
 export type MaterialFlow = "pecas" | "ceramico" | "sacola";
