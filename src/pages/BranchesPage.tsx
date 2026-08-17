@@ -119,6 +119,12 @@ export default function BranchesPage() {
     (p) => p.branchId && p.status === BRANCH_CONFERENCE_STATUS
   );
 
+  /** Códigos das peças aptas de uma compra (para relatório/lista) */
+  const aptCodes = (p: Purchase) =>
+    p.items
+      .filter((i) => i.category !== EXCLUDED_CATEGORY)
+      .map((i) => i.catalogPartCode || i.partCode || (i.itemType === "ceramico" ? "granel" : "s/código"));
+
   /** Unidades aptas (marcadas) e não marcadas de uma compra de filial */
   const unitCounts = (p: Purchase) => {
     const apt = p.items.filter((i) => i.category !== EXCLUDED_CATEGORY);
@@ -761,6 +767,10 @@ export default function BranchesPage() {
                                   : "aguardando conferência"}
                               </span>
                             )}
+                          </span>
+                          <span className="text-muted-foreground text-xs hidden sm:block max-w-[16rem] truncate font-mono">
+                            {aptCodes(p).slice(0, 4).join(", ")}
+                            {aptCodes(p).length > 4 ? ` +${aptCodes(p).length - 4}` : ""}
                           </span>
                           <span className="text-muted-foreground text-xs">{p.status}</span>
                           {canEdit && t.status === "aberto" && (
