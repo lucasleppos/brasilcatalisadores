@@ -29,12 +29,24 @@ const REASON_LABELS: Record<RemovalReason, string> = {
 
 interface ReviewItem extends ParsedPedidoItem {
   key: string;
+  /** Pedido de origem da peça */
+  pedidoNumber: string;
   confirmed: boolean;
   removalReason: RemovalReason | null;
   extra?: boolean;
   catalogPartId?: string;
   bulk?: boolean;
   bulkMaterial?: string;
+}
+
+/** Um grupo = um fornecedor = uma compra (pode reunir vários pedidos do arquivo) */
+interface PedidoGroup {
+  supplierName: string;
+  supplierDocument: string;
+  orderDate: string;
+  pedidoNumbers: string[];
+  footerWeightKg: number | null;
+  footerValueBrl: number | null;
 }
 
 interface Props {
@@ -47,32 +59,65 @@ interface Props {
 let keySeq = 0;
 const nextKey = () => `it-${++keySeq}`;
 
+/** Agrupa os pedidos lidos por fornecedor (CPF/CNPJ) */
+function buildGroups(pedidos: ParsedPedido[]): { group: PedidoGroup; items: ReviewItem[] }[] {
+  const map = new Map<string, { group: PedidoGroup; items: ReviewItem[] }>();
+
+  for (const p of pedidos) {
+    const key = p.supplierDocument || p.supplierName || "sem-fornecedor";
+    let entry = map.get(key);
+    if (!entry) {
+      entry = {
+        group: {
+          supplierName: p.supplierName,
+          supplierDocument: p.supplierDocument,
+          orderDate: p.orderDate,
+          pedidoNumbers: [],
+          footerWeightKg: null,
+          footerValueBrl: null,
+        },
+        items: [],
+      };
+      map.set(key, entry);
+    }
+    if (p.pedidoNumber) entry.group.pedidoNumbers.push(p.pedidoNumber);
+    if (!entry.group.orderDate && p.orderDate) entry.group.orderDate = p.orderDate;
+    if (p.footerWeightKg != null) entry.group.footerWeightKg = (entry.group.footerWeightKg || 0) + p.footerWeightKg;
+    if (p.footerValueBrl != null) entry.group.footerValueBrl = (entry.group.footerValueBrl || 0) + p.footerValueBrl;
+
+    for (const it of p.items) {
+      entry.items.push({
+        ...it,
+        key: nextKey(),
+        pedidoNumber: p.pedidoNumber,
+        confirmed: true,
+        removalReason: null,
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 export default function ImportPedidoDialog({ open, onOpenChange, branches, onCreated }: Props) {
   const { profile } = useAuth();
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [pedidos, setPedidos] = useState<ParsedPedido[]>([]);
+  const [groups, setGroups] = useState<{ group: PedidoGroup; items: ReviewItem[] }[]>([]);
   const [current, setCurrent] = useState(0);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [branchId, setBranchId] = useState("");
 
   const reset = () => {
-    setPedidos([]);
+    setGroups([]);
     setItems([]);
     setCurrent(0);
     setBranchId("");
   };
 
-  const loadPedido = (list: ParsedPedido[], idx: number) => {
+  const loadGroup = (list: { group: PedidoGroup; items: ReviewItem[] }[], idx: number) => {
     setCurrent(idx);
-    setItems(
-      (list[idx]?.items || []).map((i) => ({
-        ...i,
-        key: nextKey(),
-        confirmed: true,
-        removalReason: null,
-      }))
-    );
+    setItems(list[idx]?.items || []);
   };
 
   const handleFile = async (file: File | null) => {
@@ -88,11 +133,16 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
         });
         return;
       }
-      setPedidos(parsed);
-      loadPedido(parsed, 0);
+      const built = buildGroups(parsed);
+      setGroups(built);
+      loadGroup(built, 0);
+      const totalItems = parsed.reduce((a, p) => a + p.items.length, 0);
       toast({
-        title: `${parsed.length} pedido(s) detectado(s)`,
-        description: `${parsed[0].items.length} itens lidos no primeiro pedido.`,
+        title: `${parsed.length} pedido(s) lido(s)`,
+        description:
+          built.length > 1
+            ? `${totalItems} peças em ${built.length} fornecedores — uma compra por fornecedor.`
+            : `${totalItems} peças reunidas em uma única compra.`,
       });
     } catch (e: any) {
       toast({ title: "Erro ao ler o PDF", description: e?.message || "Falha na leitura", variant: "destructive" });
@@ -101,11 +151,13 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
     }
   };
 
-  const pedido = pedidos[current];
+  const entry = groups[current];
+  const group = entry?.group;
   const confirmed = items.filter((i) => i.confirmed);
   const totalWeight = confirmed.reduce((a, i) => a + i.unitWeightKg * i.quantity, 0);
   const totalValue = confirmed.reduce((a, i) => a + i.unitValueBrl * i.quantity, 0);
   const totalQty = confirmed.reduce((a, i) => a + i.quantity, 0);
+  const multiPedido = (group?.pedidoNumbers.length || 0) > 1;
 
   const update = (key: string, patch: Partial<ReviewItem>) =>
     setItems((prev) => prev.map((i) => (i.key === key ? { ...i, ...patch } : i)));
@@ -115,6 +167,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
       ...prev,
       {
         key: nextKey(),
+        pedidoNumber: "",
         code: part.code,
         reference: part.reference,
         vehicleModel: `${part.brand} - ${part.vehicle}`,
@@ -134,6 +187,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
       ...prev,
       {
         key: nextKey(),
+        pedidoNumber: "",
         code: "",
         reference: "",
         vehicleModel: "",
@@ -150,7 +204,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
   };
 
   const handleConfirm = async () => {
-    if (!pedido) return;
+    if (!group) return;
     if (!branchId) {
       toast({ title: "Selecione a filial", variant: "destructive" });
       return;
@@ -163,12 +217,13 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
     try {
       // 1. Casar/criar fornecedor por CPF/CNPJ
       const suppliers = await loadSuppliers();
-      const doc = pedido.supplierDocument;
+      const doc = group.supplierDocument;
       let supplier = suppliers.find((s) => (s.document || "").replace(/\D/g, "") === doc && doc.length > 0);
       const branch = branches.find((b) => b.id === branchId);
+      const pedidoList = group.pedidoNumbers.join(", ");
       if (!supplier) {
         supplier = await addSupplier({
-          name: pedido.supplierName || `Fornecedor ${doc || pedido.pedidoNumber}`,
+          name: group.supplierName || `Fornecedor ${doc || pedidoList}`,
           document: doc,
           email: "",
           branch: branch?.name || "",
@@ -209,13 +264,20 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
         buyer: supplier.buyer || profile?.full_name || "",
         items: purchaseItems as any,
         notes: [
-          `Importado do pedido ${pedido.pedidoNumber} (${branch?.name || ""})`,
-          ...items.filter((i) => !i.confirmed).map((i) => `Removido: ${i.code || "s/código"} — ${i.removalReason ? REASON_LABELS[i.removalReason] : "sem motivo"}`),
+          `Importado ${group.pedidoNumbers.length > 1 ? "dos pedidos" : "do pedido"} ${pedidoList} (${branch?.name || ""})`,
+          ...items
+            .filter((i) => !i.confirmed)
+            .map(
+              (i) =>
+                `Removido: ${i.code || "s/código"}${i.pedidoNumber ? ` (pedido ${i.pedidoNumber})` : ""} — ${
+                  i.removalReason ? REASON_LABELS[i.removalReason] : "sem motivo"
+                }`
+            ),
         ].join("\n"),
         branchId,
         weightDeclared: totalWeight,
         declaredValueBrl: totalValue,
-        sourcePedidoNumber: pedido.pedidoNumber,
+        sourcePedidoNumber: pedidoList,
       });
 
       if (!created) {
@@ -228,10 +290,10 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
         description: `${totalQty} un · ${fmtKg(totalWeight, 3)} · ${fmtBrl(totalValue)} — aguardando transferência.`,
       });
 
-      // Se o arquivo tinha mais pedidos, segue para o próximo
-      if (current + 1 < pedidos.length) {
-        loadPedido(pedidos, current + 1);
-        toast({ title: `Próximo pedido: ${pedidos[current + 1].pedidoNumber}` });
+      // Se o arquivo tinha pedidos de outros fornecedores, segue para o próximo grupo
+      if (current + 1 < groups.length) {
+        loadGroup(groups, current + 1);
+        toast({ title: `Próximo fornecedor: ${groups[current + 1].group.supplierName || "sem nome"}` });
       } else {
         reset();
         onOpenChange(false);
@@ -250,7 +312,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {!pedido && (
+          {!group && (
             <Card>
               <CardContent className="p-6 space-y-3">
                 <Label htmlFor="pedido-pdf">Arquivo PDF do pedido</Label>
@@ -262,7 +324,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
                   onChange={(e) => handleFile(e.target.files?.[0] || null)}
                 />
                 <p className="text-sm text-muted-foreground">
-                  O arquivo pode conter mais de um pedido — cada um vira uma compra separada.
+                  O arquivo pode conter vários pedidos — todas as peças são reunidas em uma única compra.
                 </p>
                 {parsing && (
                   <p className="text-sm flex items-center gap-2">
@@ -273,27 +335,29 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
             </Card>
           )}
 
-          {pedido && (
+          {group && (
             <>
               <Card>
                 <CardContent className="p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Pedido</Label>
-                    <p className="font-semibold">{pedido.pedidoNumber || "—"}</p>
-                    {pedidos.length > 1 && (
+                    <Label className="text-xs text-muted-foreground">
+                      {multiPedido ? `Pedidos (${group.pedidoNumbers.length})` : "Pedido"}
+                    </Label>
+                    <p className="font-semibold break-words">{group.pedidoNumbers.join(", ") || "—"}</p>
+                    {groups.length > 1 && (
                       <Badge variant="secondary" className="mt-1">
-                        {current + 1} de {pedidos.length}
+                        Fornecedor {current + 1} de {groups.length}
                       </Badge>
                     )}
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Fornecedor</Label>
-                    <p className="font-medium">{pedido.supplierName || "—"}</p>
-                    <p className="text-xs text-muted-foreground">{pedido.supplierDocument || "sem CPF"}</p>
+                    <p className="font-medium">{group.supplierName || "—"}</p>
+                    <p className="text-xs text-muted-foreground">{group.supplierDocument || "sem CPF"}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Data</Label>
-                    <p className="font-medium">{pedido.orderDate || "—"}</p>
+                    <p className="font-medium">{group.orderDate || "—"}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Filial</Label>
@@ -309,18 +373,23 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
                 </CardContent>
               </Card>
 
-              {(pedido.footerWeightKg != null && Math.abs(pedido.footerWeightKg - pedido.totalWeightKg) > 0.01) && (
+              {groups.length > 1 && (
                 <p className="text-sm text-amber-600">
-                  Atenção: peso somado dos itens ({fmtKg(pedido.totalWeightKg, 3)}) difere do total impresso no PDF ({fmtKg(pedido.footerWeightKg, 3)}). Confira os itens antes de criar a compra.
+                  O arquivo tem pedidos de fornecedores diferentes. Será criada uma compra por fornecedor.
                 </p>
               )}
 
-              {(pedido.footerValueBrl != null && Math.abs(pedido.footerValueBrl - pedido.totalValueBrl) > 0.05) && (
+              {(group.footerWeightKg != null && Math.abs(group.footerWeightKg - totalWeight) > 0.01) && (
                 <p className="text-sm text-amber-600">
-                  Atenção: valor somado dos itens ({fmtBrl(pedido.totalValueBrl)}) difere do total impresso no PDF ({fmtBrl(pedido.footerValueBrl)}). Confira os itens antes de criar a compra.
+                  Atenção: peso somado dos itens ({fmtKg(totalWeight, 3)}) difere do total impresso no PDF ({fmtKg(group.footerWeightKg, 3)}). Confira os itens antes de criar a compra.
                 </p>
               )}
 
+              {(group.footerValueBrl != null && Math.abs(group.footerValueBrl - totalValue) > 0.05) && (
+                <p className="text-sm text-amber-600">
+                  Atenção: valor somado dos itens ({fmtBrl(totalValue)}) difere do total impresso no PDF ({fmtBrl(group.footerValueBrl)}). Confira os itens antes de criar a compra.
+                </p>
+              )}
 
               {/* Desktop */}
               <div className="hidden md:block border rounded-md overflow-x-auto">
@@ -328,6 +397,7 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">OK</TableHead>
+                      {multiPedido && <TableHead className="w-24">Pedido</TableHead>}
                       <TableHead>Código</TableHead>
                       <TableHead>Referência</TableHead>
                       <TableHead>Modelo</TableHead>
@@ -347,6 +417,9 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
                             onCheckedChange={(v) => update(i.key, { confirmed: !!v, removalReason: v ? null : i.removalReason })}
                           />
                         </TableCell>
+                        {multiPedido && (
+                          <TableCell className="text-xs text-muted-foreground">{i.pedidoNumber || "extra"}</TableCell>
+                        )}
                         <TableCell className="font-mono text-xs">
                           {i.bulk ? (
                             <Input
@@ -431,7 +504,10 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">{i.vehicleModel || i.reference}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {multiPedido && i.pedidoNumber ? `Pedido ${i.pedidoNumber} · ` : ""}
+                        {i.vehicleModel || i.reference}
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <Label className="text-xs">Qtd</Label>
@@ -489,12 +565,15 @@ export default function ImportPedidoDialog({ open, onOpenChange, branches, onCre
           )}
         </div>
 
-        {pedido && (
+        {group && (
           <DialogFooter className="p-4 border-t flex-col sm:flex-row gap-2 sm:justify-between">
             <div className="text-sm">
               <span className="font-semibold">{totalQty} un</span> confirmados ·{" "}
               <span className="font-semibold">{fmtKg(totalWeight, 3)}</span> ·{" "}
               <span className="font-semibold">{fmtBrl(totalValue)}</span>
+              {multiPedido && (
+                <span className="text-muted-foreground"> · {group.pedidoNumbers.length} pedidos em 1 compra</span>
+              )}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }} disabled={saving}>
