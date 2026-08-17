@@ -1081,6 +1081,16 @@ export default function BranchesPage() {
 
       <ImportPedidoDialog open={importOpen} onOpenChange={setImportOpen} branches={branches} onCreated={refresh} />
 
+      {conferPurchase && (
+        <BranchConferenciaPanel
+          purchase={conferPurchase}
+          open={!!conferPurchase}
+          onOpenChange={(v) => !v && setConferPurchase(null)}
+          onCompleted={refresh}
+        />
+      )}
+
+
       {/* Dialog filial */}
       <Dialog open={!!branchDialog} onOpenChange={(v) => !v && setBranchDialog(null)}>
         <DialogContent>
