@@ -102,65 +102,11 @@ function labelHtml(l: LabelData, qr: string): string {
 
 
 /**
- * Tries to print directly on the paired Bluetooth thermal printer (TSPL/ESC-POS).
- * Returns false when Bluetooth printing is unavailable/disabled or fails, so the
- * caller can fall back to the browser print dialog.
- */
-async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
-  try {
-    const [{ sendToPrinter, loadPrinterPrefs }, { buildTsplJob, buildEscPos }, { buildTsplRasterJob }] = await Promise.all([
-      import("@/lib/thermal-printer"),
-      import("@/lib/label-tspl"),
-      import("@/lib/label-raster"),
-    ]);
-    const prefs = loadPrinterPrefs();
-    // A single job (one calibration header for all labels) prevents the printer
-    // from re-running gap detection and ejecting blank labels in between.
-    if (prefs.language === "tspl" && prefs.renderMode !== "text") {
-      const job = await buildTsplRasterJob(labels, {
-        direction: prefs.direction,
-        marginX: prefs.marginX,
-        marginY: prefs.marginY,
-        gapMm: prefs.gapMm,
-        offsetMm: prefs.offsetMm,
-        copies: prefs.copies,
-        titlePx: prefs.titlePx,
-        textPx: prefs.textPx,
-      });
-      return await sendToPrinter([job]);
-    }
-    if (prefs.language === "escpos") {
-      return await sendToPrinter(labels.map(l => buildEscPos(l)));
-    }
-    const job = buildTsplJob(labels, {
-      direction: prefs.direction,
-      marginX: prefs.marginX,
-      marginY: prefs.marginY,
-      gapMm: prefs.gapMm,
-      offsetMm: prefs.offsetMm,
-      copies: prefs.copies,
-      fontMode: prefs.fontMode,
-      titleScale: prefs.titleScale,
-      textScale: prefs.textScale,
-    });
-    return await sendToPrinter([job]);
-
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Prints thermal labels (100 x 50 mm, 1 per page). Uses the Bluetooth thermal
- * printer when available; otherwise renders in an isolated hidden iframe so
- * nothing from the app layout leaks into the print output (no blank pages).
+ * Prints thermal labels (100 x 50 mm, 1 per page) in an isolated hidden iframe,
+ * so nothing from the app layout leaks into the print output (no blank pages).
  */
 export async function printLabelSheet(labels: LabelData[]): Promise<void> {
   if (labels.length === 0) return;
-
-  if (await tryBluetoothPrint(labels)) return;
-
-
 
   const qrCache = new Map<string, string>();
   await Promise.all(
