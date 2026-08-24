@@ -54,7 +54,10 @@ export default function LabelPrinterCard() {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              titleScale: prefs.titleScale,
+              textScale: prefs.textScale,
             });
+
       await sendRaw(bytes);
       setConnected(getConnectedPrinterName());
       toast.success("Etiqueta de teste enviada");
