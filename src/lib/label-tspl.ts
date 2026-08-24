@@ -57,6 +57,8 @@ export interface TsplOptions {
   marginY?: number;
   /** Vertical gap between labels, in mm. */
   gapMm?: number;
+  /** Vertical offset (tear/feed adjustment) in mm. */
+  offsetMm?: number;
   density?: number;
   speed?: number;
   /** Copies of the same label per PRINT command. */
@@ -74,6 +76,7 @@ export const TSPL_DEFAULTS: Required<TsplOptions> = {
   marginX: 10,
   marginY: 10,
   gapMm: 3,
+  offsetMm: 0,
   density: 10,
   speed: 4,
   copies: 1,
@@ -81,6 +84,37 @@ export const TSPL_DEFAULTS: Required<TsplOptions> = {
   titleScale: 1,
   textScale: 1,
 };
+
+/**
+ * Calibration header sent ONCE per print job. Repeating it for every label makes
+ * the printer re-run its gap routine and eject a blank label in between.
+ */
+export function tsplJobHeader(o: {
+  gapMm: number;
+  offsetMm: number;
+  direction: 0 | 1;
+  density: number;
+  speed: number;
+}): string[] {
+  return [
+    "SIZE 100 mm,50 mm",
+    `GAP ${o.gapMm} mm,0 mm`,
+    `OFFSET ${o.offsetMm} mm`,
+    "SET TEAR OFF",
+    `DIRECTION ${o.direction}`,
+    "REFERENCE 0,0",
+    `DENSITY ${o.density}`,
+    `SPEED ${o.speed}`,
+  ];
+}
+
+/** One-shot label sensor auto-calibration (learns the real label + gap length). */
+export function buildGapDetect(gapMm = TSPL_DEFAULTS.gapMm): Uint8Array {
+  return encodeLatin(
+    ["SIZE 100 mm,50 mm", `GAP ${gapMm} mm,0 mm`, "GAPDETECT", "END"].join("\r\n") + "\r\n",
+  );
+}
+
 
 /** Scalable-font defaults (point size) — the values that printed correctly before. */
 export const SCALABLE_DEFAULTS = { titleScale: 13, textScale: 9 };
