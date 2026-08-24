@@ -18,7 +18,7 @@ import {
   type PrinterLanguage,
   type PrinterPrefs,
 } from "@/lib/thermal-printer";
-import { TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
+import { SCALE_RANGE, TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
 
 export default function LabelPrinterCard() {
   const [prefs, setPrefs] = useState<PrinterPrefs>(() => loadPrinterPrefs());
