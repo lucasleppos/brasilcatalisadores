@@ -279,6 +279,7 @@ export default function LabelPrinterCard() {
             )}
 
             {!rasterMode && (
+            <>
             <div className="space-y-1">
               <Label className="text-[11px] text-muted-foreground">Fonte</Label>
               <div className="flex gap-2">
@@ -348,7 +349,7 @@ export default function LabelPrinterCard() {
                 ? "Fonte bitmap interna: 1 = menor, 3 = maior. Se a etiqueta sair em branco, troque para Escalável."
                 : "Fonte escalável: valor em pontos (8–24). Valores muito baixos podem não ser aceitos pela impressora."}
             </p>
-            </div>
+            </>
             )}
 
             <Button
