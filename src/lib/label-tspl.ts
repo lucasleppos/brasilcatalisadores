@@ -46,6 +46,9 @@ export function labelLines(l: LabelData): string[] {
 const header = (l: LabelData) =>
   `${clean(l.displayCode || l.code)}${l.stageLabel ? ` [${clean(l.stageLabel)}]` : ""}`;
 
+/** "bitmap" uses the internal bitmap fonts with integer multipliers (safest). */
+export type TsplFontMode = "bitmap" | "scalable";
+
 export interface TsplOptions {
   /** 0 or 1 — flips the print orientation on the media. */
   direction?: 0 | 1;
@@ -58,9 +61,11 @@ export interface TsplOptions {
   speed?: number;
   /** Copies of the same label per PRINT command. */
   copies?: number;
-  /** Font multiplier for the lot code header. */
+  /** Font family used for the text: internal bitmap fonts or the scalable font "0". */
+  fontMode?: TsplFontMode;
+  /** Bitmap multiplier (1-3) or point size (8-24) for the lot code header. */
   titleScale?: number;
-  /** Font multiplier for the data rows. */
+  /** Bitmap multiplier (1-3) or point size (8-24) for the data rows. */
   textScale?: number;
 }
 
@@ -72,16 +77,33 @@ export const TSPL_DEFAULTS: Required<TsplOptions> = {
   density: 10,
   speed: 4,
   copies: 1,
-  titleScale: 8,
-  textScale: 5,
+  fontMode: "bitmap",
+  titleScale: 2,
+  textScale: 1,
+};
+
+/** Scalable-font defaults (point size) — the values that printed correctly before. */
+export const SCALABLE_DEFAULTS = { titleScale: 13, textScale: 9 };
+
+/** Allowed ranges per font mode. */
+export const SCALE_RANGE: Record<TsplFontMode, { min: number; max: number }> = {
+  bitmap: { min: 1, max: 3 },
+  scalable: { min: 8, max: 24 },
 };
 
 /** Label canvas at 203 dpi: 100 x 50 mm = 800 x 400 dots. */
 const LABEL_WIDTH_DOTS = 800;
 const QR_BLOCK_DOTS = 215;
 
-const clampScale = (v: number, fallback: number) =>
-  Math.min(16, Math.max(3, Math.round(Number.isFinite(v) ? v : fallback)));
+/** Base heights (dots) of the internal bitmap fonts used here. */
+const BITMAP_FONT = { title: { id: "3", height: 32 }, row: { id: "2", height: 24 } };
+
+export function clampScale(v: unknown, mode: TsplFontMode, fallback: number): number {
+  const { min, max } = SCALE_RANGE[mode];
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 /**
  * TSPL payload for one label (100 x 50 mm @ 203 dpi = 800 x 400 dots).
@@ -89,17 +111,27 @@ const clampScale = (v: number, fallback: number) =>
  */
 export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
   const o = { ...TSPL_DEFAULTS, ...opts };
+  const mode: TsplFontMode = o.fontMode === "scalable" ? "scalable" : "bitmap";
   const url = buildLabelUrl(l.code);
   const x = Math.max(0, Math.round(o.marginX));
   const y = Math.max(0, Math.round(o.marginY));
   const usableWidth = LABEL_WIDTH_DOTS - x * 2;
   const qrX = x + Math.max(0, usableWidth - QR_BLOCK_DOTS);
 
-  const titleScale = clampScale(o.titleScale, TSPL_DEFAULTS.titleScale);
-  const textScale = clampScale(o.textScale, TSPL_DEFAULTS.textScale);
-  const codeScale = Math.max(3, textScale - 1);
-  const titleHeight = Math.round(titleScale * 4.5);
-  const rowStep = Math.max(22, Math.round(textScale * 4.5));
+  const fallbacks = mode === "bitmap" ? TSPL_DEFAULTS : SCALABLE_DEFAULTS;
+  const titleScale = clampScale(o.titleScale, mode, fallbacks.titleScale);
+  const textScale = clampScale(o.textScale, mode, fallbacks.textScale);
+
+  const titleFont = mode === "bitmap" ? BITMAP_FONT.title.id : "0";
+  const rowFont = mode === "bitmap" ? BITMAP_FONT.row.id : "0";
+  const codeScale =
+    mode === "bitmap" ? 1 : Math.max(SCALE_RANGE.scalable.min, textScale - 1);
+
+  const titleHeight =
+    mode === "bitmap" ? BITMAP_FONT.title.height * titleScale : Math.round(titleScale * 4.5);
+  const rowHeight =
+    mode === "bitmap" ? BITMAP_FONT.row.height * textScale : Math.round(textScale * 4.5);
+  const rowStep = Math.max(20, rowHeight + 6);
   const separatorY = y + 8 + titleHeight + 6;
 
   const cmds: string[] = [
@@ -111,18 +143,20 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
     `SPEED ${o.speed}`,
     "CLS",
     // lot code + separator
-    `TEXT ${x + 6},${y + 8},"0",0,${titleScale},${titleScale},"${header(l)}"`,
+    `TEXT ${x + 6},${y + 8},"${titleFont}",0,${titleScale},${titleScale},"${header(l)}"`,
     `BAR ${x + 6},${separatorY},${Math.max(40, usableWidth - 12)},3`,
   ];
 
   let rowY = separatorY + 14;
   for (const line of labelLines(l)) {
-    cmds.push(`TEXT ${x + 6},${rowY},"0",0,${textScale},${textScale},"${line}"`);
+    cmds.push(`TEXT ${x + 6},${rowY},"${rowFont}",0,${textScale},${textScale},"${line}"`);
     rowY += rowStep;
   }
 
   cmds.push(`QRCODE ${qrX},${separatorY + 10},M,6,A,0,"${url}"`);
-  cmds.push(`TEXT ${qrX},${separatorY + 220},"0",0,${codeScale},${codeScale},"${clean(l.code)}"`);
+  cmds.push(
+    `TEXT ${qrX},${separatorY + 220},"${rowFont}",0,${codeScale},${codeScale},"${clean(l.code)}"`,
+  );
   cmds.push(`PRINT 1,${Math.max(1, Math.round(o.copies))}`);
   cmds.push("END");
 
