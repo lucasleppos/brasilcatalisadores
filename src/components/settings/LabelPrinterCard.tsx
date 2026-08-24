@@ -30,6 +30,20 @@ export default function LabelPrinterCard() {
 
   const update = (patch: Partial<PrinterPrefs>) => setPrefs(savePrinterPrefs(patch));
 
+  const range = SCALE_RANGE[prefs.fontMode];
+  const presets =
+    prefs.fontMode === "bitmap"
+      ? [
+          { label: "Pequeno", title: 1, text: 1 },
+          { label: "Médio", title: 2, text: 1 },
+          { label: "Grande", title: 3, text: 2 },
+        ]
+      : [
+          { label: "Pequeno", title: 10, text: 8 },
+          { label: "Médio", title: 13, text: 9 },
+          { label: "Grande", title: 18, text: 12 },
+        ];
+
   const handleConnect = async () => {
     setBusy(true);
     try {
