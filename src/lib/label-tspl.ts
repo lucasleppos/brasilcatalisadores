@@ -78,7 +78,7 @@ export const TSPL_DEFAULTS: Required<TsplOptions> = {
   speed: 4,
   copies: 1,
   fontMode: "bitmap",
-  titleScale: 2,
+  titleScale: 1,
   textScale: 1,
 };
 
@@ -93,10 +93,25 @@ export const SCALE_RANGE: Record<TsplFontMode, { min: number; max: number }> = {
 
 /** Label canvas at 203 dpi: 100 x 50 mm = 800 x 400 dots. */
 const LABEL_WIDTH_DOTS = 800;
-const QR_BLOCK_DOTS = 215;
+const LABEL_HEIGHT_DOTS = 400;
+const QR_MODULE_SIZE = 5;
+const QR_SIZE_DOTS = 185;
+const QR_COLUMN_DOTS = 205;
+const COLUMN_GAP_DOTS = 16;
 
-/** Base heights (dots) of the internal bitmap fonts used here. */
-const BITMAP_FONT = { title: { id: "3", height: 32 }, row: { id: "2", height: 24 } };
+/** TSPL internal bitmap font metrics at multiplier 1. */
+const BITMAP_FONT = {
+  title: { id: "2", width: 12, height: 20 },
+  row: { id: "1", width: 8, height: 12 },
+};
+
+/** Keeps printer-rendered text inside its physical column. */
+function fitText(text: string, maxWidth: number, charWidth: number): string {
+  const maxChars = Math.max(1, Math.floor(maxWidth / Math.max(1, charWidth)));
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 3) return text.slice(0, maxChars);
+  return `${text.slice(0, maxChars - 3).trimEnd()}...`;
+}
 
 export function clampScale(v: unknown, mode: TsplFontMode, fallback: number): number {
   const { min, max } = SCALE_RANGE[mode];
@@ -116,7 +131,9 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
   const x = Math.max(0, Math.round(o.marginX));
   const y = Math.max(0, Math.round(o.marginY));
   const usableWidth = LABEL_WIDTH_DOTS - x * 2;
-  const qrX = x + Math.max(0, usableWidth - QR_BLOCK_DOTS);
+  const qrX = x + Math.max(0, usableWidth - QR_COLUMN_DOTS);
+  const textX = x + 6;
+  const textWidth = Math.max(40, qrX - COLUMN_GAP_DOTS - textX);
 
   const fallbacks = mode === "bitmap" ? TSPL_DEFAULTS : SCALABLE_DEFAULTS;
   const titleScale = clampScale(o.titleScale, mode, fallbacks.titleScale);
@@ -131,8 +148,16 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
     mode === "bitmap" ? BITMAP_FONT.title.height * titleScale : Math.round(titleScale * 4.5);
   const rowHeight =
     mode === "bitmap" ? BITMAP_FONT.row.height * textScale : Math.round(textScale * 4.5);
-  const rowStep = Math.max(20, rowHeight + 6);
-  const separatorY = y + 8 + titleHeight + 6;
+  const titleCharWidth =
+    mode === "bitmap" ? BITMAP_FONT.title.width * titleScale : Math.max(5, Math.round(titleScale * 0.65));
+  const rowCharWidth =
+    mode === "bitmap" ? BITMAP_FONT.row.width * textScale : Math.max(5, Math.round(textScale * 0.65));
+  const rowStep = rowHeight + 8;
+  const titleY = y + 8;
+  const separatorY = titleY + titleHeight + 8;
+  const qrY = separatorY + 10;
+  const qrCodeY = Math.min(LABEL_HEIGHT_DOTS - y - rowHeight, qrY + QR_SIZE_DOTS + 8);
+  const fittedHeader = fitText(header(l), textWidth, titleCharWidth);
 
   const cmds: string[] = [
     "SIZE 100 mm,50 mm",
@@ -143,19 +168,23 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
     `SPEED ${o.speed}`,
     "CLS",
     // lot code + separator
-    `TEXT ${x + 6},${y + 8},"${titleFont}",0,${titleScale},${titleScale},"${header(l)}"`,
-    `BAR ${x + 6},${separatorY},${Math.max(40, usableWidth - 12)},3`,
+    `TEXT ${textX},${titleY},"${titleFont}",0,${titleScale},${titleScale},"${fittedHeader}"`,
+    `BAR ${textX},${separatorY},${Math.max(40, usableWidth - 12)},3`,
   ];
 
   let rowY = separatorY + 14;
   for (const line of labelLines(l)) {
-    cmds.push(`TEXT ${x + 6},${rowY},"${rowFont}",0,${textScale},${textScale},"${line}"`);
+    const fittedLine = fitText(line, textWidth, rowCharWidth);
+    cmds.push(`TEXT ${textX},${rowY},"${rowFont}",0,${textScale},${textScale},"${fittedLine}"`);
     rowY += rowStep;
   }
 
-  cmds.push(`QRCODE ${qrX},${separatorY + 10},M,6,A,0,"${url}"`);
+  cmds.push(`QRCODE ${qrX},${qrY},M,${QR_MODULE_SIZE},A,0,"${url}"`);
+  const qrCode = fitText(clean(l.code), QR_COLUMN_DOTS, rowCharWidth);
+  const qrCodeWidth = qrCode.length * rowCharWidth;
+  const qrCodeX = qrX + Math.max(0, Math.floor((QR_SIZE_DOTS - qrCodeWidth) / 2));
   cmds.push(
-    `TEXT ${qrX},${separatorY + 220},"${rowFont}",0,${codeScale},${codeScale},"${clean(l.code)}"`,
+    `TEXT ${qrCodeX},${qrCodeY},"${rowFont}",0,${codeScale},${codeScale},"${qrCode}"`,
   );
   cmds.push(`PRINT 1,${Math.max(1, Math.round(o.copies))}`);
   cmds.push("END");
@@ -196,11 +225,11 @@ export function buildEscPos(l: LabelData): Uint8Array {
 
 /** Test label used to validate the pairing and the chosen language. */
 export const TEST_LABEL: LabelData = {
-  code: "LOT-TESTE-00-01",
-  displayCode: "LOT-TESTE-00",
+  code: "240826-TESTE-01",
+  displayCode: "240826-TESTE-LONGO",
   stageLabel: "TESTE",
-  buyer: "Teste de impressao",
-  supplierName: "Brasil Catalisadores",
-  group: "Teste",
+  buyer: "Comprador de teste completo",
+  supplierName: "Fornecedor com nome longo para calibracao",
+  group: "Ceramico automotivo",
   weightGross: 12.345,
 };
