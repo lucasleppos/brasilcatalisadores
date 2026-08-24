@@ -102,11 +102,34 @@ function labelHtml(l: LabelData, qr: string): string {
 
 
 /**
- * Prints thermal labels (100 x 50 mm, 1 per page) in an isolated hidden iframe,
- * so nothing from the app layout leaks into the print output (no blank pages).
+ * Tries to print directly on the paired Bluetooth thermal printer (TSPL/ESC-POS).
+ * Returns false when Bluetooth printing is unavailable/disabled or fails, so the
+ * caller can fall back to the browser print dialog.
+ */
+async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
+  try {
+    const [{ sendToPrinter, loadPrinterPrefs }, { buildTspl, buildEscPos }] = await Promise.all([
+      import("@/lib/thermal-printer"),
+      import("@/lib/label-tspl"),
+    ]);
+    const build = loadPrinterPrefs().language === "escpos" ? buildEscPos : buildTspl;
+    return await sendToPrinter(labels.map(build));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prints thermal labels (100 x 50 mm, 1 per page). Uses the Bluetooth thermal
+ * printer when available; otherwise renders in an isolated hidden iframe so
+ * nothing from the app layout leaks into the print output (no blank pages).
  */
 export async function printLabelSheet(labels: LabelData[]): Promise<void> {
   if (labels.length === 0) return;
+
+  if (await tryBluetoothPrint(labels)) return;
+
+
 
   const qrCache = new Map<string, string>();
   await Promise.all(
