@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   type PrinterPrefs,
 } from "@/lib/thermal-printer";
 import { SCALE_RANGE, TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
+import { RASTER_PX_RANGE, buildTsplRaster, renderLabelCanvas } from "@/lib/label-raster";
 
 export default function LabelPrinterCard() {
   const [prefs, setPrefs] = useState<PrinterPrefs>(() => loadPrinterPrefs());
@@ -28,6 +29,29 @@ export default function LabelPrinterCard() {
   const supported = isBluetoothSupported();
 
   useEffect(() => { setConnected(getConnectedPrinterName()); }, []);
+
+  const previewRef = useRef<HTMLDivElement>(null);
+  const rasterMode = prefs.language === "tspl" && prefs.renderMode !== "text";
+
+  useEffect(() => {
+    if (!rasterMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const canvas = await renderLabelCanvas(TEST_LABEL, {
+          marginX: prefs.marginX,
+          marginY: prefs.marginY,
+          titlePx: prefs.titlePx,
+          textPx: prefs.textPx,
+        });
+        if (cancelled || !previewRef.current) return;
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+        previewRef.current.replaceChildren(canvas);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [rasterMode, prefs.marginX, prefs.marginY, prefs.titlePx, prefs.textPx]);
 
   const update = (patch: Partial<PrinterPrefs>) => setPrefs(savePrinterPrefs(patch));
 
@@ -64,6 +88,15 @@ export default function LabelPrinterCard() {
       const bytes =
         prefs.language === "escpos"
           ? buildEscPos(TEST_LABEL)
+          : rasterMode
+          ? await buildTsplRaster(TEST_LABEL, {
+              direction: prefs.direction,
+              marginX: prefs.marginX,
+              marginY: prefs.marginY,
+              copies: prefs.copies,
+              titlePx: prefs.titlePx,
+              textPx: prefs.textPx,
+            })
           : buildTspl(TEST_LABEL, {
               direction: prefs.direction,
               marginX: prefs.marginX,
@@ -175,6 +208,78 @@ export default function LabelPrinterCard() {
             </div>
 
             <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Composição da etiqueta</Label>
+              <div className="flex gap-2">
+                {([
+                  { mode: "raster" as const, label: "Imagem (recomendado)" },
+                  { mode: "text" as const, label: "Fontes da impressora" },
+                ]).map((m) => (
+                  <Button
+                    key={m.mode}
+                    size="sm"
+                    variant={prefs.renderMode === m.mode ? "default" : "outline"}
+                    onClick={() => update({ renderMode: m.mode })}
+                  >
+                    {m.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                No modo imagem o tamanho da letra é controlado pelo app (em dots), permitindo textos bem menores.
+              </p>
+            </div>
+
+            {rasterMode && (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  {[
+                    { label: "Pequeno", title: 24, text: 17 },
+                    { label: "Médio", title: 30, text: 22 },
+                    { label: "Grande", title: 38, text: 28 },
+                  ].map((p) => (
+                    <Button
+                      key={p.label}
+                      size="sm"
+                      variant={prefs.titlePx === p.title && prefs.textPx === p.text ? "default" : "outline"}
+                      onClick={() => update({ titlePx: p.title, textPx: p.text })}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">
+                      Título em dots ({RASTER_PX_RANGE.min}–{RASTER_PX_RANGE.max})
+                    </Label>
+                    <Input
+                      className="h-8 w-28"
+                      inputMode="numeric"
+                      value={String(prefs.titlePx)}
+                      onChange={(e) => update({ titlePx: parseInt(e.target.value.replace(/\D/g, "") || String(RASTER_PX_RANGE.min), 10) })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">
+                      Texto em dots ({RASTER_PX_RANGE.min}–{RASTER_PX_RANGE.max})
+                    </Label>
+                    <Input
+                      className="h-8 w-28"
+                      inputMode="numeric"
+                      value={String(prefs.textPx)}
+                      onChange={(e) => update({ textPx: parseInt(e.target.value.replace(/\D/g, "") || String(RASTER_PX_RANGE.min), 10) })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Pré-visualização (100x50 mm)</Label>
+                  <div ref={previewRef} className="rounded border bg-white p-1 max-w-md" />
+                </div>
+              </div>
+            )}
+
+            {!rasterMode && (
+            <div className="space-y-1">
               <Label className="text-[11px] text-muted-foreground">Fonte</Label>
               <div className="flex gap-2">
                 {([
@@ -243,6 +348,8 @@ export default function LabelPrinterCard() {
                 ? "Fonte bitmap interna: 1 = menor, 3 = maior. Se a etiqueta sair em branco, troque para Escalável."
                 : "Fonte escalável: valor em pontos (8–24). Valores muito baixos podem não ser aceitos pela impressora."}
             </p>
+            </div>
+            )}
 
             <Button
               size="sm"
