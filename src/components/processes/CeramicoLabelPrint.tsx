@@ -108,11 +108,28 @@ function labelHtml(l: LabelData, qr: string): string {
  */
 async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
   try {
-    const [{ sendToPrinter, loadPrinterPrefs }, { buildTspl, buildEscPos }] = await Promise.all([
+    const [{ sendToPrinter, loadPrinterPrefs }, { buildTspl, buildEscPos }, { buildTsplRaster }] = await Promise.all([
       import("@/lib/thermal-printer"),
       import("@/lib/label-tspl"),
+      import("@/lib/label-raster"),
     ]);
     const prefs = loadPrinterPrefs();
+    if (prefs.language === "tspl" && prefs.renderMode !== "text") {
+      const payloads: Uint8Array[] = [];
+      for (const l of labels) {
+        payloads.push(
+          await buildTsplRaster(l, {
+            direction: prefs.direction,
+            marginX: prefs.marginX,
+            marginY: prefs.marginY,
+            copies: prefs.copies,
+            titlePx: prefs.titlePx,
+            textPx: prefs.textPx,
+          }),
+        );
+      }
+      return await sendToPrinter(payloads);
+    }
     const build =
       prefs.language === "escpos"
         ? (l: LabelData) => buildEscPos(l)

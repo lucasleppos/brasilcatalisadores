@@ -9,9 +9,13 @@
 export type PrinterLanguage = "tspl" | "escpos";
 
 import { SCALABLE_DEFAULTS, SCALE_RANGE, TSPL_DEFAULTS, clampScale, type TsplFontMode } from "@/lib/label-tspl";
+import { RASTER_DEFAULTS, RASTER_PX_RANGE } from "@/lib/label-raster";
+
+/** "raster" draws the label as an image (recommended); "text" uses printer fonts. */
+export type LabelRenderMode = "raster" | "text";
 
 const PREF_KEY = "label-printer-prefs";
-const LAYOUT_VERSION = 2;
+const LAYOUT_VERSION = 3;
 
 export interface PrinterPrefs {
   /** Internal version used to migrate printer layout defaults safely. */
@@ -34,6 +38,12 @@ export interface PrinterPrefs {
   titleScale: number;
   /** Bitmap multiplier (1-3) or point size (8-24) for the data rows. */
   textScale: number;
+  /** How the label is composed before being sent to the printer. */
+  renderMode: LabelRenderMode;
+  /** Raster mode: header font size in dots. */
+  titlePx: number;
+  /** Raster mode: data rows font size in dots. */
+  textPx: number;
 }
 
 const defaultPrefs: PrinterPrefs = {
@@ -47,6 +57,9 @@ const defaultPrefs: PrinterPrefs = {
   fontMode: "bitmap",
   titleScale: TSPL_DEFAULTS.titleScale,
   textScale: TSPL_DEFAULTS.textScale,
+  renderMode: "raster",
+  titlePx: RASTER_DEFAULTS.titlePx,
+  textPx: RASTER_DEFAULTS.textPx,
 };
 
 /** Defaults for each font mode (bitmap = multipliers, scalable = point size). */
@@ -68,10 +81,18 @@ function normalize(prefs: PrinterPrefs): PrinterPrefs {
     const n = Math.round(Number(v));
     return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
   };
+  const clampPx = (v: unknown, fallback: number) => {
+    const n = Math.round(Number(v));
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(RASTER_PX_RANGE.max, Math.max(RASTER_PX_RANGE.min, n));
+  };
   return {
     ...prefs,
     layoutVersion: LAYOUT_VERSION,
     fontMode: mode,
+    renderMode: prefs.renderMode === "text" ? "text" : "raster",
+    titlePx: clampPx(prefs.titlePx, RASTER_DEFAULTS.titlePx),
+    textPx: clampPx(prefs.textPx, RASTER_DEFAULTS.textPx),
     titleScale: needsLayoutMigration ? TSPL_DEFAULTS.titleScale : clampScale(fix(prefs.titleScale, def.titleScale), mode, def.titleScale),
     textScale: needsLayoutMigration ? TSPL_DEFAULTS.textScale : clampScale(fix(prefs.textScale, def.textScale), mode, def.textScale),
   };
@@ -87,6 +108,9 @@ export function recommendedPrinterLayout(): Partial<PrinterPrefs> {
     fontMode: "bitmap",
     titleScale: TSPL_DEFAULTS.titleScale,
     textScale: TSPL_DEFAULTS.textScale,
+    renderMode: "raster",
+    titlePx: RASTER_DEFAULTS.titlePx,
+    textPx: RASTER_DEFAULTS.textPx,
   };
 }
 
