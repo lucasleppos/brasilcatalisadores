@@ -23,6 +23,10 @@ export interface PrinterPrefs {
   marginY: number;
   /** Copies printed per label. */
   copies: number;
+  /** TSPL font multiplier for the lot code header. */
+  titleScale: number;
+  /** TSPL font multiplier for the data rows. */
+  textScale: number;
 }
 
 const defaultPrefs: PrinterPrefs = {
@@ -32,13 +36,25 @@ const defaultPrefs: PrinterPrefs = {
   marginX: 10,
   marginY: 10,
   copies: 1,
+  titleScale: 8,
+  textScale: 5,
+};
+
+const clampScale = (v: unknown, fallback: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(16, Math.max(3, n)) : fallback;
 };
 
 export function loadPrinterPrefs(): PrinterPrefs {
   try {
     const raw = localStorage.getItem(PREF_KEY);
     if (!raw) return { ...defaultPrefs };
-    return { ...defaultPrefs, ...(JSON.parse(raw) as Partial<PrinterPrefs>) };
+    const merged = { ...defaultPrefs, ...(JSON.parse(raw) as Partial<PrinterPrefs>) };
+    return {
+      ...merged,
+      titleScale: clampScale(merged.titleScale, defaultPrefs.titleScale),
+      textScale: clampScale(merged.textScale, defaultPrefs.textScale),
+    };
   } catch {
     return { ...defaultPrefs };
   }
@@ -46,9 +62,12 @@ export function loadPrinterPrefs(): PrinterPrefs {
 
 export function savePrinterPrefs(prefs: Partial<PrinterPrefs>): PrinterPrefs {
   const next = { ...loadPrinterPrefs(), ...prefs };
+  if (prefs.titleScale !== undefined) next.titleScale = clampScale(prefs.titleScale, defaultPrefs.titleScale);
+  if (prefs.textScale !== undefined) next.textScale = clampScale(prefs.textScale, defaultPrefs.textScale);
   try { localStorage.setItem(PREF_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   return next;
 }
+
 
 /** Serial-over-BLE services commonly exposed by thermal label printers. */
 const SERVICE_UUIDS = [
