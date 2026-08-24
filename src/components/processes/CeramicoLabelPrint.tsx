@@ -108,43 +108,43 @@ function labelHtml(l: LabelData, qr: string): string {
  */
 async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
   try {
-    const [{ sendToPrinter, loadPrinterPrefs }, { buildTspl, buildEscPos }, { buildTsplRaster }] = await Promise.all([
+    const [{ sendToPrinter, loadPrinterPrefs }, { buildTsplJob, buildEscPos }, { buildTsplRasterJob }] = await Promise.all([
       import("@/lib/thermal-printer"),
       import("@/lib/label-tspl"),
       import("@/lib/label-raster"),
     ]);
     const prefs = loadPrinterPrefs();
+    // A single job (one calibration header for all labels) prevents the printer
+    // from re-running gap detection and ejecting blank labels in between.
     if (prefs.language === "tspl" && prefs.renderMode !== "text") {
-      const payloads: Uint8Array[] = [];
-      for (const l of labels) {
-        payloads.push(
-          await buildTsplRaster(l, {
-            direction: prefs.direction,
-            marginX: prefs.marginX,
-            marginY: prefs.marginY,
-            copies: prefs.copies,
-            titlePx: prefs.titlePx,
-            textPx: prefs.textPx,
-          }),
-        );
-      }
-      return await sendToPrinter(payloads);
+      const job = await buildTsplRasterJob(labels, {
+        direction: prefs.direction,
+        marginX: prefs.marginX,
+        marginY: prefs.marginY,
+        gapMm: prefs.gapMm,
+        offsetMm: prefs.offsetMm,
+        copies: prefs.copies,
+        titlePx: prefs.titlePx,
+        textPx: prefs.textPx,
+      });
+      return await sendToPrinter([job]);
     }
-    const build =
-      prefs.language === "escpos"
-        ? (l: LabelData) => buildEscPos(l)
-        : (l: LabelData) =>
-            buildTspl(l, {
-              direction: prefs.direction,
-              marginX: prefs.marginX,
-              marginY: prefs.marginY,
-              copies: prefs.copies,
-              fontMode: prefs.fontMode,
-              titleScale: prefs.titleScale,
-              textScale: prefs.textScale,
-            });
+    if (prefs.language === "escpos") {
+      return await sendToPrinter(labels.map(l => buildEscPos(l)));
+    }
+    const job = buildTsplJob(labels, {
+      direction: prefs.direction,
+      marginX: prefs.marginX,
+      marginY: prefs.marginY,
+      gapMm: prefs.gapMm,
+      offsetMm: prefs.offsetMm,
+      copies: prefs.copies,
+      fontMode: prefs.fontMode,
+      titleScale: prefs.titleScale,
+      textScale: prefs.textScale,
+    });
+    return await sendToPrinter([job]);
 
-    return await sendToPrinter(labels.map(l => build(l)));
   } catch {
     return false;
   }
