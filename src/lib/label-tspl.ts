@@ -155,10 +155,11 @@ export function clampScale(v: unknown, mode: TsplFontMode, fallback: number): nu
 }
 
 /**
- * TSPL payload for one label (100 x 50 mm @ 203 dpi = 800 x 400 dots).
- * Left column: lot code + data rows. Right column: QR code drawn by the printer.
+ * Drawing commands for one label (no calibration header): CLS ... PRINT.
+ * 100 x 50 mm @ 203 dpi = 800 x 400 dots. Left column: lot code + data rows.
+ * Right column: QR code drawn by the printer.
  */
-export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
+export function tsplLabelBlock(l: LabelData, opts: TsplOptions = {}): string[] {
   const o = { ...TSPL_DEFAULTS, ...opts };
   const mode: TsplFontMode = o.fontMode === "scalable" ? "scalable" : "bitmap";
   const url = buildLabelUrl(l.code);
@@ -194,12 +195,6 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
   const fittedHeader = fitText(header(l), textWidth, titleCharWidth);
 
   const cmds: string[] = [
-    "SIZE 100 mm,50 mm",
-    `GAP ${o.gapMm} mm,0 mm`,
-    `DIRECTION ${o.direction}`,
-    "REFERENCE 0,0",
-    `DENSITY ${o.density}`,
-    `SPEED ${o.speed}`,
     "CLS",
     // lot code + separator
     `TEXT ${textX},${titleY},"${titleFont}",0,${titleScale},${titleScale},"${fittedHeader}"`,
@@ -221,10 +216,25 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
     `TEXT ${qrCodeX},${qrCodeY},"${rowFont}",0,${codeScale},${codeScale},"${qrCode}"`,
   );
   cmds.push(`PRINT 1,${Math.max(1, Math.round(o.copies))}`);
-  cmds.push("END");
+  return cmds;
+}
 
+/** Single job with all labels: one calibration header, one block per label. */
+export function buildTsplJob(labels: LabelData[], opts: TsplOptions = {}): Uint8Array {
+  const o = { ...TSPL_DEFAULTS, ...opts };
+  const cmds = [
+    ...tsplJobHeader(o),
+    ...labels.flatMap(l => tsplLabelBlock(l, o)),
+    "END",
+  ];
   return encodeLatin(cmds.join("\r\n") + "\r\n");
 }
+
+/** Convenience wrapper for a single label. */
+export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
+  return buildTsplJob([l], opts);
+}
+
 
 
 
