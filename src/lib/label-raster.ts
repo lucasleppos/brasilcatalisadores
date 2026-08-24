@@ -8,7 +8,7 @@
 import QRCode from "qrcode";
 import type { LabelData } from "@/components/processes/CeramicoLabelPrint";
 import { buildLabelUrl } from "@/lib/labels";
-import { labelLines } from "@/lib/label-tspl";
+import { labelLines, tsplJobHeader } from "@/lib/label-tspl";
 
 export const LABEL_W = 800;
 export const LABEL_H = 400;
@@ -18,6 +18,7 @@ export interface RasterOptions {
   marginX?: number;
   marginY?: number;
   gapMm?: number;
+  offsetMm?: number;
   density?: number;
   speed?: number;
   copies?: number;
@@ -32,6 +33,7 @@ export const RASTER_DEFAULTS: Required<RasterOptions> = {
   marginX: 10,
   marginY: 10,
   gapMm: 3,
+  offsetMm: 0,
   density: 10,
   speed: 4,
   copies: 1,
@@ -40,6 +42,7 @@ export const RASTER_DEFAULTS: Required<RasterOptions> = {
 };
 
 export const RASTER_PX_RANGE = { min: 12, max: 56 };
+
 
 const clean = (v: unknown) => String(v ?? "").trim();
 
@@ -174,29 +177,48 @@ function ascii(text: string): Uint8Array {
   return out;
 }
 
-/** Full TSPL payload: header + BITMAP + PRINT/END. */
-export async function buildTsplRaster(l: LabelData, opts: RasterOptions = {}): Promise<Uint8Array> {
-  const o = { ...RASTER_DEFAULTS, ...opts };
+/** Drawing bytes for one label: CLS + BITMAP + PRINT (no calibration header). */
+async function rasterBlock(l: LabelData, o: Required<RasterOptions>): Promise<Uint8Array> {
   const canvas = await renderLabelCanvas(l, o);
   const { widthBytes, data } = packBitmap(canvas);
-
-  const head = ascii(
-    [
-      "SIZE 100 mm,50 mm",
-      `GAP ${o.gapMm} mm,0 mm`,
-      `DIRECTION ${o.direction}`,
-      "REFERENCE 0,0",
-      `DENSITY ${o.density}`,
-      `SPEED ${o.speed}`,
-      "CLS",
-      `BITMAP 0,0,${widthBytes},${canvas.height},0,`,
-    ].join("\r\n"),
-  );
-  const tail = ascii(`\r\nPRINT 1,${Math.max(1, Math.round(o.copies))}\r\nEND\r\n`);
-
+  const head = ascii(["CLS", `BITMAP 0,0,${widthBytes},${canvas.height},0,`].join("\r\n"));
+  const tail = ascii(`\r\nPRINT 1,${Math.max(1, Math.round(o.copies))}\r\n`);
   const out = new Uint8Array(head.length + data.length + tail.length);
   out.set(head, 0);
   out.set(data, head.length);
   out.set(tail, head.length + data.length);
   return out;
 }
+
+function concat(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
+/**
+ * Single TSPL job with every label: ONE calibration header, then one
+ * CLS/BITMAP/PRINT block per label, then END. Repeating the header per label
+ * makes the printer re-run gap detection and eject blank labels in between.
+ */
+export async function buildTsplRasterJob(
+  labels: LabelData[],
+  opts: RasterOptions = {},
+): Promise<Uint8Array> {
+  const o = { ...RASTER_DEFAULTS, ...opts };
+  const head = ascii(tsplJobHeader(o).join("\r\n") + "\r\n");
+  const blocks: Uint8Array[] = [];
+  for (const l of labels) blocks.push(await rasterBlock(l, o));
+  return concat([head, ...blocks, ascii("END\r\n")]);
+}
+
+/** Convenience wrapper for a single label. */
+export async function buildTsplRaster(l: LabelData, opts: RasterOptions = {}): Promise<Uint8Array> {
+  return buildTsplRasterJob([l], opts);
+}
+
