@@ -413,9 +413,26 @@ export default function LabelPrinterCard() {
             {busy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Bluetooth className="h-3 w-3 mr-1" />}
             {connected ? "Trocar impressora" : "Parear impressora"}
           </Button>
-          <Button size="sm" variant="outline" disabled={!supported || busy} onClick={handleTest}>
-            <Printer className="h-3 w-3 mr-1" />Etiqueta de teste
+          <Button size="sm" variant="outline" disabled={!supported || busy} onClick={handleCalibrate}>
+            <RotateCcw className="h-3 w-3 mr-1" />Calibrar sensor de etiqueta
           </Button>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3].map((q) => (
+              <Button
+                key={q}
+                size="sm"
+                variant={testQty === q ? "default" : "outline"}
+                className="w-8 px-0"
+                onClick={() => setTestQty(q)}
+              >
+                {q}
+              </Button>
+            ))}
+            <Button size="sm" variant="outline" disabled={!supported || busy} onClick={handleTest}>
+              <Printer className="h-3 w-3 mr-1" />Etiqueta de teste
+            </Button>
+          </div>
+
           {connected && (
             <Button size="sm" variant="ghost" onClick={handleDisconnect}>
               <Unplug className="h-3 w-3 mr-1" />Desconectar
