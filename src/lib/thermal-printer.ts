@@ -30,6 +30,11 @@ export interface PrinterPrefs {
   /** TSPL calibration: safety margins in dots. */
   marginX: number;
   marginY: number;
+  /** Physical gap between labels, in mm. */
+  gapMm: number;
+  /** Vertical offset (tear/feed adjustment), in mm. */
+  offsetMm: number;
+
   /** Copies printed per label. */
   copies: number;
   /** TSPL font family: internal bitmap fonts or the scalable font. */
