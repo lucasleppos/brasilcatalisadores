@@ -19,13 +19,14 @@ import {
   type PrinterLanguage,
   type PrinterPrefs,
 } from "@/lib/thermal-printer";
-import { SCALE_RANGE, TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
-import { RASTER_PX_RANGE, buildTsplRaster, renderLabelCanvas } from "@/lib/label-raster";
+import { SCALE_RANGE, TEST_LABEL, buildEscPos, buildGapDetect, buildTsplJob } from "@/lib/label-tspl";
+import { RASTER_PX_RANGE, buildTsplRasterJob, renderLabelCanvas } from "@/lib/label-raster";
 
 export default function LabelPrinterCard() {
   const [prefs, setPrefs] = useState<PrinterPrefs>(() => loadPrinterPrefs());
   const [connected, setConnected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testQty, setTestQty] = useState(1);
   const supported = isBluetoothSupported();
 
   useEffect(() => { setConnected(getConnectedPrinterName()); }, []);
@@ -85,22 +86,27 @@ export default function LabelPrinterCard() {
   const handleTest = async () => {
     setBusy(true);
     try {
+      const labels = Array.from({ length: Math.max(1, testQty) }, () => TEST_LABEL);
       const bytes =
         prefs.language === "escpos"
           ? buildEscPos(TEST_LABEL)
           : rasterMode
-          ? await buildTsplRaster(TEST_LABEL, {
+          ? await buildTsplRasterJob(labels, {
               direction: prefs.direction,
               marginX: prefs.marginX,
               marginY: prefs.marginY,
+              gapMm: prefs.gapMm,
+              offsetMm: prefs.offsetMm,
               copies: prefs.copies,
               titlePx: prefs.titlePx,
               textPx: prefs.textPx,
             })
-          : buildTspl(TEST_LABEL, {
+          : buildTsplJob(labels, {
               direction: prefs.direction,
               marginX: prefs.marginX,
               marginY: prefs.marginY,
+              gapMm: prefs.gapMm,
+              offsetMm: prefs.offsetMm,
               copies: prefs.copies,
               fontMode: prefs.fontMode,
               titleScale: prefs.titleScale,
@@ -112,6 +118,17 @@ export default function LabelPrinterCard() {
       toast.success("Etiqueta de teste enviada");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao imprimir teste");
+    } finally { setBusy(false); }
+  };
+
+  const handleCalibrate = async () => {
+    setBusy(true);
+    try {
+      await sendRaw(buildGapDetect(prefs.gapMm));
+      setConnected(getConnectedPrinterName());
+      toast.success("Calibração enviada — a impressora vai medir a etiqueta.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao calibrar");
     } finally { setBusy(false); }
   };
 
@@ -194,6 +211,24 @@ export default function LabelPrinterCard() {
                   inputMode="numeric"
                   value={String(prefs.marginY)}
                   onChange={(e) => update({ marginY: Math.max(0, parseInt(e.target.value.replace(/\D/g, "") || "0", 10)) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Gap (mm)</Label>
+                <Input
+                  className="h-8 w-20"
+                  inputMode="decimal"
+                  value={String(prefs.gapMm).replace(".", ",")}
+                  onChange={(e) => update({ gapMm: Number(e.target.value.replace(",", ".")) || 0 })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Offset (mm)</Label>
+                <Input
+                  className="h-8 w-20"
+                  inputMode="decimal"
+                  value={String(prefs.offsetMm).replace(".", ",")}
+                  onChange={(e) => update({ offsetMm: Number(e.target.value.replace(",", ".")) || 0 })}
                 />
               </div>
               <div className="space-y-1">
