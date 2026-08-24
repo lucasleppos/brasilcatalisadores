@@ -112,8 +112,18 @@ async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
       import("@/lib/thermal-printer"),
       import("@/lib/label-tspl"),
     ]);
-    const build = loadPrinterPrefs().language === "escpos" ? buildEscPos : buildTspl;
-    return await sendToPrinter(labels.map(build));
+    const prefs = loadPrinterPrefs();
+    const build =
+      prefs.language === "escpos"
+        ? (l: LabelData) => buildEscPos(l)
+        : (l: LabelData) =>
+            buildTspl(l, {
+              direction: prefs.direction,
+              marginX: prefs.marginX,
+              marginY: prefs.marginY,
+              copies: prefs.copies,
+            });
+    return await sendToPrinter(labels.map(l => build(l)));
   } catch {
     return false;
   }

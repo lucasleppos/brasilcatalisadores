@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +46,16 @@ export default function LabelPrinterCard() {
   const handleTest = async () => {
     setBusy(true);
     try {
-      const build = prefs.language === "escpos" ? buildEscPos : buildTspl;
-      await sendRaw(build(TEST_LABEL));
+      const bytes =
+        prefs.language === "escpos"
+          ? buildEscPos(TEST_LABEL)
+          : buildTspl(TEST_LABEL, {
+              direction: prefs.direction,
+              marginX: prefs.marginX,
+              marginY: prefs.marginY,
+              copies: prefs.copies,
+            });
+      await sendRaw(bytes);
       setConnected(getConnectedPrinterName());
       toast.success("Etiqueta de teste enviada");
     } catch (e) {
@@ -97,6 +106,61 @@ export default function LabelPrinterCard() {
             Coibeu normalmente usa TSPL. Se a etiqueta de teste sair errada, troque para ESC/POS.
           </p>
         </div>
+
+        {prefs.language === "tspl" && (
+          <div className="space-y-2">
+            <Label className="text-xs">Calibração da etiqueta 100x50 mm</Label>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Direção</Label>
+                <div className="flex gap-1">
+                  {([1, 0] as const).map((d) => (
+                    <Button
+                      key={d}
+                      size="sm"
+                      variant={prefs.direction === d ? "default" : "outline"}
+                      onClick={() => update({ direction: d })}
+                    >
+                      {d}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Margem X (dots)</Label>
+                <Input
+                  className="h-8 w-24"
+                  inputMode="numeric"
+                  value={String(prefs.marginX)}
+                  onChange={(e) => update({ marginX: Math.max(0, parseInt(e.target.value.replace(/\D/g, "") || "0", 10)) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Margem Y (dots)</Label>
+                <Input
+                  className="h-8 w-24"
+                  inputMode="numeric"
+                  value={String(prefs.marginY)}
+                  onChange={(e) => update({ marginY: Math.max(0, parseInt(e.target.value.replace(/\D/g, "") || "0", 10)) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Cópias</Label>
+                <Input
+                  className="h-8 w-20"
+                  inputMode="numeric"
+                  value={String(prefs.copies)}
+                  onChange={(e) => update({ copies: Math.max(1, parseInt(e.target.value.replace(/\D/g, "") || "1", 10)) })}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              203 dpi: 8 dots ≈ 1 mm. Use a etiqueta de teste para ajustar antes de imprimir em produção.
+            </p>
+          </div>
+        )}
+
+
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-[10px]">
