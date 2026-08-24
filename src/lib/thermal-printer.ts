@@ -16,9 +16,23 @@ export interface PrinterPrefs {
   language: PrinterLanguage;
   /** Last paired device name (informational only — BLE requires user gesture to re-pair). */
   deviceName?: string;
+  /** TSPL calibration: print direction (0 or 1). */
+  direction: 0 | 1;
+  /** TSPL calibration: safety margins in dots. */
+  marginX: number;
+  marginY: number;
+  /** Copies printed per label. */
+  copies: number;
 }
 
-const defaultPrefs: PrinterPrefs = { enabled: true, language: "tspl" };
+const defaultPrefs: PrinterPrefs = {
+  enabled: true,
+  language: "tspl",
+  direction: 1,
+  marginX: 10,
+  marginY: 10,
+  copies: 1,
+};
 
 export function loadPrinterPrefs(): PrinterPrefs {
   try {
