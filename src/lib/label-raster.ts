@@ -18,6 +18,7 @@ export interface RasterOptions {
   marginX?: number;
   marginY?: number;
   gapMm?: number;
+  offsetMm?: number;
   density?: number;
   speed?: number;
   copies?: number;
@@ -32,6 +33,7 @@ export const RASTER_DEFAULTS: Required<RasterOptions> = {
   marginX: 10,
   marginY: 10,
   gapMm: 3,
+  offsetMm: 0,
   density: 10,
   speed: 4,
   copies: 1,
@@ -40,6 +42,7 @@ export const RASTER_DEFAULTS: Required<RasterOptions> = {
 };
 
 export const RASTER_PX_RANGE = { min: 12, max: 56 };
+
 
 const clean = (v: unknown) => String(v ?? "").trim();
 
