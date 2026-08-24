@@ -11,8 +11,11 @@ export type PrinterLanguage = "tspl" | "escpos";
 import { SCALABLE_DEFAULTS, SCALE_RANGE, TSPL_DEFAULTS, clampScale, type TsplFontMode } from "@/lib/label-tspl";
 
 const PREF_KEY = "label-printer-prefs";
+const LAYOUT_VERSION = 2;
 
 export interface PrinterPrefs {
+  /** Internal version used to migrate printer layout defaults safely. */
+  layoutVersion: number;
   /** When false the app always uses the browser print dialog. */
   enabled: boolean;
   language: PrinterLanguage;
@@ -34,6 +37,7 @@ export interface PrinterPrefs {
 }
 
 const defaultPrefs: PrinterPrefs = {
+  layoutVersion: LAYOUT_VERSION,
   enabled: true,
   language: "tspl",
   direction: 1,
@@ -54,7 +58,10 @@ export function fontModeDefaults(mode: TsplFontMode) {
 
 /** Legacy values (ex: 8/5 saved for the scalable font) fall back to the mode defaults. */
 function normalize(prefs: PrinterPrefs): PrinterPrefs {
-  const mode: TsplFontMode = prefs.fontMode === "scalable" ? "scalable" : "bitmap";
+  const needsLayoutMigration = !prefs.layoutVersion || prefs.layoutVersion < LAYOUT_VERSION;
+  const mode: TsplFontMode = needsLayoutMigration
+    ? "bitmap"
+    : prefs.fontMode === "scalable" ? "scalable" : "bitmap";
   const { min, max } = SCALE_RANGE[mode];
   const def = fontModeDefaults(mode);
   const fix = (v: unknown, fallback: number) => {
@@ -63,9 +70,23 @@ function normalize(prefs: PrinterPrefs): PrinterPrefs {
   };
   return {
     ...prefs,
+    layoutVersion: LAYOUT_VERSION,
     fontMode: mode,
-    titleScale: clampScale(fix(prefs.titleScale, def.titleScale), mode, def.titleScale),
-    textScale: clampScale(fix(prefs.textScale, def.textScale), mode, def.textScale),
+    titleScale: needsLayoutMigration ? TSPL_DEFAULTS.titleScale : clampScale(fix(prefs.titleScale, def.titleScale), mode, def.titleScale),
+    textScale: needsLayoutMigration ? TSPL_DEFAULTS.textScale : clampScale(fix(prefs.textScale, def.textScale), mode, def.textScale),
+  };
+}
+
+export function recommendedPrinterLayout(): Partial<PrinterPrefs> {
+  return {
+    layoutVersion: LAYOUT_VERSION,
+    language: "tspl",
+    direction: 1,
+    marginX: 10,
+    marginY: 10,
+    fontMode: "bitmap",
+    titleScale: TSPL_DEFAULTS.titleScale,
+    textScale: TSPL_DEFAULTS.textScale,
   };
 }
 

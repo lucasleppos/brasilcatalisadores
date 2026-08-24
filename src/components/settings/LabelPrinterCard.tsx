@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Bluetooth, Printer, Unplug, Loader2 } from "lucide-react";
+import { Bluetooth, Printer, Unplug, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   connectPrinter,
@@ -13,6 +13,7 @@ import {
   getConnectedPrinterName,
   isBluetoothSupported,
   loadPrinterPrefs,
+  recommendedPrinterLayout,
   savePrinterPrefs,
   sendRaw,
   type PrinterLanguage,
@@ -36,7 +37,7 @@ export default function LabelPrinterCard() {
       ? [
           { label: "Pequeno", title: 1, text: 1 },
           { label: "Médio", title: 2, text: 1 },
-          { label: "Grande", title: 3, text: 2 },
+          { label: "Grande", title: 2, text: 2 },
         ]
       : [
           { label: "Pequeno", title: 10, text: 8 },
@@ -242,6 +243,18 @@ export default function LabelPrinterCard() {
                 ? "Fonte bitmap interna: 1 = menor, 3 = maior. Se a etiqueta sair em branco, troque para Escalável."
                 : "Fonte escalável: valor em pontos (8–24). Valores muito baixos podem não ser aceitos pela impressora."}
             </p>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                update(recommendedPrinterLayout());
+                toast.success("Layout recomendado restaurado");
+              }}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Restaurar layout recomendado
+            </Button>
 
 
           </div>
