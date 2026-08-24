@@ -58,6 +58,8 @@ const defaultPrefs: PrinterPrefs = {
   direction: 1,
   marginX: 10,
   marginY: 10,
+  gapMm: 3,
+  offsetMm: 0,
   copies: 1,
   fontMode: "bitmap",
   titleScale: TSPL_DEFAULTS.titleScale,
@@ -86,6 +88,11 @@ function normalize(prefs: PrinterPrefs): PrinterPrefs {
     const n = Math.round(Number(v));
     return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
   };
+  const clampMm = (v: unknown, fallback: number) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(10, Math.max(0, Math.round(n * 10) / 10));
+  };
   const clampPx = (v: unknown, fallback: number) => {
     const n = Math.round(Number(v));
     if (!Number.isFinite(n)) return fallback;
@@ -96,6 +103,8 @@ function normalize(prefs: PrinterPrefs): PrinterPrefs {
     layoutVersion: LAYOUT_VERSION,
     fontMode: mode,
     renderMode: prefs.renderMode === "text" ? "text" : "raster",
+    gapMm: clampMm(prefs.gapMm, 3),
+    offsetMm: clampMm(prefs.offsetMm, 0),
     titlePx: clampPx(prefs.titlePx, RASTER_DEFAULTS.titlePx),
     textPx: clampPx(prefs.textPx, RASTER_DEFAULTS.textPx),
     titleScale: needsLayoutMigration ? TSPL_DEFAULTS.titleScale : clampScale(fix(prefs.titleScale, def.titleScale), mode, def.titleScale),
@@ -110,6 +119,8 @@ export function recommendedPrinterLayout(): Partial<PrinterPrefs> {
     direction: 1,
     marginX: 10,
     marginY: 10,
+    gapMm: 3,
+    offsetMm: 0,
     fontMode: "bitmap",
     titleScale: TSPL_DEFAULTS.titleScale,
     textScale: TSPL_DEFAULTS.textScale,
