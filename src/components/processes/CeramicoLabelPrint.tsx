@@ -122,7 +122,10 @@ async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              titleScale: prefs.titleScale,
+              textScale: prefs.textScale,
             });
+
     return await sendToPrinter(labels.map(l => build(l)));
   } catch {
     return false;
