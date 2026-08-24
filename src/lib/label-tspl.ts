@@ -58,6 +58,10 @@ export interface TsplOptions {
   speed?: number;
   /** Copies of the same label per PRINT command. */
   copies?: number;
+  /** Font multiplier for the lot code header. */
+  titleScale?: number;
+  /** Font multiplier for the data rows. */
+  textScale?: number;
 }
 
 export const TSPL_DEFAULTS: Required<TsplOptions> = {
@@ -68,11 +72,16 @@ export const TSPL_DEFAULTS: Required<TsplOptions> = {
   density: 10,
   speed: 4,
   copies: 1,
+  titleScale: 8,
+  textScale: 5,
 };
 
 /** Label canvas at 203 dpi: 100 x 50 mm = 800 x 400 dots. */
 const LABEL_WIDTH_DOTS = 800;
 const QR_BLOCK_DOTS = 215;
+
+const clampScale = (v: number, fallback: number) =>
+  Math.min(16, Math.max(3, Math.round(Number.isFinite(v) ? v : fallback)));
 
 /**
  * TSPL payload for one label (100 x 50 mm @ 203 dpi = 800 x 400 dots).
@@ -86,6 +95,13 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
   const usableWidth = LABEL_WIDTH_DOTS - x * 2;
   const qrX = x + Math.max(0, usableWidth - QR_BLOCK_DOTS);
 
+  const titleScale = clampScale(o.titleScale, TSPL_DEFAULTS.titleScale);
+  const textScale = clampScale(o.textScale, TSPL_DEFAULTS.textScale);
+  const codeScale = Math.max(3, textScale - 1);
+  const titleHeight = Math.round(titleScale * 4.5);
+  const rowStep = Math.max(22, Math.round(textScale * 4.5));
+  const separatorY = y + 8 + titleHeight + 6;
+
   const cmds: string[] = [
     "SIZE 100 mm,50 mm",
     `GAP ${o.gapMm} mm,0 mm`,
@@ -95,23 +111,24 @@ export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
     `SPEED ${o.speed}`,
     "CLS",
     // lot code + separator
-    `TEXT ${x + 6},${y + 8},"0",0,13,13,"${header(l)}"`,
-    `BAR ${x + 6},${y + 64},${Math.max(40, usableWidth - 12)},3`,
+    `TEXT ${x + 6},${y + 8},"0",0,${titleScale},${titleScale},"${header(l)}"`,
+    `BAR ${x + 6},${separatorY},${Math.max(40, usableWidth - 12)},3`,
   ];
 
-  let rowY = y + 86;
+  let rowY = separatorY + 14;
   for (const line of labelLines(l)) {
-    cmds.push(`TEXT ${x + 6},${rowY},"0",0,9,9,"${line}"`);
-    rowY += 40;
+    cmds.push(`TEXT ${x + 6},${rowY},"0",0,${textScale},${textScale},"${line}"`);
+    rowY += rowStep;
   }
 
-  cmds.push(`QRCODE ${qrX},${y + 80},M,6,A,0,"${url}"`);
-  cmds.push(`TEXT ${qrX},${y + 290},"0",0,7,7,"${clean(l.code)}"`);
+  cmds.push(`QRCODE ${qrX},${separatorY + 10},M,6,A,0,"${url}"`);
+  cmds.push(`TEXT ${qrX},${separatorY + 220},"0",0,${codeScale},${codeScale},"${clean(l.code)}"`);
   cmds.push(`PRINT 1,${Math.max(1, Math.round(o.copies))}`);
   cmds.push("END");
 
   return encodeLatin(cmds.join("\r\n") + "\r\n");
 }
+
 
 
 /** ESC/POS fallback: text lines plus a native QR code, then a cut/feed. */
