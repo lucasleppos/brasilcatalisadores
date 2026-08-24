@@ -8,7 +8,7 @@
 import QRCode from "qrcode";
 import type { LabelData } from "@/components/processes/CeramicoLabelPrint";
 import { buildLabelUrl } from "@/lib/labels";
-import { labelLines } from "@/lib/label-tspl";
+import { labelLines, tsplJobHeader } from "@/lib/label-tspl";
 
 export const LABEL_W = 800;
 export const LABEL_H = 400;
