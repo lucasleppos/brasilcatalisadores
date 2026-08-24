@@ -124,6 +124,8 @@ export default function SettingsPage() {
             <Field label="Desconto de Umidade" value={s.moistureDiscount} onChange={(v) => update("moistureDiscount", v)} suffix="%" />
           </CardContent>
         </Card>
+
+        <LabelPrinterCard />
       </div>
     </div>
   );
