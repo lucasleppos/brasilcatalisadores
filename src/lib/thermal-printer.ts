@@ -8,6 +8,8 @@
 
 export type PrinterLanguage = "tspl" | "escpos";
 
+import { SCALABLE_DEFAULTS, SCALE_RANGE, TSPL_DEFAULTS, clampScale, type TsplFontMode } from "@/lib/label-tspl";
+
 const PREF_KEY = "label-printer-prefs";
 
 export interface PrinterPrefs {
@@ -23,9 +25,11 @@ export interface PrinterPrefs {
   marginY: number;
   /** Copies printed per label. */
   copies: number;
-  /** TSPL font multiplier for the lot code header. */
+  /** TSPL font family: internal bitmap fonts or the scalable font. */
+  fontMode: TsplFontMode;
+  /** Bitmap multiplier (1-3) or point size (8-24) for the lot code header. */
   titleScale: number;
-  /** TSPL font multiplier for the data rows. */
+  /** Bitmap multiplier (1-3) or point size (8-24) for the data rows. */
   textScale: number;
 }
 
@@ -36,34 +40,53 @@ const defaultPrefs: PrinterPrefs = {
   marginX: 10,
   marginY: 10,
   copies: 1,
-  titleScale: 8,
-  textScale: 5,
+  fontMode: "bitmap",
+  titleScale: TSPL_DEFAULTS.titleScale,
+  textScale: TSPL_DEFAULTS.textScale,
 };
 
-const clampScale = (v: unknown, fallback: number) => {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.min(16, Math.max(3, n)) : fallback;
-};
+/** Defaults for each font mode (bitmap = multipliers, scalable = point size). */
+export function fontModeDefaults(mode: TsplFontMode) {
+  return mode === "scalable"
+    ? { titleScale: SCALABLE_DEFAULTS.titleScale, textScale: SCALABLE_DEFAULTS.textScale }
+    : { titleScale: TSPL_DEFAULTS.titleScale, textScale: TSPL_DEFAULTS.textScale };
+}
+
+/** Legacy values (ex: 8/5 saved for the scalable font) fall back to the mode defaults. */
+function normalize(prefs: PrinterPrefs): PrinterPrefs {
+  const mode: TsplFontMode = prefs.fontMode === "scalable" ? "scalable" : "bitmap";
+  const { min, max } = SCALE_RANGE[mode];
+  const def = fontModeDefaults(mode);
+  const fix = (v: unknown, fallback: number) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+  };
+  return {
+    ...prefs,
+    fontMode: mode,
+    titleScale: clampScale(fix(prefs.titleScale, def.titleScale), mode, def.titleScale),
+    textScale: clampScale(fix(prefs.textScale, def.textScale), mode, def.textScale),
+  };
+}
 
 export function loadPrinterPrefs(): PrinterPrefs {
   try {
     const raw = localStorage.getItem(PREF_KEY);
     if (!raw) return { ...defaultPrefs };
-    const merged = { ...defaultPrefs, ...(JSON.parse(raw) as Partial<PrinterPrefs>) };
-    return {
-      ...merged,
-      titleScale: clampScale(merged.titleScale, defaultPrefs.titleScale),
-      textScale: clampScale(merged.textScale, defaultPrefs.textScale),
-    };
+    return normalize({ ...defaultPrefs, ...(JSON.parse(raw) as Partial<PrinterPrefs>) });
   } catch {
     return { ...defaultPrefs };
   }
 }
 
 export function savePrinterPrefs(prefs: Partial<PrinterPrefs>): PrinterPrefs {
-  const next = { ...loadPrinterPrefs(), ...prefs };
-  if (prefs.titleScale !== undefined) next.titleScale = clampScale(prefs.titleScale, defaultPrefs.titleScale);
-  if (prefs.textScale !== undefined) next.textScale = clampScale(prefs.textScale, defaultPrefs.textScale);
+  const current = loadPrinterPrefs();
+  // switching font mode resets the sizes to that mode's defaults
+  const base =
+    prefs.fontMode && prefs.fontMode !== current.fontMode
+      ? { ...current, ...fontModeDefaults(prefs.fontMode) }
+      : current;
+  const next = normalize({ ...base, ...prefs } as PrinterPrefs);
   try { localStorage.setItem(PREF_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   return next;
 }

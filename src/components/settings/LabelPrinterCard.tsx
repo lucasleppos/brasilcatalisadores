@@ -18,7 +18,7 @@ import {
   type PrinterLanguage,
   type PrinterPrefs,
 } from "@/lib/thermal-printer";
-import { TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
+import { SCALE_RANGE, TEST_LABEL, buildEscPos, buildTspl } from "@/lib/label-tspl";
 
 export default function LabelPrinterCard() {
   const [prefs, setPrefs] = useState<PrinterPrefs>(() => loadPrinterPrefs());
@@ -29,6 +29,20 @@ export default function LabelPrinterCard() {
   useEffect(() => { setConnected(getConnectedPrinterName()); }, []);
 
   const update = (patch: Partial<PrinterPrefs>) => setPrefs(savePrinterPrefs(patch));
+
+  const range = SCALE_RANGE[prefs.fontMode];
+  const presets =
+    prefs.fontMode === "bitmap"
+      ? [
+          { label: "Pequeno", title: 1, text: 1 },
+          { label: "Médio", title: 2, text: 1 },
+          { label: "Grande", title: 3, text: 2 },
+        ]
+      : [
+          { label: "Pequeno", title: 10, text: 8 },
+          { label: "Médio", title: 13, text: 9 },
+          { label: "Grande", title: 18, text: 12 },
+        ];
 
   const handleConnect = async () => {
     setBusy(true);
@@ -54,6 +68,7 @@ export default function LabelPrinterCard() {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              fontMode: prefs.fontMode,
               titleScale: prefs.titleScale,
               textScale: prefs.textScale,
             });
@@ -159,13 +174,28 @@ export default function LabelPrinterCard() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Tamanho das letras</Label>
+              <Label className="text-[11px] text-muted-foreground">Fonte</Label>
               <div className="flex gap-2">
                 {([
-                  { label: "Pequeno", title: 6, text: 4 },
-                  { label: "Médio", title: 8, text: 5 },
-                  { label: "Grande", title: 11, text: 7 },
-                ] as const).map((p) => (
+                  { mode: "bitmap" as const, label: "Bitmap (recomendado)" },
+                  { mode: "scalable" as const, label: "Escalável" },
+                ]).map((f) => (
+                  <Button
+                    key={f.mode}
+                    size="sm"
+                    variant={prefs.fontMode === f.mode ? "default" : "outline"}
+                    onClick={() => update({ fontMode: f.mode })}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Tamanho das letras</Label>
+              <div className="flex gap-2">
+                {presets.map((p) => (
                   <Button
                     key={p.label}
                     size="sm"
@@ -180,28 +210,39 @@ export default function LabelPrinterCard() {
 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Tamanho do título (3–16)</Label>
+                <Label className="text-[11px] text-muted-foreground">
+                  Tamanho do título ({range.min}–{range.max})
+                </Label>
                 <Input
                   className="h-8 w-24"
                   inputMode="numeric"
                   value={String(prefs.titleScale)}
-                  onChange={(e) => update({ titleScale: parseInt(e.target.value.replace(/\D/g, "") || "8", 10) })}
+                  onChange={(e) =>
+                    update({ titleScale: parseInt(e.target.value.replace(/\D/g, "") || String(range.min), 10) })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Tamanho do texto (3–16)</Label>
+                <Label className="text-[11px] text-muted-foreground">
+                  Tamanho do texto ({range.min}–{range.max})
+                </Label>
                 <Input
                   className="h-8 w-24"
                   inputMode="numeric"
                   value={String(prefs.textScale)}
-                  onChange={(e) => update({ textScale: parseInt(e.target.value.replace(/\D/g, "") || "5", 10) })}
+                  onChange={(e) =>
+                    update({ textScale: parseInt(e.target.value.replace(/\D/g, "") || String(range.min), 10) })
+                  }
                 />
               </div>
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              203 dpi: 8 dots ≈ 1 mm. Se as letras saírem grandes no Android, use "Pequeno" e valide com a etiqueta de teste.
+              {prefs.fontMode === "bitmap"
+                ? "Fonte bitmap interna: 1 = menor, 3 = maior. Se a etiqueta sair em branco, troque para Escalável."
+                : "Fonte escalável: valor em pontos (8–24). Valores muito baixos podem não ser aceitos pela impressora."}
             </p>
+
 
           </div>
         )}

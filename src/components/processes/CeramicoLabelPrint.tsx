@@ -122,6 +122,7 @@ async function tryBluetoothPrint(labels: LabelData[]): Promise<boolean> {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              fontMode: prefs.fontMode,
               titleScale: prefs.titleScale,
               textScale: prefs.textScale,
             });
