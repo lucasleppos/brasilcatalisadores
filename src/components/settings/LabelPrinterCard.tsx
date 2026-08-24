@@ -45,8 +45,16 @@ export default function LabelPrinterCard() {
   const handleTest = async () => {
     setBusy(true);
     try {
-      const build = prefs.language === "escpos" ? buildEscPos : buildTspl;
-      await sendRaw(build(TEST_LABEL));
+      const bytes =
+        prefs.language === "escpos"
+          ? buildEscPos(TEST_LABEL)
+          : buildTspl(TEST_LABEL, {
+              direction: prefs.direction,
+              marginX: prefs.marginX,
+              marginY: prefs.marginY,
+              copies: prefs.copies,
+            });
+      await sendRaw(bytes);
       setConnected(getConnectedPrinterName());
       toast.success("Etiqueta de teste enviada");
     } catch (e) {
