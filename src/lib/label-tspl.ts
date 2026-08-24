@@ -46,36 +46,73 @@ export function labelLines(l: LabelData): string[] {
 const header = (l: LabelData) =>
   `${clean(l.displayCode || l.code)}${l.stageLabel ? ` [${clean(l.stageLabel)}]` : ""}`;
 
+export interface TsplOptions {
+  /** 0 or 1 — flips the print orientation on the media. */
+  direction?: 0 | 1;
+  /** Safety margins in dots (203 dpi ≈ 8 dots/mm). */
+  marginX?: number;
+  marginY?: number;
+  /** Vertical gap between labels, in mm. */
+  gapMm?: number;
+  density?: number;
+  speed?: number;
+  /** Copies of the same label per PRINT command. */
+  copies?: number;
+}
+
+export const TSPL_DEFAULTS: Required<TsplOptions> = {
+  direction: 1,
+  marginX: 10,
+  marginY: 10,
+  gapMm: 3,
+  density: 10,
+  speed: 4,
+  copies: 1,
+};
+
+/** Label canvas at 203 dpi: 100 x 50 mm = 800 x 400 dots. */
+const LABEL_WIDTH_DOTS = 800;
+const QR_BLOCK_DOTS = 215;
+
 /**
  * TSPL payload for one label (100 x 50 mm @ 203 dpi = 800 x 400 dots).
  * Left column: lot code + data rows. Right column: QR code drawn by the printer.
  */
-export function buildTspl(l: LabelData): Uint8Array {
+export function buildTspl(l: LabelData, opts: TsplOptions = {}): Uint8Array {
+  const o = { ...TSPL_DEFAULTS, ...opts };
   const url = buildLabelUrl(l.code);
+  const x = Math.max(0, Math.round(o.marginX));
+  const y = Math.max(0, Math.round(o.marginY));
+  const usableWidth = LABEL_WIDTH_DOTS - x * 2;
+  const qrX = x + Math.max(0, usableWidth - QR_BLOCK_DOTS);
+
   const cmds: string[] = [
     "SIZE 100 mm,50 mm",
-    "GAP 3 mm,0 mm",
-    "DIRECTION 1",
-    "DENSITY 10",
-    "SPEED 4",
+    `GAP ${o.gapMm} mm,0 mm`,
+    `DIRECTION ${o.direction}`,
+    "REFERENCE 0,0",
+    `DENSITY ${o.density}`,
+    `SPEED ${o.speed}`,
     "CLS",
     // lot code + separator
-    `TEXT 16,18,"0",0,13,13,"${header(l)}"`,
-    "BAR 16,74,560,3",
+    `TEXT ${x + 6},${y + 8},"0",0,13,13,"${header(l)}"`,
+    `BAR ${x + 6},${y + 64},${Math.max(40, usableWidth - 12)},3`,
   ];
 
-  let y = 96;
+  let rowY = y + 86;
   for (const line of labelLines(l)) {
-    cmds.push(`TEXT 16,${y},"0",0,9,9,"${line}"`);
-    y += 40;
+    cmds.push(`TEXT ${x + 6},${rowY},"0",0,9,9,"${line}"`);
+    rowY += 40;
   }
 
-  cmds.push(`QRCODE 585,90,M,6,A,0,"${url}"`);
-  cmds.push(`TEXT 585,300,"0",0,7,7,"${clean(l.code)}"`);
-  cmds.push("PRINT 1,1");
+  cmds.push(`QRCODE ${qrX},${y + 80},M,6,A,0,"${url}"`);
+  cmds.push(`TEXT ${qrX},${y + 290},"0",0,7,7,"${clean(l.code)}"`);
+  cmds.push(`PRINT 1,${Math.max(1, Math.round(o.copies))}`);
+  cmds.push("END");
 
   return encodeLatin(cmds.join("\r\n") + "\r\n");
 }
+
 
 /** ESC/POS fallback: text lines plus a native QR code, then a cut/feed. */
 export function buildEscPos(l: LabelData): Uint8Array {
