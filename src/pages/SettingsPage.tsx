@@ -7,6 +7,7 @@ import { Settings, loadSettings, saveSettings, defaultSettings } from "@/lib/set
 import { useToast } from "@/hooks/use-toast";
 import { Save, RotateCcw } from "lucide-react";
 import { parseNum } from "@/lib/utils";
+import LabelPrinterCard from "@/components/settings/LabelPrinterCard";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,\-]/g, "");
 
