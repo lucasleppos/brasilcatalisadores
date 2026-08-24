@@ -54,6 +54,7 @@ export default function LabelPrinterCard() {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              fontMode: prefs.fontMode,
               titleScale: prefs.titleScale,
               textScale: prefs.textScale,
             });
