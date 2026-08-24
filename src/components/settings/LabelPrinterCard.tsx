@@ -54,7 +54,10 @@ export default function LabelPrinterCard() {
               marginX: prefs.marginX,
               marginY: prefs.marginY,
               copies: prefs.copies,
+              titleScale: prefs.titleScale,
+              textScale: prefs.textScale,
             });
+
       await sendRaw(bytes);
       setConnected(getConnectedPrinterName());
       toast.success("Etiqueta de teste enviada");
@@ -154,9 +157,52 @@ export default function LabelPrinterCard() {
                 />
               </div>
             </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Tamanho das letras</Label>
+              <div className="flex gap-2">
+                {([
+                  { label: "Pequeno", title: 6, text: 4 },
+                  { label: "Médio", title: 8, text: 5 },
+                  { label: "Grande", title: 11, text: 7 },
+                ] as const).map((p) => (
+                  <Button
+                    key={p.label}
+                    size="sm"
+                    variant={prefs.titleScale === p.title && prefs.textScale === p.text ? "default" : "outline"}
+                    onClick={() => update({ titleScale: p.title, textScale: p.text })}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Tamanho do título (3–16)</Label>
+                <Input
+                  className="h-8 w-24"
+                  inputMode="numeric"
+                  value={String(prefs.titleScale)}
+                  onChange={(e) => update({ titleScale: parseInt(e.target.value.replace(/\D/g, "") || "8", 10) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Tamanho do texto (3–16)</Label>
+                <Input
+                  className="h-8 w-24"
+                  inputMode="numeric"
+                  value={String(prefs.textScale)}
+                  onChange={(e) => update({ textScale: parseInt(e.target.value.replace(/\D/g, "") || "5", 10) })}
+                />
+              </div>
+            </div>
+
             <p className="text-[11px] text-muted-foreground">
-              203 dpi: 8 dots ≈ 1 mm. Use a etiqueta de teste para ajustar antes de imprimir em produção.
+              203 dpi: 8 dots ≈ 1 mm. Se as letras saírem grandes no Android, use "Pequeno" e valide com a etiqueta de teste.
             </p>
+
           </div>
         )}
 
