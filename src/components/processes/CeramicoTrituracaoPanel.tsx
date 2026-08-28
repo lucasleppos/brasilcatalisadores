@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Save, Loader2, AlertTriangle, Camera, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
