@@ -22,8 +22,9 @@ const LABEL_COPIES_PER_GROUP = 3;
 const CERAMICO_CATEGORIES = [
   "Grupo 01", "Grupo 02", "Grupo 03", "Grupo 04", "Grupo 05",
   "Grupo 06", "Grupo 07", "Grupo 08", "Grupo 09", "Grupo 10",
-  "Especial", "Extra",
+  "Especial", "Extra", DIESEL_GROUP,
 ];
+
 
 const TOLERANCE_PCT = 0.02; // 2%
 
