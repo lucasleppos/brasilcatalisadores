@@ -315,14 +315,20 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
               {lots.map((lot, idx) => (
                 <div
                   key={lot.itemId}
-                  className={`rounded-lg border p-4 ${lot.calcResult ? "border-border bg-background" : "border-amber-300 bg-amber-500/5"}`}
+                  className={`rounded-lg border p-4 ${(lot.isDiesel ? !!lot.dieselPrice : !!lot.calcResult) ? "border-border bg-background" : "border-amber-300 bg-amber-500/5"}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="text-sm font-semibold">#{idx + 1} — {lot.category === "conferencia" ? `Lote ${idx + 1}` : lot.category}</p>
                       <p className="text-xs text-muted-foreground">{fmtNum(lot.weight, 3)} kg</p>
                     </div>
-                    {lot.calcResult ? (
+                    {lot.isDiesel ? (
+                      <Badge variant="outline" className={lot.dieselPrice
+                        ? "bg-green-500/10 text-green-700 border-green-300"
+                        : "bg-amber-500/10 text-amber-700 border-amber-300"}>
+                        {lot.dieselPrice ? `Diesel — ${fmtBrl(lot.dieselPrice)}/kg` : "Diesel — sem valor"}
+                      </Badge>
+                    ) : lot.calcResult ? (
                       <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-300">
                         Calculado
                       </Badge>
@@ -333,21 +339,42 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
                     )}
                   </div>
 
-                  {/* PPMs */}
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Pt (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.ptPpm, 0)}</p>
+                  {lot.isDiesel ? (
+                    <div className="space-y-2 mb-3">
+                      <p className="text-xs text-muted-foreground">Selecione o valor por kg:</p>
+                      <div className="flex gap-2">
+                        {DIESEL_PRICES.map(pr => (
+                          <Button
+                            key={pr}
+                            type="button"
+                            size="sm"
+                            variant={lot.dieselPrice === pr ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setDieselPrice(lot.itemId, pr)}
+                          >
+                            {fmtBrl(pr)} / kg
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Pd (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.pdPpm, 0)}</p>
+                  ) : (
+                    /* PPMs */
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Pt (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.ptPpm, 0)}</p>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Pd (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.pdPpm, 0)}</p>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Rh (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.rhPpm, 0)}</p>
+                      </div>
                     </div>
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Rh (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.rhPpm, 0)}</p>
-                    </div>
-                  </div>
+                  )}
+
 
                   {/* Calculation details */}
                   {lot.calcResult && (
