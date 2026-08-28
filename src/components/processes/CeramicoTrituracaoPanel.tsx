@@ -131,19 +131,19 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
     }
   };
 
-  const updateTare = (idx: number, val: string) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
+  const updateTare = (itemId: string, val: string) => {
+    setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
   };
 
 
   const pickPhoto = (idx: number) => fileInputRefs.current[idx]?.click();
 
-  const handlePhoto = async (idx: number, file: File) => {
-    setUploadingIdx(idx);
+  const handlePhoto = async (itemId: string, file: File) => {
+    setUploadingIdx(lotes.findIndex(l => l.itemId === itemId));
     try {
       const url = await uploadStagePhoto(purchase.id, file);
       if (url) {
-        setLotes(prev => prev.map((l, i) => i === idx ? { ...l, packagePhotoUrl: url } : l));
+        setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, packagePhotoUrl: url } : l));
       } else {
         toast.error("Falha ao enviar foto");
       }
@@ -152,23 +152,28 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
     }
   };
 
-  const removePhoto = (idx: number) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, packagePhotoUrl: "" } : l));
+  const removePhoto = (itemId: string) => {
+    setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, packagePhotoUrl: "" } : l));
   };
 
-  const withCalc = useMemo(() => lotes.map(l => {
+  /** Lotes Diesel pulam esta etapa (sem tara / sem foto de embalagem). */
+  const dieselLotes = useMemo(() => lotes.filter(l => isDieselGroup(l.category)), [lotes]);
+  const processLotes = useMemo(() => lotes.filter(l => !isDieselGroup(l.category)), [lotes]);
+
+  const withCalc = useMemo(() => processLotes.map(l => {
     const tare = parseNum(l.tareStr);
     const net = l.weightGross - tare;
     const validTare = tare > 0 && tare < l.weightGross;
     const complete = validTare && !!l.packagePhotoUrl;
     return { ...l, tare, net, validTare, complete };
-  }), [lotes]);
+  }), [processLotes]);
 
   const totalGross = withCalc.reduce((s, l) => s + l.weightGross, 0);
   const totalTare = withCalc.reduce((s, l) => s + (l.validTare ? l.tare : 0), 0);
   const totalNet = withCalc.reduce((s, l) => s + (l.validTare ? l.net : 0), 0);
   const completedCount = withCalc.filter(l => l.complete).length;
-  const allComplete = lotes.length > 0 && completedCount === lotes.length;
+  const allComplete = lotes.length > 0 && completedCount === processLotes.length;
+
 
   const persist = async (): Promise<boolean> => {
     // Update purchase_items.weight_loss for each lote
