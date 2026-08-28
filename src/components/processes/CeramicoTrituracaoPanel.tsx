@@ -37,7 +37,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
   const pickPhoto = (idx: number) => fileInputRefs.current[idx]?.click();
 
   const handlePhoto = async (itemId: string, file: File) => {
-    setUploadingIdx(lotes.findIndex(l => l.itemId === itemId));
+    setUploadingId(itemId);
     try {
       const url = await uploadStagePhoto(purchase.id, file);
       if (url) {
@@ -148,7 +148,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
         toast.error("Falha ao enviar foto");
       }
     } finally {
-      setUploadingIdx(null);
+      setUploadingId(null);
     }
   };
 
@@ -321,7 +321,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                     <Input
                       inputMode="decimal"
                       value={l.tareStr}
-                      onChange={e => updateTare(i, e.target.value)}
+                      onChange={e => updateTare(l.itemId, e.target.value)}
                       placeholder="0,000"
                       className="h-8 text-sm"
                     />
@@ -355,24 +355,24 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                       className="hidden"
                       onChange={e => {
                         const f = e.target.files?.[0];
-                        if (f) handlePhoto(i, f);
+                        if (f) handlePhoto(l.itemId, f);
                         e.target.value = "";
                       }}
                     />
                     {l.packagePhotoUrl ? (
                       <div className="flex items-center gap-2">
                         <StagePhotoThumb value={l.packagePhotoUrl} className="h-14 w-14" />
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => pickPhoto(i)} disabled={uploadingIdx === i}>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => pickPhoto(i)} disabled={uploadingId === l.itemId}>
                           Trocar
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => removePhoto(i)}>
+                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => removePhoto(l.itemId)}>
                           Remover
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" className="w-full h-8" onClick={() => pickPhoto(i)} disabled={uploadingIdx === i}>
-                        {uploadingIdx === i ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Camera className="h-3 w-3 mr-1" />}
-                        {uploadingIdx === i ? "Enviando..." : "Tirar / Escolher foto"}
+                      <Button size="sm" variant="outline" className="w-full h-8" onClick={() => pickPhoto(i)} disabled={uploadingId === l.itemId}>
+                        {uploadingId === l.itemId ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Camera className="h-3 w-3 mr-1" />}
+                        {uploadingId === l.itemId ? "Enviando..." : "Tirar / Escolher foto"}
                       </Button>
                     )}
                   </div>
