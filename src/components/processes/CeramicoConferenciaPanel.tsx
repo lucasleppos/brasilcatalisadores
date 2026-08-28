@@ -366,6 +366,12 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                         )}
                         <div className="space-y-1 min-w-0 flex-1">
                           <p className="text-[11px] font-semibold text-muted-foreground">#{i + 1}</p>
+                          {isDieselGroup(l.category) && (
+                            <p className="text-[10px] font-medium text-amber-700 bg-amber-500/10 border border-amber-300 rounded px-1.5 py-0.5 inline-block">
+                              Diesel — direto para Aprovação
+                            </p>
+                          )}
+
                           <Input
                             list="ceramico-categories"
                             value={l.category}
