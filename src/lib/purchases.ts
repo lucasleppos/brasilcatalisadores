@@ -1262,3 +1262,19 @@ export async function updatePurchaseErp(id: string, erpNumber: string): Promise<
   const { error } = await supabase.from("purchases").update({ erp_number: trimmed }).eq("id", id);
   return !error;
 }
+
+/** Nome canônico do grupo cerâmico que pula Moagem e Laboratório. */
+export const DIESEL_GROUP = "Diesel";
+
+/** Preços disponíveis (R$/kg) para o grupo Diesel. */
+export const DIESEL_PRICES = [35, 40];
+
+/** Reconhece o grupo Diesel a partir do rótulo da categoria (sem acento/caixa). */
+export function isDieselGroup(label?: string | null): boolean {
+  if (!label) return false;
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase() === "diesel";
+}
