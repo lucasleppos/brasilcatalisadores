@@ -280,9 +280,28 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">
-              Grupos conferidos ({completedCount}/{lotes.length} completos)
-            </p>
+            {dieselLotes.length > 0 && (
+              <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800">
+                  {dieselLotes.length} grupo{dieselLotes.length > 1 ? "s" : ""} Diesel em stand-by
+                </p>
+                <p className="text-[11px] text-amber-700">
+                  Diesel não passa por Moagem nem Laboratório — segue direto para Aprovação, aguardando os demais grupos.
+                </p>
+              </div>
+            )}
+
+            {processLotes.length === 0 ? (
+              <div className="rounded-md border p-3 text-xs text-muted-foreground">
+                Todos os grupos desta compra são Diesel. Nenhuma tara ou foto de embalagem é necessária — encerre a etapa para seguir.
+              </div>
+            ) : (
+              <p className="text-xs font-medium text-muted-foreground">
+                Grupos conferidos ({completedCount}/{processLotes.length} completos)
+              </p>
+            )}
+
+
 
             {withCalc.map((l, i) => (
               <Card key={l.itemId} className={l.complete ? "border-green-300/60 bg-green-500/[0.03]" : "border-border/60"}>
