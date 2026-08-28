@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Calculator, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, batchUpdateItemPricing, advanceStage } from "@/lib/purchases";
+import { Purchase, batchUpdateItemPricing, advanceStage, isDieselGroup, DIESEL_PRICES } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings, Settings } from "@/lib/settings";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ interface LotPricing {
   calcInput: CalculatorInput | null;
   calcResult: CalculatorResult | null;
   totalValue: number;
+  isDiesel?: boolean;
+  dieselPrice?: number | null;
 }
 
 interface CeramicoPricingPanelProps {
@@ -44,7 +46,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
   const loadData = async () => {
     setLoading(true);
     try {
-      const [settingsData, { data: items }, { data: labResults }, { data: supplier }] = await Promise.all([
+      const [settingsData, { data: items }, { data: labResults }, { data: supplier }, { data: catEv }] = await Promise.all([
         loadSettings(),
         supabase
           .from("purchase_items")
@@ -61,7 +63,17 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
           .select("margin, margin_ceramico")
           .eq("id", purchase.supplierId)
           .single(),
+        supabase
+          .from("stage_evidence")
+          .select("task_key, value_text")
+          .eq("purchase_id", purchase.id)
+          .like("task_key", "lote_cat_%"),
       ]);
+
+      const catMap: Record<string, string> = {};
+      (catEv || []).forEach(e => {
+        catMap[e.task_key.replace("lote_cat_", "")] = e.value_text || "";
+      });
 
       setSettings(settingsData);
       const margin = Number((supplier as any)?.margin_ceramico ?? supplier?.margin) || 15;
@@ -91,15 +103,36 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
       // Calculate for each lot
       const calculatedLots: LotPricing[] = items.map(item => {
         const lr = labMap[item.id];
+        const groupName = catMap[item.id] || item.category || "Lote";
         const grossW = Number(item.weight) || 0;
         const tareW = Number(item.weight_loss) || 0;
         const weight = Math.max(0, grossW - tareW);
+
+        if (isDieselGroup(groupName)) {
+          const existingTotal = Number(item.total_value) || 0;
+          const inferred = weight > 0 && existingTotal > 0
+            ? DIESEL_PRICES.find(pr => Math.abs(existingTotal / weight - pr) < 0.01) ?? null
+            : null;
+          return {
+            itemId: item.id,
+            category: groupName,
+            weight,
+            ptPpm: 0,
+            pdPpm: 0,
+            rhPpm: 0,
+            calcInput: null,
+            calcResult: null,
+            totalValue: inferred ? weight * inferred : 0,
+            isDiesel: true,
+            dieselPrice: inferred,
+          };
+        }
 
         // If already calculated, use existing
         if (item.calc_result && item.total_value && Number(item.total_value) > 0) {
           return {
             itemId: item.id,
-            category: item.category || "Lote",
+            category: groupName,
             weight,
             ptPpm: lr?.pt || 0,
             pdPpm: lr?.pd || 0,
@@ -129,7 +162,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
           const result = calculate(input, settingsData);
           return {
             itemId: item.id,
-            category: item.category || "Lote",
+            category: groupName,
             weight,
             ptPpm: lr.pt,
             pdPpm: lr.pd,
@@ -142,7 +175,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
 
         return {
           itemId: item.id,
-          category: item.category || "Lote",
+          category: groupName,
           weight,
           ptPpm: lr?.pt || 0,
           pdPpm: lr?.pd || 0,
@@ -162,6 +195,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
   const recalculate = () => {
     if (!settings) return;
     setLots(prev => prev.map(lot => {
+      if (lot.isDiesel) return lot;
       if (lot.ptPpm === 0 && lot.pdPpm === 0 && lot.rhPpm === 0) return lot;
       if (lot.weight <= 0) return lot;
 
@@ -192,11 +226,17 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
 
   const totalValue = useMemo(() => lots.reduce((s, l) => s + l.totalValue, 0), [lots]);
   const totalWeight = useMemo(() => lots.reduce((s, l) => s + l.weight, 0), [lots]);
-  const allCalculated = lots.length > 0 && lots.every(l => l.calcResult !== null);
+  const allCalculated = lots.length > 0 && lots.every(l => l.isDiesel ? !!l.dieselPrice : l.calcResult !== null);
+
+  const setDieselPrice = (itemId: string, price: number) => {
+    setLots(prev => prev.map(l => l.itemId === itemId
+      ? { ...l, dieselPrice: price, totalValue: l.weight * price }
+      : l));
+  };
 
   const handleConfirm = async () => {
     if (!allCalculated) {
-      toast.error("Existem lotes sem cálculo. Verifique os dados do laboratório.");
+      toast.error("Existem lotes sem cálculo ou sem valor Diesel definido.");
       return;
     }
 
@@ -210,7 +250,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
             calc_input: lot.calcInput as any,
             calc_result: lot.calcResult as any,
             total_value: lot.totalValue,
-            pricing_source: "calculadora",
+            pricing_source: lot.isDiesel ? "diesel" : "calculadora",
           })
           .eq("id", lot.itemId);
       }
@@ -275,14 +315,20 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
               {lots.map((lot, idx) => (
                 <div
                   key={lot.itemId}
-                  className={`rounded-lg border p-4 ${lot.calcResult ? "border-border bg-background" : "border-amber-300 bg-amber-500/5"}`}
+                  className={`rounded-lg border p-4 ${(lot.isDiesel ? !!lot.dieselPrice : !!lot.calcResult) ? "border-border bg-background" : "border-amber-300 bg-amber-500/5"}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="text-sm font-semibold">#{idx + 1} — {lot.category === "conferencia" ? `Lote ${idx + 1}` : lot.category}</p>
                       <p className="text-xs text-muted-foreground">{fmtNum(lot.weight, 3)} kg</p>
                     </div>
-                    {lot.calcResult ? (
+                    {lot.isDiesel ? (
+                      <Badge variant="outline" className={lot.dieselPrice
+                        ? "bg-green-500/10 text-green-700 border-green-300"
+                        : "bg-amber-500/10 text-amber-700 border-amber-300"}>
+                        {lot.dieselPrice ? `Diesel — ${fmtBrl(lot.dieselPrice)}/kg` : "Diesel — sem valor"}
+                      </Badge>
+                    ) : lot.calcResult ? (
                       <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-300">
                         Calculado
                       </Badge>
@@ -293,21 +339,42 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
                     )}
                   </div>
 
-                  {/* PPMs */}
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Pt (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.ptPpm, 0)}</p>
+                  {lot.isDiesel ? (
+                    <div className="space-y-2 mb-3">
+                      <p className="text-xs text-muted-foreground">Selecione o valor por kg:</p>
+                      <div className="flex gap-2">
+                        {DIESEL_PRICES.map(pr => (
+                          <Button
+                            key={pr}
+                            type="button"
+                            size="sm"
+                            variant={lot.dieselPrice === pr ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setDieselPrice(lot.itemId, pr)}
+                          >
+                            {fmtBrl(pr)} / kg
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Pd (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.pdPpm, 0)}</p>
+                  ) : (
+                    /* PPMs */
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Pt (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.ptPpm, 0)}</p>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Pd (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.pdPpm, 0)}</p>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/40">
+                        <p className="text-[10px] text-muted-foreground">Rh (ppm)</p>
+                        <p className="text-sm font-semibold">{fmtNum(lot.rhPpm, 0)}</p>
+                      </div>
                     </div>
-                    <div className="text-center p-2 rounded-md bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Rh (ppm)</p>
-                      <p className="text-sm font-semibold">{fmtNum(lot.rhPpm, 0)}</p>
-                    </div>
-                  </div>
+                  )}
+
 
                   {/* Calculation details */}
                   {lot.calcResult && (

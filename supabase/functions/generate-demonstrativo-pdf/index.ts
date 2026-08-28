@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     // Separate items by pricing_source for sacola items
     const catalogFixedItems = items.filter(i => i.pricing_source === 'catalogo');
     const calcItems = items.filter(i => i.pricing_source === 'calculadora');
-    const regularItems = items.filter(i => !i.pricing_source);
+    const regularItems = items.filter(i => !i.pricing_source || i.pricing_source === 'diesel');
 
     const hasSacolaBlocks = isCeramico && (catalogFixedItems.length > 0 || calcItems.length > 0);
 

@@ -107,7 +107,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
   const catalogFixedItems = items.filter(i => i.pricing_source === "catalogo");
   const calcItems = items.filter(i => i.pricing_source === "calculadora");
-  const regularItems = items.filter(i => !i.pricing_source);
+  const regularItems = items.filter(i => !i.pricing_source || i.pricing_source === "diesel");
   const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
 
   // Lab map per item (average across versoes) + latest versao per item

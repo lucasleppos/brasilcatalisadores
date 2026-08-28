@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Save, Loader2, AlertTriangle, Camera, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
@@ -37,7 +37,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -131,44 +131,49 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
     }
   };
 
-  const updateTare = (idx: number, val: string) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
+  const updateTare = (itemId: string, val: string) => {
+    setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, tareStr: val.replace(/[^0-9.,]/g, ""), recovered: false } : l));
   };
 
 
   const pickPhoto = (idx: number) => fileInputRefs.current[idx]?.click();
 
-  const handlePhoto = async (idx: number, file: File) => {
-    setUploadingIdx(idx);
+  const handlePhoto = async (itemId: string, file: File) => {
+    setUploadingId(itemId);
     try {
       const url = await uploadStagePhoto(purchase.id, file);
       if (url) {
-        setLotes(prev => prev.map((l, i) => i === idx ? { ...l, packagePhotoUrl: url } : l));
+        setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, packagePhotoUrl: url } : l));
       } else {
         toast.error("Falha ao enviar foto");
       }
     } finally {
-      setUploadingIdx(null);
+      setUploadingId(null);
     }
   };
 
-  const removePhoto = (idx: number) => {
-    setLotes(prev => prev.map((l, i) => i === idx ? { ...l, packagePhotoUrl: "" } : l));
+  const removePhoto = (itemId: string) => {
+    setLotes(prev => prev.map(l => l.itemId === itemId ? { ...l, packagePhotoUrl: "" } : l));
   };
 
-  const withCalc = useMemo(() => lotes.map(l => {
+  /** Lotes Diesel pulam esta etapa (sem tara / sem foto de embalagem). */
+  const dieselLotes = useMemo(() => lotes.filter(l => isDieselGroup(l.category)), [lotes]);
+  const processLotes = useMemo(() => lotes.filter(l => !isDieselGroup(l.category)), [lotes]);
+
+  const withCalc = useMemo(() => processLotes.map(l => {
     const tare = parseNum(l.tareStr);
     const net = l.weightGross - tare;
     const validTare = tare > 0 && tare < l.weightGross;
     const complete = validTare && !!l.packagePhotoUrl;
     return { ...l, tare, net, validTare, complete };
-  }), [lotes]);
+  }), [processLotes]);
 
   const totalGross = withCalc.reduce((s, l) => s + l.weightGross, 0);
   const totalTare = withCalc.reduce((s, l) => s + (l.validTare ? l.tare : 0), 0);
   const totalNet = withCalc.reduce((s, l) => s + (l.validTare ? l.net : 0), 0);
   const completedCount = withCalc.filter(l => l.complete).length;
-  const allComplete = lotes.length > 0 && completedCount === lotes.length;
+  const allComplete = lotes.length > 0 && completedCount === processLotes.length;
+
 
   const persist = async (): Promise<boolean> => {
     // Update purchase_items.weight_loss for each lote
@@ -275,9 +280,28 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">
-              Grupos conferidos ({completedCount}/{lotes.length} completos)
-            </p>
+            {dieselLotes.length > 0 && (
+              <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800">
+                  {dieselLotes.length} grupo{dieselLotes.length > 1 ? "s" : ""} Diesel em stand-by
+                </p>
+                <p className="text-[11px] text-amber-700">
+                  Diesel não passa por Moagem nem Laboratório — segue direto para Aprovação, aguardando os demais grupos.
+                </p>
+              </div>
+            )}
+
+            {processLotes.length === 0 ? (
+              <div className="rounded-md border p-3 text-xs text-muted-foreground">
+                Todos os grupos desta compra são Diesel. Nenhuma tara ou foto de embalagem é necessária — encerre a etapa para seguir.
+              </div>
+            ) : (
+              <p className="text-xs font-medium text-muted-foreground">
+                Grupos conferidos ({completedCount}/{processLotes.length} completos)
+              </p>
+            )}
+
+
 
             {withCalc.map((l, i) => (
               <Card key={l.itemId} className={l.complete ? "border-green-300/60 bg-green-500/[0.03]" : "border-border/60"}>
@@ -316,7 +340,7 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                     <Input
                       inputMode="decimal"
                       value={l.tareStr}
-                      onChange={e => updateTare(i, e.target.value)}
+                      onChange={e => updateTare(l.itemId, e.target.value)}
                       placeholder="0,000"
                       className="h-8 text-sm"
                     />
@@ -350,24 +374,24 @@ export default function CeramicoTrituracaoPanel({ purchase, open, onOpenChange, 
                       className="hidden"
                       onChange={e => {
                         const f = e.target.files?.[0];
-                        if (f) handlePhoto(i, f);
+                        if (f) handlePhoto(l.itemId, f);
                         e.target.value = "";
                       }}
                     />
                     {l.packagePhotoUrl ? (
                       <div className="flex items-center gap-2">
                         <StagePhotoThumb value={l.packagePhotoUrl} className="h-14 w-14" />
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => pickPhoto(i)} disabled={uploadingIdx === i}>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => pickPhoto(i)} disabled={uploadingId === l.itemId}>
                           Trocar
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => removePhoto(i)}>
+                        <Button size="sm" variant="ghost" className="h-8 text-destructive" onClick={() => removePhoto(l.itemId)}>
                           Remover
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" className="w-full h-8" onClick={() => pickPhoto(i)} disabled={uploadingIdx === i}>
-                        {uploadingIdx === i ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Camera className="h-3 w-3 mr-1" />}
-                        {uploadingIdx === i ? "Enviando..." : "Tirar / Escolher foto"}
+                      <Button size="sm" variant="outline" className="w-full h-8" onClick={() => pickPhoto(i)} disabled={uploadingId === l.itemId}>
+                        {uploadingId === l.itemId ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Camera className="h-3 w-3 mr-1" />}
+                        {uploadingId === l.itemId ? "Enviando..." : "Tirar / Escolher foto"}
                       </Button>
                     )}
                   </div>

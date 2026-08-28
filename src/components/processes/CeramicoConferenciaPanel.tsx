@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Printer, Camera, Image as ImageIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, DIESEL_GROUP, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
@@ -22,8 +22,9 @@ const LABEL_COPIES_PER_GROUP = 3;
 const CERAMICO_CATEGORIES = [
   "Grupo 01", "Grupo 02", "Grupo 03", "Grupo 04", "Grupo 05",
   "Grupo 06", "Grupo 07", "Grupo 08", "Grupo 09", "Grupo 10",
-  "Especial", "Extra",
+  "Especial", "Extra", DIESEL_GROUP,
 ];
+
 
 const TOLERANCE_PCT = 0.02; // 2%
 
@@ -365,6 +366,12 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
                         )}
                         <div className="space-y-1 min-w-0 flex-1">
                           <p className="text-[11px] font-semibold text-muted-foreground">#{i + 1}</p>
+                          {isDieselGroup(l.category) && (
+                            <p className="text-[10px] font-medium text-amber-700 bg-amber-500/10 border border-amber-300 rounded px-1.5 py-0.5 inline-block">
+                              Diesel — direto para Aprovação
+                            </p>
+                          )}
+
                           <Input
                             list="ceramico-categories"
                             value={l.category}

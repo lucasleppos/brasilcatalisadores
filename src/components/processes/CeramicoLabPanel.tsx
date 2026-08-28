@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, getContestInfo } from "@/lib/purchases";
+import { Purchase, advanceStage, getContestInfo, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ interface CeramicoLabPanelProps {
 
 export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoLabPanelProps) {
   const [lotes, setLotes] = useState<LabLote[]>([]);
+  const [dieselCount, setDieselCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingRow, setSavingRow] = useState<string | null>(null); // "itemId-versao"
@@ -290,7 +291,10 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         });
       }
 
-      const loteList: LabLote[] = items.map(item => {
+      const labItems = items.filter(item => !isDieselGroup(catMap[item.id]));
+      setDieselCount(items.length - labItems.length);
+
+      const loteList: LabLote[] = labItems.map(item => {
         const existing = byItem[item.id] || [];
         const rows: AnalysisRow[] = [1, 2, 3].map(v => {
           const found = existing.find(r => r.versao === v);
@@ -442,7 +446,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
 
   const savedCount = lotes.filter(l => savedRowCount(l) >= 1).length;
   const totalCount = lotes.length;
-  const isComplete = totalCount > 0 && savedCount === totalCount;
+  const isComplete = (totalCount > 0 && savedCount === totalCount) || (totalCount === 0 && dieselCount > 0);
 
   const handleFinish = async () => {
     if (!isComplete) {
@@ -489,11 +493,27 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : lotes.length === 0 ? (
+        ) : lotes.length === 0 && dieselCount === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum lote conferido encontrado.</p>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
+            {dieselCount > 0 && (
+              <div className="rounded-md bg-amber-500/10 border border-amber-300 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800">
+                  {dieselCount} grupo{dieselCount > 1 ? "s" : ""} Diesel em stand-by
+                </p>
+                <p className="text-[11px] text-amber-700">
+                  Diesel não passa pelo Laboratório — segue direto para Aprovação com valor por kg definido na precificação.
+                </p>
+              </div>
+            )}
+            {lotes.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Todos os grupos desta compra são Diesel. Nenhuma análise é necessária — encerre a etapa para seguir.
+              </p>
+            ) : (
+              <p className="text-xs font-medium text-muted-foreground">Lotes para Análise (até 3 análises por lote — média simples)</p>
+            )}
             {lotes.map((l, i) => {
               const avg = calcAverage(l);
               const baselineAvg = contestDate ? (baselines[l.itemId] ?? null) : null;
