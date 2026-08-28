@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Save, Loader2, AlertTriangle, FlaskConical, History as HistoryIcon, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, getContestInfo } from "@/lib/purchases";
+import { Purchase, advanceStage, getContestInfo, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ interface CeramicoLabPanelProps {
 
 export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoLabPanelProps) {
   const [lotes, setLotes] = useState<LabLote[]>([]);
+  const [dieselCount, setDieselCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingRow, setSavingRow] = useState<string | null>(null); // "itemId-versao"
@@ -290,7 +291,10 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         });
       }
 
-      const loteList: LabLote[] = items.map(item => {
+      const labItems = items.filter(item => !isDieselGroup(catMap[item.id]));
+      setDieselCount(items.length - labItems.length);
+
+      const loteList: LabLote[] = labItems.map(item => {
         const existing = byItem[item.id] || [];
         const rows: AnalysisRow[] = [1, 2, 3].map(v => {
           const found = existing.find(r => r.versao === v);
