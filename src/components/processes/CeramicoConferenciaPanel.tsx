@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, CheckCircle2, Save, Loader2, AlertTriangle, Printer, Camera, Image as ImageIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage } from "@/lib/purchases";
+import { Purchase, advanceStage, DIESEL_GROUP, isDieselGroup } from "@/lib/purchases";
 import { toast } from "sonner";
 import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
