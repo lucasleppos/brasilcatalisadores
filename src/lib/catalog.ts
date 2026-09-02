@@ -149,10 +149,25 @@ export async function updatePart(id: string, part: Partial<Omit<CatalogPart, "id
   return !error;
 }
 
+export async function deleteAllParts(): Promise<{ ok: boolean; count: number; inUse?: boolean }> {
+  const { data, error } = await supabase
+    .from("catalog_parts")
+    .delete()
+    .not("id", "is", null)
+    .select("id");
+
+  if (error) {
+    const inUse = /foreign key|violates/i.test(error.message);
+    return { ok: false, count: 0, inUse };
+  }
+  return { ok: true, count: data?.length ?? 0 };
+}
+
 export async function deletePart(id: string): Promise<boolean> {
   const { error } = await supabase.from("catalog_parts").delete().eq("id", id);
   return !error;
 }
+
 
 export async function bulkImportParts(
   parts: Omit<CatalogPart, "id" | "createdAt" | "groupName" | "groupMargin">[],
