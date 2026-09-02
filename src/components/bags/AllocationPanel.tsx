@@ -413,9 +413,10 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         aria-label="Selecionar todos"
                       />
                     </TableHead>
+                    <TableHead>OP</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Carbono</TableHead>
                     <TableHead className="text-right">Peso (kg)</TableHead>
                     <TableHead className="text-right">Valor (R$)</TableHead>
                     <TableHead className="text-right">Pt</TableHead>
@@ -439,12 +440,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           aria-label="Selecionar material"
                         />
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                       <TableCell className="font-medium">{m.supplierName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{m.itemType}</Badge>
                       </TableCell>
                       <TableCell>
-                        {m.carbono && <Badge variant="secondary">Carbono</Badge>}
+                        {m.carbono ? (
+                          <Badge variant="secondary">Carbono</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {fmtNum(m.weight, 1)}
@@ -456,9 +462,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <TableCell className="text-right">
                         {fmtNum(m.paidValue, 2)}
                       </TableCell>
-                      <TableCell className="text-right">{m.ptPpm}</TableCell>
-                      <TableCell className="text-right">{m.pdPpm}</TableCell>
-                      <TableCell className="text-right">{m.rhPpm}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" onClick={() => handleAllocateClick([m])}>
                           <ArrowRight className="h-4 w-4 mr-1" /> Alocar
@@ -491,6 +497,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>OP</TableHead>
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
@@ -501,6 +508,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <TableBody>
                 {allocatedMaterials.map((m) => (
                   <TableRow key={m.purchaseItemId}>
+                    <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium">{m.supplierName}</TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
@@ -538,6 +546,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>OP</TableHead>
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
@@ -548,6 +557,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <TableBody>
                 {inProcessMaterials.map((m, idx) => (
                   <TableRow key={`${m.purchaseId}-${idx}`}>
+                    <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium">{m.supplierName}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
