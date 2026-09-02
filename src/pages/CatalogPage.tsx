@@ -32,6 +32,10 @@ export default function CatalogPage() {
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editPart, setEditPart] = useState<CatalogPart | null>(null);
+  const [wipeOpen, setWipeOpen] = useState(false);
+  const [wipeConfirm, setWipeConfirm] = useState("");
+  const [wiping, setWiping] = useState(false);
+
 
   // Form fields
   const [fCode, setFCode] = useState("");
