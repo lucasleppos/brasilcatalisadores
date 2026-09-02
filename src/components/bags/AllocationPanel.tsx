@@ -24,6 +24,7 @@ interface AvailableMaterial {
   pdPpm: number;
   rhPpm: number;
   itemType: string;
+  carbono?: boolean;
 }
 
 
@@ -191,6 +192,29 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Peso real pós-trituração (peças), rateado por item de conferência
     const realWeights = await getRealWeightsByItem(purchaseIds);
 
+    // Zr(%) / Ce(%) do laboratório — apenas informativo (selo "Carbono")
+    const { data: labRows } = await supabase
+      .from("lab_results")
+      .select("purchase_item_id, zr_pct, ce_pct")
+      .in("purchase_id", purchaseIds)
+      .not("purchase_item_id", "is", null);
+
+    const carbonoIds = new Set<string>();
+    const acc: Record<string, { zr: number[]; ce: number[] }> = {};
+    (labRows || []).forEach((r: any) => {
+      const id = r.purchase_item_id as string | null;
+      if (!id) return;
+      acc[id] ||= { zr: [], ce: [] };
+      if (r.zr_pct != null) acc[id].zr.push(Number(r.zr_pct));
+      if (r.ce_pct != null) acc[id].ce.push(Number(r.ce_pct));
+    });
+    Object.entries(acc).forEach(([id, v]) => {
+      if (v.zr.length === 0 || v.ce.length === 0) return;
+      const zrAvg = v.zr.reduce((s, n) => s + n, 0) / v.zr.length;
+      const ceAvg = v.ce.reduce((s, n) => s + n, 0) / v.ce.length;
+      if (ceAvg < 3.5 && zrAvg < 5) carbonoIds.add(id);
+    });
+
     const available: AvailableMaterial[] = [];
     (items || []).forEach((item: any) => {
       if (allocatedIds.has(item.id)) return;
@@ -211,6 +235,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         pdPpm: input?.pdPpm || 0,
         rhPpm: input?.rhPpm || 0,
         itemType: item.item_type,
+        carbono: carbonoIds.has(item.id),
       });
     });
 
@@ -384,6 +409,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     </TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead></TableHead>
                     <TableHead className="text-right">Peso (kg)</TableHead>
                     <TableHead className="text-right">Valor (R$)</TableHead>
                     <TableHead className="text-right">Pt</TableHead>
@@ -410,6 +436,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <TableCell className="font-medium">{m.supplierName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{m.itemType}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {m.carbono && <Badge variant="secondary">Carbono</Badge>}
                       </TableCell>
                       <TableCell className="text-right">
                         {fmtNum(m.weight, 1)}
