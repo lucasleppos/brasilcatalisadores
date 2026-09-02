@@ -68,6 +68,7 @@ interface AllocationPanelProps {
 
 export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [availableMaterials, setAvailableMaterials] = useState<AvailableMaterial[]>([]);
   const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
