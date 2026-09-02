@@ -238,14 +238,28 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         calcInput: input,
         calcResult: result,
         totalValue: result.finalValueBrl,
+        manualValue: null,
       };
     }));
     toast.success("Valores recalculados");
   };
 
-  const totalValue = useMemo(() => lots.reduce((s, l) => s + l.totalValue, 0), [lots]);
+  const canEditFinal =
+    purchase.supplierId === MANUAL_PRICE_SUPPLIER_ID ||
+    normalizeName(purchase.supplierName) === normalizeName(MANUAL_PRICE_SUPPLIER_NAME);
+
+  const setManualValue = (itemId: string, raw: string | null) => {
+    setLots(prev => prev.map(l => l.itemId === itemId
+      ? { ...l, manualValue: raw == null ? null : raw.replace(/[^0-9.,]/g, "") }
+      : l));
+  };
+
+  const totalValue = useMemo(() => lots.reduce((s, l) => s + effVal(l), 0), [lots]);
   const totalWeight = useMemo(() => lots.reduce((s, l) => s + l.weight, 0), [lots]);
-  const allCalculated = lots.length > 0 && lots.every(l => l.isDiesel ? !!l.dieselPrice : l.calcResult !== null);
+  const allCalculated = lots.length > 0 && lots.every(l =>
+    (l.manualValue != null && parseNum(l.manualValue) > 0) ||
+    (l.isDiesel ? !!l.dieselPrice : l.calcResult !== null));
+
 
   const setDieselPrice = (itemId: string, price: number) => {
     setLots(prev => prev.map(l => l.itemId === itemId
