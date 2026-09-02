@@ -317,12 +317,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     try {
       await persistPieces();
       await persistReturns();
-    } catch {
-      toast.error("Erro ao salvar antes de imprimir");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de imprimir");
       setSaving(false);
       return;
     }
     setSaving(false);
+
 
     const code = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
     const base: LabelData = {
