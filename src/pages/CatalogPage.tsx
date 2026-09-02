@@ -248,7 +248,7 @@ export default function CatalogPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Peso (kg)</Label>
+                <Label className="text-xs">Peso (kg) — ex.: 0,4200</Label>
                 <Input value={fWeight} onChange={e => setFWeight(numFilter(e.target.value))} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
