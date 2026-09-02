@@ -80,13 +80,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   };
 
   const persistReturns = async () => {
-    await supabase
+    const { error: delErr } = await supabase
       .from("stage_evidence")
       .delete()
       .eq("purchase_id", purchase.id)
       .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    if (delErr) throw new Error(`Não foi possível atualizar as devoluções: ${delErr.message}`);
     if (returnedQty > 0) {
-      await supabase.from("stage_evidence").insert([
+      const { error: insErr } = await supabase.from("stage_evidence").insert([
         {
           purchase_id: purchase.id, stage: "conferencia", task_key: "qtd_devolvida",
           data_type: "number", value_numeric: returnedQty,
@@ -96,8 +97,10 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           data_type: "text", value_text: returnedReason.trim(),
         },
       ]);
+      if (insErr) throw new Error(`Não foi possível salvar as devoluções: ${insErr.message}`);
     }
   };
+
 
   const loadExistingPieces = async () => {
     const { data } = await supabase
@@ -209,10 +212,12 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const handleRemove = async (index: number) => {
     const piece = pieces[index];
     if (piece.id) {
-      await supabase.from("purchase_items").delete().eq("id", piece.id);
+      const { error } = await supabase.from("purchase_items").delete().eq("id", piece.id);
+      if (error) { toast.error(`Não foi possível remover a peça: ${error.message}`); return; }
     }
     setPieces(prev => prev.filter((_, i) => i !== index));
   };
+
 
   const setExcluded = (index: number, value: boolean) => {
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
@@ -227,23 +232,31 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
   const persistPieces = async () => {
-    await supabase
+    const { error: delErr } = await supabase
       .from("purchase_items")
       .delete()
       .eq("purchase_id", purchase.id)
       .in("item_type", ["peca", "peca_sacola"]);
+    if (delErr) throw new Error(`Não foi possível limpar os itens anteriores: ${delErr.message}`);
 
-    await supabase.from("purchase_items").insert(
-      pieces.map(p => ({
-        purchase_id: purchase.id,
-        item_type: itemType,
-        category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
-        quantity: p.quantity,
-        weight: p.unitWeight * p.quantity,
-        catalog_part_id: p.catalogPartId,
-        seq: p.seq,
-      }))
-    );
+    const rows = pieces.map(p => ({
+      purchase_id: purchase.id,
+      item_type: itemType,
+      category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
+      quantity: p.quantity,
+      weight: p.unitWeight * p.quantity,
+      catalog_part_id: p.catalogPartId,
+      seq: p.seq,
+    }));
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("purchase_items")
+      .insert(rows)
+      .select("id");
+    if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
+    if ((inserted?.length ?? 0) !== rows.length) {
+      throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+    }
   };
 
   const handleSave = async () => {
@@ -255,12 +268,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       await persistReturns();
       toast.success("Conferência salva");
       onOpenChange(false);
-    } catch {
-      toast.error("Erro ao salvar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
     } finally {
       setSaving(false);
     }
   };
+
 
   const activePieces = pieces.filter(p => !p.excluded);
   const excludedPieces = pieces.filter(p => p.excluded);
@@ -303,12 +317,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     try {
       await persistPieces();
       await persistReturns();
-    } catch {
-      toast.error("Erro ao salvar antes de imprimir");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de imprimir");
       setSaving(false);
       return;
     }
     setSaving(false);
+
 
     const code = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
     const base: LabelData = {
@@ -344,16 +359,32 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     try {
       await persistPieces();
       await persistReturns();
+
+      // Confere no banco antes de avançar: nunca avançar sem os itens gravados
+      const { data: saved, error: checkErr } = await supabase
+        .from("purchase_items")
+        .select("id, quantity, category")
+        .eq("purchase_id", purchase.id)
+        .in("item_type", ["peca", "peca_sacola"]);
+      if (checkErr) throw new Error(`Não foi possível confirmar a gravação: ${checkErr.message}`);
+      const savedQty = (saved || [])
+        .filter(r => r.category === "conferencia")
+        .reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      if (savedQty !== totalQty) {
+        throw new Error(`As peças não foram gravadas corretamente (${savedQty}/${totalQty}). A etapa não foi avançada.`);
+      }
+
       await advanceStage(purchase.id, purchase.status);
       toast.success("Conferência encerrada");
       onOpenChange(false);
       onCompleted();
-    } catch {
-      toast.error("Erro ao encerrar conferência");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao encerrar conferência");
     } finally {
       setSaving(false);
     }
   };
+
 
 
   return (
