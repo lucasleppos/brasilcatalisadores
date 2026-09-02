@@ -37,7 +37,11 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
     brand: "", vehicle: "", code: "", reference: "", weight: "", pt_ppm: "", pd_ppm: "", rh_ppm: "", group: "",
   });
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
+  const [weightUnit, setWeightUnit] = useState<"g" | "kg">("g");
   const [loading, setLoading] = useState(false);
+
+  const weightFactor = weightUnit === "g" ? 0.001 : 1;
+
 
   useEffect(() => {
     if (open) loadGroups().then(setGroups);
