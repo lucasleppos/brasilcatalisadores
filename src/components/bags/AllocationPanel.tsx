@@ -15,6 +15,7 @@ import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
@@ -30,6 +31,7 @@ interface AvailableMaterial {
 
 interface InProcessMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   supplierName: string;
   itemType: string;
   weight: number;
@@ -39,6 +41,7 @@ interface InProcessMaterial {
 
 interface AllocatedMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
