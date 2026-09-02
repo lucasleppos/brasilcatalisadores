@@ -42,6 +42,18 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
 
   const weightFactor = weightUnit === "g" ? 0.001 : 1;
 
+  const weightColIdx = headers.indexOf(mapping.weight);
+  const rawWeights = weightColIdx >= 0
+    ? rows.map(r => parseFloat(String(r[weightColIdx] ?? "0").replace(",", ".")) || 0).filter(n => n > 0)
+    : [];
+  const avgRaw = rawWeights.length ? rawWeights.reduce((a, b) => a + b, 0) / rawWeights.length : 0;
+  const unitWarning =
+    rawWeights.length === 0 ? null
+    : weightUnit === "kg" && avgRaw > 20 ? "Os pesos parecem estar em gramas (média alta). Verifique a unidade."
+    : weightUnit === "g" && avgRaw > 0 && avgRaw < 5 ? "Os pesos parecem já estar em quilos (média baixa). Verifique a unidade."
+    : null;
+
+
 
   useEffect(() => {
     if (open) loadGroups().then(setGroups);
