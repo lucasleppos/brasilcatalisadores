@@ -12,6 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
