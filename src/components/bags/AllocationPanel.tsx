@@ -61,6 +61,10 @@ const statusColors: Record<string, string> = {
   "Pagamento": "bg-emerald-100 text-emerald-800",
 };
 
+function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.purchaseNumber.localeCompare(b.purchaseNumber));
+}
+
 interface AllocationPanelProps {
   bags: Bag[];
   onAllocated: () => void;
@@ -159,7 +163,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setAllocatedMaterials(allocated);
+    setAllocatedMaterials(sortByPurchaseNumber(allocated));
   };
 
   const loadAvailableMaterials = async () => {
@@ -247,7 +251,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setAvailableMaterials(available);
+    setAvailableMaterials(sortByPurchaseNumber(available));
   };
 
 
@@ -284,7 +288,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setInProcessMaterials(result);
+    setInProcessMaterials(sortByPurchaseNumber(result));
   };
 
   const handleAllocateClick = (materials: AvailableMaterial[]) => {
