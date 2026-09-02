@@ -538,6 +538,7 @@ export type Database = {
       }
       lab_results: {
         Row: {
+          ce_pct: number | null
           created_at: string
           created_by: string | null
           id: string
@@ -547,8 +548,10 @@ export type Database = {
           purchase_item_id: string | null
           rh_ppm: number
           versao: number
+          zr_pct: number | null
         }
         Insert: {
+          ce_pct?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -558,8 +561,10 @@ export type Database = {
           purchase_item_id?: string | null
           rh_ppm?: number
           versao?: number
+          zr_pct?: number | null
         }
         Update: {
+          ce_pct?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -569,6 +574,7 @@ export type Database = {
           purchase_item_id?: string | null
           rh_ppm?: number
           versao?: number
+          zr_pct?: number | null
         }
         Relationships: [
           {

@@ -1,0 +1,1 @@
+ALTER TABLE public.lab_results ADD COLUMN IF NOT EXISTS zr_pct numeric, ADD COLUMN IF NOT EXISTS ce_pct numeric;

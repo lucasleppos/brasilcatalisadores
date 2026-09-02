@@ -7,6 +7,8 @@ export interface LabResult {
   ptPpm: number;
   pdPpm: number;
   rhPpm: number;
+  zrPct: number | null;
+  cePct: number | null;
   createdBy: string | null;
   createdAt: string;
 }
@@ -19,6 +21,8 @@ function mapRow(r: any): LabResult {
     ptPpm: Number(r.pt_ppm) || 0,
     pdPpm: Number(r.pd_ppm) || 0,
     rhPpm: Number(r.rh_ppm) || 0,
+    zrPct: r.zr_pct == null ? null : Number(r.zr_pct),
+    cePct: r.ce_pct == null ? null : Number(r.ce_pct),
     createdBy: r.created_by,
     createdAt: r.created_at,
   };

@@ -18,6 +18,8 @@ interface AnalysisRow {
   pt: string;
   pd: string;
   rh: string;
+  zr: string;
+  ce: string;
 }
 
 interface HistoryEntry {
@@ -49,6 +51,8 @@ const emptyRow = (versao: number): AnalysisRow => ({
   pt: "",
   pd: "",
   rh: "",
+  zr: "",
+  ce: "",
 });
 
 const isRowFilled = (r: AnalysisRow) =>
@@ -63,13 +67,19 @@ const savedRowCount = (l: LabLote) =>
 const filledRowCount = (l: LabLote) =>
   l.rows.filter(isRowFilled).length;
 
+const avgOf = (rows: AnalysisRow[], key: "zr" | "ce") => {
+  const vals = rows.filter(r => r[key].trim() !== "").map(r => parseNum(r[key]));
+  if (vals.length === 0) return null;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+};
+
 const calcAverage = (l: LabLote) => {
   const filled = l.rows.filter(isRowFilled);
   if (filled.length === 0) return null;
   const pt = filled.reduce((s, r) => s + parseNum(r.pt), 0) / filled.length;
   const pd = filled.reduce((s, r) => s + parseNum(r.pd), 0) / filled.length;
   const rh = filled.reduce((s, r) => s + parseNum(r.rh), 0) / filled.length;
-  return { pt, pd, rh, n: filled.length };
+  return { pt, pd, rh, zr: avgOf(filled, "zr"), ce: avgOf(filled, "ce"), n: filled.length };
 };
 
 interface Baseline { pt: number; pd: number; rh: number; n: number }
@@ -243,7 +253,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
 
       const { data: labResults } = await supabase
         .from("lab_results")
-        .select("id, purchase_item_id, versao, pt_ppm, pd_ppm, rh_ppm, created_at")
+        .select("id, purchase_item_id, versao, pt_ppm, pd_ppm, rh_ppm, zr_pct, ce_pct, created_at")
         .eq("purchase_id", purchase.id)
         .not("purchase_item_id", "is", null)
         .order("created_at", { ascending: true });
@@ -255,6 +265,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         pt: String(lr.pt_ppm ?? ""),
         pd: String(lr.pd_ppm ?? ""),
         rh: String(lr.rh_ppm ?? ""),
+        zr: lr.zr_pct == null ? "" : String(lr.zr_pct),
+        ce: lr.ce_pct == null ? "" : String(lr.ce_pct),
       });
 
       const byItem: Record<string, AnalysisRow[]> = {};
@@ -321,7 +333,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
   const updateField = (
     loteIdx: number,
     versao: number,
-    field: "pt" | "pd" | "rh",
+    field: "pt" | "pd" | "rh" | "zr" | "ce",
     value: string
   ) => {
     const clean = value.replace(/[^0-9.,]/g, "");
@@ -398,6 +410,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
     const pt = parseNum(row.pt);
     const pd = parseNum(row.pd);
     const rh = parseNum(row.rh);
+    const zr = row.zr.trim() === "" ? null : parseNum(row.zr);
+    const ce = row.ce.trim() === "" ? null : parseNum(row.ce);
 
     setSavingRow(`${lote.itemId}-${versao}`);
     try {
@@ -407,7 +421,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
         const changed = prevVals && (prevVals.pt !== pt || prevVals.pd !== pd || prevVals.rh !== rh);
         await supabase
           .from("lab_results")
-          .update({ pt_ppm: pt, pd_ppm: pd, rh_ppm: rh })
+          .update({ pt_ppm: pt, pd_ppm: pd, rh_ppm: rh, zr_pct: zr, ce_pct: ce })
           .eq("id", row.id);
         if (changed && prevVals) {
           await logHistory(lote.itemId, versao, "update", prevVals, { pt, pd, rh });
@@ -424,6 +438,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
             pt_ppm: pt,
             pd_ppm: pd,
             rh_ppm: rh,
+            zr_pct: zr,
+            ce_pct: ce,
             versao,
             created_by: user?.id ?? null,
           })
@@ -546,11 +562,13 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
 
 
                     <div className="space-y-1.5">
-                      <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center text-[10px] text-muted-foreground pl-1">
+                      <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center text-[10px] text-muted-foreground pl-1">
                         <span className="w-16">#</span>
                         <span>Pt (ppm)</span>
                         <span>Pd (ppm)</span>
                         <span>Rh (ppm)</span>
+                        <span>Zr (%)</span>
+                        <span>Ce (%)</span>
                         <span className="w-4"></span>
                       </div>
                       {l.rows.map(r => {
@@ -558,7 +576,7 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                         const isSaving = savingRow === rowKey;
                         const isSaved = r.id !== null;
                         return (
-                          <div key={r.versao} className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center">
+                          <div key={r.versao} className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center">
                             <Label className="text-[11px] w-16 text-muted-foreground">Análise {r.versao}</Label>
                             <Input
                               inputMode="decimal"
@@ -584,6 +602,23 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                               placeholder="0,0000"
                               className="h-8 text-sm"
                             />
+                            <Input
+                              inputMode="decimal"
+                              value={r.zr}
+                              onChange={e => updateField(i, r.versao, "zr", e.target.value)}
+                              onBlur={() => persistRow(i, r.versao)}
+                              placeholder="0,00"
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              inputMode="decimal"
+                              value={r.ce}
+                              onChange={e => updateField(i, r.versao, "ce", e.target.value)}
+                              onBlur={() => persistRow(i, r.versao)}
+                              placeholder="0,00"
+                              className="h-8 text-sm"
+                            />
+
                             <div className="w-4 flex items-center justify-center">
                               {isSaving
                                 ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
@@ -618,6 +653,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                                 <div>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></div>
                                 <div>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></div>
                                 <div>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></div>
+                                {avg.zr !== null && <div>Zr: <strong>{fmtNum(avg.zr, 2)}%</strong></div>}
+                                {avg.ce !== null && <div>Ce: <strong>{fmtNum(avg.ce, 2)}%</strong></div>}
                               </div>
                             </div>
                           </div>
@@ -652,6 +689,12 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                             <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
                             <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
                           </div>
+                          {(avg.zr !== null || avg.ce !== null) && (
+                            <div className="grid grid-cols-3 gap-2 text-xs mt-1 text-muted-foreground">
+                              {avg.zr !== null && <span>Zr: <strong className="text-foreground">{fmtNum(avg.zr, 2)}%</strong></span>}
+                              {avg.ce !== null && <span>Ce: <strong className="text-foreground">{fmtNum(avg.ce, 2)}%</strong></span>}
+                            </div>
+                          )}
                         </div>
                       )
                     )}
