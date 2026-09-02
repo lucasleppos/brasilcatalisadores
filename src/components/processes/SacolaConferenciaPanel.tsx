@@ -80,13 +80,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   };
 
   const persistReturns = async () => {
-    await supabase
+    const { error: delErr } = await supabase
       .from("stage_evidence")
       .delete()
       .eq("purchase_id", purchase.id)
       .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
+    if (delErr) throw new Error(`Não foi possível atualizar as devoluções: ${delErr.message}`);
     if (returnedQty > 0) {
-      await supabase.from("stage_evidence").insert([
+      const { error: insErr } = await supabase.from("stage_evidence").insert([
         {
           purchase_id: purchase.id, stage: "conferencia", task_key: "qtd_devolvida",
           data_type: "number", value_numeric: returnedQty,
@@ -96,8 +97,10 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           data_type: "text", value_text: returnedReason.trim(),
         },
       ]);
+      if (insErr) throw new Error(`Não foi possível salvar as devoluções: ${insErr.message}`);
     }
   };
+
 
   const loadExistingPieces = async () => {
     const { data } = await supabase
