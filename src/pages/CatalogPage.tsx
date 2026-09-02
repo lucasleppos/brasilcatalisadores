@@ -102,6 +102,24 @@ export default function CatalogPage() {
     refresh();
   };
 
+  const handleWipeAll = async () => {
+    setWiping(true);
+    const res = await deleteAllParts();
+    setWiping(false);
+    if (!res.ok) {
+      toast.error(
+        res.inUse
+          ? "Existem peças vinculadas a compras já lançadas. Nada foi apagado."
+          : "Não foi possível apagar as peças."
+      );
+      return;
+    }
+    toast.success(`${res.count} peça(s) apagada(s). Catálogo pronto para nova importação.`);
+    setWipeOpen(false);
+    setWipeConfirm("");
+    refresh();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -113,11 +131,22 @@ export default function CatalogPage() {
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="h-3 w-3 mr-1" />Importar
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={parts.length === 0}
+              onClick={() => { setWipeConfirm(""); setWipeOpen(true); }}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />Apagar tudo
+            </Button>
+          )}
           <Button size="sm" onClick={() => openEdit(null)}>
             <Plus className="h-3 w-3 mr-1" />Nova Peça
           </Button>
         </div>
       </div>
+
 
       <div className="flex gap-2">
         <div className="relative flex-1">
