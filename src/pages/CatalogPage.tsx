@@ -4,15 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Settings2, Search, Trash2, Pencil } from "lucide-react";
+import { Plus, Upload, Settings2, Search, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { CatalogPart, CatalogGroup, loadParts, loadGroups, createPart, updatePart, deletePart } from "@/lib/catalog";
+import { CatalogPart, CatalogGroup, loadParts, loadGroups, createPart, updatePart, deletePart, deleteAllParts } from "@/lib/catalog";
 import CatalogImport from "@/components/catalog/CatalogImport";
 import GroupManager from "@/components/catalog/GroupManager";
 import { toast } from "sonner";
 import { fmtNum, fmtPct } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
