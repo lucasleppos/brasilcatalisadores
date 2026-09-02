@@ -1,14 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, Calculator, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, Calculator, RefreshCw, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, batchUpdateItemPricing, advanceStage, isDieselGroup, DIESEL_PRICES } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings, Settings } from "@/lib/settings";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+
+/** Exceção: apenas este fornecedor pode editar manualmente o valor final dos lotes */
+const MANUAL_PRICE_SUPPLIER_ID = "8a533d5a-385d-4a45-b6f7-be54eab7e085";
+const MANUAL_PRICE_SUPPLIER_NAME = "UNIAO COMERCIO E RECICLAGEM DE SUCATAS LTDA";
+const normalizeName = (s: string) =>
+  (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+
+const parseNum = (v: string) => {
+  const n = parseFloat((v || "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+};
+const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
 interface LotPricing {
   itemId: string;
@@ -22,7 +35,12 @@ interface LotPricing {
   totalValue: number;
   isDiesel?: boolean;
   dieselPrice?: number | null;
+  manualValue?: string | null;
 }
+
+/** Valor final do lote considerando eventual edição manual */
+const effVal = (lot: LotPricing) =>
+  lot.manualValue != null ? parseNum(lot.manualValue) : lot.totalValue;
 
 interface CeramicoPricingPanelProps {
   purchase: Purchase;
@@ -30,6 +48,7 @@ interface CeramicoPricingPanelProps {
   onOpenChange: (open: boolean) => void;
   onCompleted: () => void;
 }
+
 
 export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoPricingPanelProps) {
   const [lots, setLots] = useState<LotPricing[]>([]);
