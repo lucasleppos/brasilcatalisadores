@@ -4,15 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Settings2, Search, Trash2, Pencil } from "lucide-react";
+import { Plus, Upload, Settings2, Search, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { CatalogPart, CatalogGroup, loadParts, loadGroups, createPart, updatePart, deletePart } from "@/lib/catalog";
+import { CatalogPart, CatalogGroup, loadParts, loadGroups, createPart, updatePart, deletePart, deleteAllParts } from "@/lib/catalog";
 import CatalogImport from "@/components/catalog/CatalogImport";
 import GroupManager from "@/components/catalog/GroupManager";
 import { toast } from "sonner";
 import { fmtNum, fmtPct } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
@@ -27,6 +32,10 @@ export default function CatalogPage() {
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editPart, setEditPart] = useState<CatalogPart | null>(null);
+  const [wipeOpen, setWipeOpen] = useState(false);
+  const [wipeConfirm, setWipeConfirm] = useState("");
+  const [wiping, setWiping] = useState(false);
+
 
   // Form fields
   const [fCode, setFCode] = useState("");
@@ -93,6 +102,24 @@ export default function CatalogPage() {
     refresh();
   };
 
+  const handleWipeAll = async () => {
+    setWiping(true);
+    const res = await deleteAllParts();
+    setWiping(false);
+    if (!res.ok) {
+      toast.error(
+        res.inUse
+          ? "Existem peças vinculadas a compras já lançadas. Nada foi apagado."
+          : "Não foi possível apagar as peças."
+      );
+      return;
+    }
+    toast.success(`${res.count} peça(s) apagada(s). Catálogo pronto para nova importação.`);
+    setWipeOpen(false);
+    setWipeConfirm("");
+    refresh();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -104,11 +131,22 @@ export default function CatalogPage() {
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="h-3 w-3 mr-1" />Importar
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={parts.length === 0}
+              onClick={() => { setWipeConfirm(""); setWipeOpen(true); }}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />Apagar tudo
+            </Button>
+          )}
           <Button size="sm" onClick={() => openEdit(null)}>
             <Plus className="h-3 w-3 mr-1" />Nova Peça
           </Button>
         </div>
       </div>
+
 
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -247,8 +285,40 @@ export default function CatalogPage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={wipeOpen} onOpenChange={setWipeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Apagar todas as peças?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove <strong>{parts.length}</strong> peça(s) do catálogo e não pode ser desfeita.
+              Os grupos e suas margens são mantidos. Digite <strong>APAGAR</strong> para confirmar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={wipeConfirm}
+            onChange={e => setWipeConfirm(e.target.value)}
+            placeholder="APAGAR"
+            className="h-9"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={wipeConfirm.trim().toUpperCase() !== "APAGAR" || wiping}
+              onClick={(e) => { e.preventDefault(); handleWipeAll(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {wiping ? "Apagando..." : "Apagar tudo"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <CatalogImport open={importOpen} onOpenChange={setImportOpen} onImported={refresh} />
       <GroupManager open={groupsOpen} onOpenChange={setGroupsOpen} onChanged={refresh} />
+
     </div>
   );
 }
