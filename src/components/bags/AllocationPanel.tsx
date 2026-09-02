@@ -12,6 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -66,6 +68,7 @@ interface AllocationPanelProps {
 
 export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [availableMaterials, setAvailableMaterials] = useState<AvailableMaterial[]>([]);
   const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
@@ -402,79 +405,164 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 </div>
               </div>
             )}
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={toggleAll}
-                        aria-label="Selecionar todos"
-                      />
-                    </TableHead>
-                    <TableHead>OP</TableHead>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Carbono</TableHead>
-                    <TableHead className="text-right">Peso (kg)</TableHead>
-                    <TableHead className="text-right">Valor (R$)</TableHead>
-                    <TableHead className="text-right">Pt</TableHead>
-                    <TableHead className="text-right">Pd</TableHead>
-                    <TableHead className="text-right">Rh</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {availableMaterials.map((m) => (
-                    <TableRow
-                      key={m.purchaseItemId}
-                      data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
-                      className="cursor-pointer"
-                      onClick={() => toggleOne(m.purchaseItemId)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+            {isMobile ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="Selecionar todos"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.size} selecionado{selectedIds.size !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                {availableMaterials.map((m) => (
+                  <div
+                    key={m.purchaseItemId}
+                    onClick={() => toggleOne(m.purchaseItemId)}
+                    className={cn(
+                      "rounded-lg border bg-card p-3 space-y-2 transition-colors",
+                      selectedIds.has(m.purchaseItemId) && "bg-muted/60"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <Checkbox
                           checked={selectedIds.has(m.purchaseItemId)}
                           onCheckedChange={() => toggleOne(m.purchaseItemId)}
+                          onClick={(e) => e.stopPropagation()}
                           aria-label="Selecionar material"
                         />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
-                      <TableCell className="font-medium">{m.supplierName}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{m.itemType}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {m.carbono ? (
-                          <Badge variant="secondary">Carbono</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {fmtNum(m.weight, 1)}
-                        {m.isRealWeight && (
-                          <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
-                        )}
-                      </TableCell>
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs text-muted-foreground">{m.purchaseNumber}</p>
+                          <p className="font-medium text-sm truncate" title={m.supplierName}>
+                            {m.supplierName}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
+                    </div>
 
-                      <TableCell className="text-right">
-                        {fmtNum(m.paidValue, 2)}
-                      </TableCell>
-                      <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
-                      <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
-                      <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" onClick={() => handleAllocateClick([m])}>
-                          <ArrowRight className="h-4 w-4 mr-1" /> Alocar
-                        </Button>
-                      </TableCell>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-3">
+                        <span>
+                          <span className="text-muted-foreground text-xs">Peso</span>
+                          <br />
+                          <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                          {m.isRealWeight && (
+                            <span className="text-[10px] text-muted-foreground ml-0.5">(real)</span>
+                          )}
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground text-xs">Pt</span>
+                          <br />
+                          <span className="font-medium">{fmtNum(m.ptPpm, 0)}</span>
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground text-xs">Pd</span>
+                          <br />
+                          <span className="font-medium">{fmtNum(m.pdPpm, 0)}</span>
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground text-xs">Rh</span>
+                          <br />
+                          <span className="font-medium">{fmtNum(m.rhPpm, 0)}</span>
+                        </span>
+                      </div>
+                      {m.carbono ? (
+                        <Badge variant="secondary" className="shrink-0">Carbono</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs shrink-0">—</span>
+                      )}
+                    </div>
+
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={(e) => { e.stopPropagation(); handleAllocateClick([m]); }}
+                    >
+                      <ArrowRight className="h-4 w-4 mr-1" /> Alocar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={toggleAll}
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
+                      <TableHead>OP</TableHead>
+                      <TableHead className="w-[180px]">Fornecedor</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Carbono</TableHead>
+                      <TableHead className="text-right">Peso (kg)</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
+                      <TableHead className="text-right">Pt</TableHead>
+                      <TableHead className="text-right">Pd</TableHead>
+                      <TableHead className="text-right">Rh</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {availableMaterials.map((m) => (
+                      <TableRow
+                        key={m.purchaseItemId}
+                        data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
+                        className="cursor-pointer"
+                        onClick={() => toggleOne(m.purchaseItemId)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(m.purchaseItemId)}
+                            onCheckedChange={() => toggleOne(m.purchaseItemId)}
+                            aria-label="Selecionar material"
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
+                        <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
+                          {m.supplierName}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{m.itemType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {m.carbono ? (
+                            <Badge variant="secondary">Carbono</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmtNum(m.weight, 1)}
+                          {m.isRealWeight && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">(real)</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right hidden md:table-cell">
+                          {fmtNum(m.paidValue, 2)}
+                        </TableCell>
+                        <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
+                        <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
+                        <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" onClick={() => handleAllocateClick([m])}>
+                            <ArrowRight className="h-4 w-4 mr-1" /> Alocar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </>
 
         )}
@@ -492,16 +580,42 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material alocado no momento.</p>
           </div>
+        ) : isMobile ? (
+          <div className="space-y-2">
+            {allocatedMaterials.map((m) => (
+              <div key={m.purchaseItemId} className="rounded-lg border bg-card p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-muted-foreground">{m.purchaseNumber}</p>
+                    <p className="font-medium text-sm truncate" title={m.supplierName}>
+                      {m.supplierName}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>
+                    <span className="text-muted-foreground text-xs">Peso</span>
+                    <br />
+                    <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                  </span>
+                  <Badge className="bg-emerald-100 text-emerald-800 shrink-0">
+                    {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>OP</TableHead>
-                  <TableHead>Fornecedor</TableHead>
+                  <TableHead className="w-[180px]">Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Valor (R$)</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
                   <TableHead>Bag</TableHead>
                 </TableRow>
               </TableHeader>
@@ -509,10 +623,12 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 {allocatedMaterials.map((m) => (
                   <TableRow key={m.purchaseItemId}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
-                    <TableCell className="font-medium">{m.supplierName}</TableCell>
+                    <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
+                      {m.supplierName}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.paidValue, 2)}
                     </TableCell>
                     <TableCell>
@@ -541,16 +657,42 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material em processo no momento.</p>
           </div>
+        ) : isMobile ? (
+          <div className="space-y-2">
+            {inProcessMaterials.map((m, idx) => (
+              <div key={`${m.purchaseId}-${idx}`} className="rounded-lg border bg-card p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-muted-foreground">{m.purchaseNumber}</p>
+                    <p className="font-medium text-sm truncate" title={m.supplierName}>
+                      {m.supplierName}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>
+                    <span className="text-muted-foreground text-xs">Peso</span>
+                    <br />
+                    <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                  </span>
+                  <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
+                    {m.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>OP</TableHead>
-                  <TableHead>Fornecedor</TableHead>
+                  <TableHead className="w-[180px]">Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Valor (R$)</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -558,12 +700,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 {inProcessMaterials.map((m, idx) => (
                   <TableRow key={`${m.purchaseId}-${idx}`}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
-                    <TableCell className="font-medium">{m.supplierName}</TableCell>
+                    <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
+                      {m.supplierName}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
                     </TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.value, 2)}
                     </TableCell>
                     <TableCell>
