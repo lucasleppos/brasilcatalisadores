@@ -653,6 +653,8 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                                 <div>Pt: <strong>{fmtNum(avg.pt, 4)}</strong></div>
                                 <div>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></div>
                                 <div>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></div>
+                                {avg.zr !== null && <div>Zr: <strong>{fmtNum(avg.zr, 2)}%</strong></div>}
+                                {avg.ce !== null && <div>Ce: <strong>{fmtNum(avg.ce, 2)}%</strong></div>}
                               </div>
                             </div>
                           </div>
@@ -687,6 +689,12 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                             <span>Pd: <strong>{fmtNum(avg.pd, 4)}</strong></span>
                             <span>Rh: <strong>{fmtNum(avg.rh, 4)}</strong></span>
                           </div>
+                          {(avg.zr !== null || avg.ce !== null) && (
+                            <div className="grid grid-cols-3 gap-2 text-xs mt-1 text-muted-foreground">
+                              {avg.zr !== null && <span>Zr: <strong className="text-foreground">{fmtNum(avg.zr, 2)}%</strong></span>}
+                              {avg.ce !== null && <span>Ce: <strong className="text-foreground">{fmtNum(avg.ce, 2)}%</strong></span>}
+                            </div>
+                          )}
                         </div>
                       )
                     )}
