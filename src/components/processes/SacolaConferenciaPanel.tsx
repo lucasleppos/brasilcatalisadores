@@ -356,16 +356,32 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     try {
       await persistPieces();
       await persistReturns();
+
+      // Confere no banco antes de avançar: nunca avançar sem os itens gravados
+      const { data: saved, error: checkErr } = await supabase
+        .from("purchase_items")
+        .select("id, quantity, category")
+        .eq("purchase_id", purchase.id)
+        .in("item_type", ["peca", "peca_sacola"]);
+      if (checkErr) throw new Error(`Não foi possível confirmar a gravação: ${checkErr.message}`);
+      const savedQty = (saved || [])
+        .filter(r => r.category === "conferencia")
+        .reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      if (savedQty !== totalQty) {
+        throw new Error(`As peças não foram gravadas corretamente (${savedQty}/${totalQty}). A etapa não foi avançada.`);
+      }
+
       await advanceStage(purchase.id, purchase.status);
       toast.success("Conferência encerrada");
       onOpenChange(false);
       onCompleted();
-    } catch {
-      toast.error("Erro ao encerrar conferência");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao encerrar conferência");
     } finally {
       setSaving(false);
     }
   };
+
 
 
   return (
