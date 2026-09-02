@@ -282,8 +282,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
           .update({
             calc_input: lot.calcInput as any,
             calc_result: lot.calcResult as any,
-            total_value: lot.totalValue,
-            pricing_source: lot.isDiesel ? "diesel" : "calculadora",
+            total_value: effVal(lot),
+            pricing_source: lot.manualValue != null ? "manual" : lot.isDiesel ? "diesel" : "calculadora",
+
           })
           .eq("id", lot.itemId);
       }
