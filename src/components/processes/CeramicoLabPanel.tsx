@@ -602,6 +602,23 @@ export default function CeramicoLabPanel({ purchase, open, onOpenChange, onCompl
                               placeholder="0,0000"
                               className="h-8 text-sm"
                             />
+                            <Input
+                              inputMode="decimal"
+                              value={r.zr}
+                              onChange={e => updateField(i, r.versao, "zr", e.target.value)}
+                              onBlur={() => persistRow(i, r.versao)}
+                              placeholder="0,00"
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              inputMode="decimal"
+                              value={r.ce}
+                              onChange={e => updateField(i, r.versao, "ce", e.target.value)}
+                              onBlur={() => persistRow(i, r.versao)}
+                              placeholder="0,00"
+                              className="h-8 text-sm"
+                            />
+
                             <div className="w-4 flex items-center justify-center">
                               {isSaving
                                 ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
