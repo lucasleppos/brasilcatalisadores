@@ -433,13 +433,56 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
                   )}
 
                   {/* Total value */}
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
-                    <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
-                    <span className="text-lg font-bold text-foreground">
-                      {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
-                    </span>
-                  </div>
-                </div>
+                  {canEditFinal ? (
+                    <div className="mt-3 pt-2 border-t border-border/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Valor final (R$)</p>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={lot.manualValue ?? toStr(lot.totalValue)}
+                            onChange={(e) => setManualValue(lot.itemId, e.target.value)}
+                            placeholder="0,00"
+                            className="h-9 text-right font-semibold"
+                          />
+                        </div>
+                        {lot.manualValue != null && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9"
+                            onClick={() => setManualValue(lot.itemId, null)}
+                          >
+                            <Undo2 className="h-3 w-3 mr-1" /> Calculado
+                          </Button>
+                        )}
+                      </div>
+                      {lot.manualValue != null && (
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300">
+                            Valor manual
+                          </Badge>
+                          <span className="text-lg font-bold text-foreground">{fmtBrl(effVal(lot))}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                      <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
+                      <span className="text-lg font-bold text-foreground">
+                        {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
+                      </span>
+                    </div>
+                  )}
+
               ))}
             </div>
           )}
