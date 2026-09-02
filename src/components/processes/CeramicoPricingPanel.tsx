@@ -1,14 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, Calculator, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, Calculator, RefreshCw, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, batchUpdateItemPricing, advanceStage, isDieselGroup, DIESEL_PRICES } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
 import { loadSettings, Settings } from "@/lib/settings";
 import { toast } from "sonner";
 import { fmtNum, fmtBrl } from "@/lib/utils";
+
+/** Exceção: apenas este fornecedor pode editar manualmente o valor final dos lotes */
+const MANUAL_PRICE_SUPPLIER_ID = "8a533d5a-385d-4a45-b6f7-be54eab7e085";
+const MANUAL_PRICE_SUPPLIER_NAME = "UNIAO COMERCIO E RECICLAGEM DE SUCATAS LTDA";
+const normalizeName = (s: string) =>
+  (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+
+const parseNum = (v: string) => {
+  const n = parseFloat((v || "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+};
+const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 
 interface LotPricing {
   itemId: string;
@@ -22,7 +35,12 @@ interface LotPricing {
   totalValue: number;
   isDiesel?: boolean;
   dieselPrice?: number | null;
+  manualValue?: string | null;
 }
+
+/** Valor final do lote considerando eventual edição manual */
+const effVal = (lot: LotPricing) =>
+  lot.manualValue != null ? parseNum(lot.manualValue) : lot.totalValue;
 
 interface CeramicoPricingPanelProps {
   purchase: Purchase;
@@ -30,6 +48,7 @@ interface CeramicoPricingPanelProps {
   onOpenChange: (open: boolean) => void;
   onCompleted: () => void;
 }
+
 
 export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onCompleted }: CeramicoPricingPanelProps) {
   const [lots, setLots] = useState<LotPricing[]>([]);
@@ -219,14 +238,28 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
         calcInput: input,
         calcResult: result,
         totalValue: result.finalValueBrl,
+        manualValue: null,
       };
     }));
     toast.success("Valores recalculados");
   };
 
-  const totalValue = useMemo(() => lots.reduce((s, l) => s + l.totalValue, 0), [lots]);
+  const canEditFinal =
+    purchase.supplierId === MANUAL_PRICE_SUPPLIER_ID ||
+    normalizeName(purchase.supplierName) === normalizeName(MANUAL_PRICE_SUPPLIER_NAME);
+
+  const setManualValue = (itemId: string, raw: string | null) => {
+    setLots(prev => prev.map(l => l.itemId === itemId
+      ? { ...l, manualValue: raw == null ? null : raw.replace(/[^0-9.,]/g, "") }
+      : l));
+  };
+
+  const totalValue = useMemo(() => lots.reduce((s, l) => s + effVal(l), 0), [lots]);
   const totalWeight = useMemo(() => lots.reduce((s, l) => s + l.weight, 0), [lots]);
-  const allCalculated = lots.length > 0 && lots.every(l => l.isDiesel ? !!l.dieselPrice : l.calcResult !== null);
+  const allCalculated = lots.length > 0 && lots.every(l =>
+    (l.manualValue != null && parseNum(l.manualValue) > 0) ||
+    (l.isDiesel ? !!l.dieselPrice : l.calcResult !== null));
+
 
   const setDieselPrice = (itemId: string, price: number) => {
     setLots(prev => prev.map(l => l.itemId === itemId
@@ -249,8 +282,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
           .update({
             calc_input: lot.calcInput as any,
             calc_result: lot.calcResult as any,
-            total_value: lot.totalValue,
-            pricing_source: lot.isDiesel ? "diesel" : "calculadora",
+            total_value: effVal(lot),
+            pricing_source: lot.manualValue != null ? "manual" : lot.isDiesel ? "diesel" : "calculadora",
+
           })
           .eq("id", lot.itemId);
       }
@@ -399,14 +433,58 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
                   )}
 
                   {/* Total value */}
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
-                    <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
-                    <span className="text-lg font-bold text-foreground">
-                      {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
-                    </span>
-                  </div>
+                  {canEditFinal ? (
+                    <div className="mt-3 pt-2 border-t border-border/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Valor final (R$)</p>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={lot.manualValue ?? toStr(lot.totalValue)}
+                            onChange={(e) => setManualValue(lot.itemId, e.target.value)}
+                            placeholder="0,00"
+                            className="h-9 text-right font-semibold"
+                          />
+                        </div>
+                        {lot.manualValue != null && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9"
+                            onClick={() => setManualValue(lot.itemId, null)}
+                          >
+                            <Undo2 className="h-3 w-3 mr-1" /> Calculado
+                          </Button>
+                        )}
+                      </div>
+                      {lot.manualValue != null && (
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300">
+                            Valor manual
+                          </Badge>
+                          <span className="text-lg font-bold text-foreground">{fmtBrl(effVal(lot))}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                      <span className="text-sm font-medium text-muted-foreground">Valor calculado:</span>
+                      <span className="text-lg font-bold text-foreground">
+                        {lot.totalValue > 0 ? fmtBrl(lot.totalValue) : "—"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
+
             </div>
           )}
         </div>
