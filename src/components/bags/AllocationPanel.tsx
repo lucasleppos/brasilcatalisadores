@@ -116,7 +116,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, status, op_status")
+      .select("id, purchase_number, supplier_name, status, op_status")
       .eq("status", "Cerâmico: Aprovado");
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
@@ -144,6 +144,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const item = itemsMap.get(bi.purchase_item_id) as any;
       allocated.push({
         purchaseId: bi.purchase_id,
+        purchaseNumber: purchase?.purchase_number || "—",
         purchaseItemId: bi.purchase_item_id,
         supplierName: bi.supplier_name || purchase?.supplier_name || "—",
         weight: Number(bi.weight) || 0,
@@ -162,14 +163,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Query 1: purchases by direct status
     const { data: directPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     // Query 2: ceramic purchases in parallel phase
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .eq("status", "Cerâmico: Aprovado")
       .eq("op_status", "Alocando Bag");
@@ -229,6 +230,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const realWeight = realWeights.get(item.id);
       available.push({
         purchaseId: item.purchase_id,
+        purchaseNumber: purchase.purchase_number || "—",
         purchaseItemId: item.id,
         supplierName: purchase.supplier_name,
         weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
@@ -249,7 +251,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const loadInProcessMaterials = async () => {
     const { data: purchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, status, total_brl")
+      .select("id, purchase_number, supplier_name, status, total_brl")
       .eq("location", "matriz")
       .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
 
@@ -270,6 +272,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const calcResult = item.calc_result as any;
       result.push({
         purchaseId: item.purchase_id,
+        purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
         itemType: item.item_type,
         weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
