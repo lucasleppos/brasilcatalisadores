@@ -99,7 +99,7 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
           vehicle: String(row[colIdx("vehicle")] ?? "").trim(),
           code: String(row[colIdx("code")] ?? "").trim(),
           reference: String(row[colIdx("reference")] ?? "").trim(),
-          weight: parseFloat(String(row[colIdx("weight")] ?? "0").replace(",", ".")) || 0,
+          weight: (parseFloat(String(row[colIdx("weight")] ?? "0").replace(",", ".")) || 0) * weightFactor,
           ptPpm: parseFloat(String(row[colIdx("pt_ppm")] ?? "0").replace(",", ".")) || 0,
           pdPpm: parseFloat(String(row[colIdx("pd_ppm")] ?? "0").replace(",", ".")) || 0,
           rhPpm: parseFloat(String(row[colIdx("rh_ppm")] ?? "0").replace(",", ".")) || 0,
