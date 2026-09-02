@@ -285,8 +285,40 @@ export default function CatalogPage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={wipeOpen} onOpenChange={setWipeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Apagar todas as peças?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove <strong>{parts.length}</strong> peça(s) do catálogo e não pode ser desfeita.
+              Os grupos e suas margens são mantidos. Digite <strong>APAGAR</strong> para confirmar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={wipeConfirm}
+            onChange={e => setWipeConfirm(e.target.value)}
+            placeholder="APAGAR"
+            className="h-9"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={wipeConfirm.trim().toUpperCase() !== "APAGAR" || wiping}
+              onClick={(e) => { e.preventDefault(); handleWipeAll(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {wiping ? "Apagando..." : "Apagar tudo"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <CatalogImport open={importOpen} onOpenChange={setImportOpen} onImported={refresh} />
       <GroupManager open={groupsOpen} onOpenChange={setGroupsOpen} onChanged={refresh} />
+
     </div>
   );
 }
