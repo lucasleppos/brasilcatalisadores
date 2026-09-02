@@ -15,6 +15,7 @@ import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 
 interface AvailableMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
@@ -30,6 +31,7 @@ interface AvailableMaterial {
 
 interface InProcessMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   supplierName: string;
   itemType: string;
   weight: number;
@@ -39,6 +41,7 @@ interface InProcessMaterial {
 
 interface AllocatedMaterial {
   purchaseId: string;
+  purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
   weight: number;
@@ -113,7 +116,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, status, op_status")
+      .select("id, purchase_number, supplier_name, status, op_status")
       .eq("status", "Cerâmico: Aprovado");
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
@@ -141,6 +144,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const item = itemsMap.get(bi.purchase_item_id) as any;
       allocated.push({
         purchaseId: bi.purchase_id,
+        purchaseNumber: purchase?.purchase_number || "—",
         purchaseItemId: bi.purchase_item_id,
         supplierName: bi.supplier_name || purchase?.supplier_name || "—",
         weight: Number(bi.weight) || 0,
@@ -159,14 +163,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Query 1: purchases by direct status
     const { data: directPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     // Query 2: ceramic purchases in parallel phase
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .eq("status", "Cerâmico: Aprovado")
       .eq("op_status", "Alocando Bag");
@@ -226,6 +230,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const realWeight = realWeights.get(item.id);
       available.push({
         purchaseId: item.purchase_id,
+        purchaseNumber: purchase.purchase_number || "—",
         purchaseItemId: item.id,
         supplierName: purchase.supplier_name,
         weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
@@ -246,7 +251,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const loadInProcessMaterials = async () => {
     const { data: purchases } = await supabase
       .from("purchases")
-      .select("id, supplier_name, status, total_brl")
+      .select("id, purchase_number, supplier_name, status, total_brl")
       .eq("location", "matriz")
       .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
 
@@ -267,6 +272,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const calcResult = item.calc_result as any;
       result.push({
         purchaseId: item.purchase_id,
+        purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
         itemType: item.item_type,
         weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
@@ -407,9 +413,10 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         aria-label="Selecionar todos"
                       />
                     </TableHead>
+                    <TableHead>OP</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Carbono</TableHead>
                     <TableHead className="text-right">Peso (kg)</TableHead>
                     <TableHead className="text-right">Valor (R$)</TableHead>
                     <TableHead className="text-right">Pt</TableHead>
@@ -433,12 +440,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           aria-label="Selecionar material"
                         />
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                       <TableCell className="font-medium">{m.supplierName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{m.itemType}</Badge>
                       </TableCell>
                       <TableCell>
-                        {m.carbono && <Badge variant="secondary">Carbono</Badge>}
+                        {m.carbono ? (
+                          <Badge variant="secondary">Carbono</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {fmtNum(m.weight, 1)}
@@ -450,9 +462,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <TableCell className="text-right">
                         {fmtNum(m.paidValue, 2)}
                       </TableCell>
-                      <TableCell className="text-right">{m.ptPpm}</TableCell>
-                      <TableCell className="text-right">{m.pdPpm}</TableCell>
-                      <TableCell className="text-right">{m.rhPpm}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
+                      <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" onClick={() => handleAllocateClick([m])}>
                           <ArrowRight className="h-4 w-4 mr-1" /> Alocar
@@ -485,6 +497,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>OP</TableHead>
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
@@ -495,6 +508,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <TableBody>
                 {allocatedMaterials.map((m) => (
                   <TableRow key={m.purchaseItemId}>
+                    <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium">{m.supplierName}</TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
@@ -532,6 +546,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>OP</TableHead>
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
@@ -542,6 +557,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
               <TableBody>
                 {inProcessMaterials.map((m, idx) => (
                   <TableRow key={`${m.purchaseId}-${idx}`}>
+                    <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium">{m.supplierName}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
