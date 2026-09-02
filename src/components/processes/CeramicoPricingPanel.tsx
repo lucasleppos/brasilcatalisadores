@@ -482,8 +482,9 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
                       </span>
                     </div>
                   )}
-
+                </div>
               ))}
+
             </div>
           )}
         </div>
