@@ -580,16 +580,42 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material alocado no momento.</p>
           </div>
+        ) : isMobile ? (
+          <div className="space-y-2">
+            {allocatedMaterials.map((m) => (
+              <div key={m.purchaseItemId} className="rounded-lg border bg-card p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-muted-foreground">{m.purchaseNumber}</p>
+                    <p className="font-medium text-sm truncate" title={m.supplierName}>
+                      {m.supplierName}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>
+                    <span className="text-muted-foreground text-xs">Peso</span>
+                    <br />
+                    <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                  </span>
+                  <Badge className="bg-emerald-100 text-emerald-800 shrink-0">
+                    {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>OP</TableHead>
-                  <TableHead>Fornecedor</TableHead>
+                  <TableHead className="w-[180px]">Fornecedor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Valor (R$)</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
                   <TableHead>Bag</TableHead>
                 </TableRow>
               </TableHeader>
@@ -597,10 +623,12 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 {allocatedMaterials.map((m) => (
                   <TableRow key={m.purchaseItemId}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
-                    <TableCell className="font-medium">{m.supplierName}</TableCell>
+                    <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
+                      {m.supplierName}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.paidValue, 2)}
                     </TableCell>
                     <TableCell>
