@@ -166,6 +166,26 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
               ))}
             </div>
 
+            <div className="space-y-1 max-w-xs">
+              <Label className="text-xs">Unidade do peso na planilha</Label>
+              <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as "g" | "kg")}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="g">Gramas (g)</SelectItem>
+                  <SelectItem value="kg">Quilos (kg)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                O catálogo armazena em kg. Em "Gramas", os valores são divididos por 1.000.
+              </p>
+            </div>
+
+            {unitWarning && (
+              <div className="text-xs rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-2">
+                {unitWarning} (média da planilha: {avgRaw.toFixed(2)})
+              </div>
+            )}
+
             <div className="text-xs text-muted-foreground">Preview ({rows.length} linhas)</div>
             <div className="max-h-48 overflow-auto border rounded-md">
               <Table>
@@ -174,6 +194,7 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
                     {headers.map((h) => (
                       <TableHead key={h} className="text-xs whitespace-nowrap">{h}</TableHead>
                     ))}
+                    <TableHead className="text-xs whitespace-nowrap">Peso convertido (kg)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -182,11 +203,18 @@ export default function CatalogImport({ open, onOpenChange, onImported }: Catalo
                       {headers.map((_, j) => (
                         <TableCell key={j} className="text-xs py-1">{String(row[j] ?? "")}</TableCell>
                       ))}
+                      <TableCell className="text-xs py-1 whitespace-nowrap font-medium">
+                        {weightColIdx >= 0
+                          ? ((parseFloat(String(row[weightColIdx] ?? "0").replace(",", ".")) || 0) * weightFactor)
+                              .toFixed(4).replace(".", ",") + " kg"
+                          : "—"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+
           </div>
         )}
 
