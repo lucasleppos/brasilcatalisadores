@@ -163,7 +163,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setAllocatedMaterials(allocated);
+    setAllocatedMaterials(sortByPurchaseNumber(allocated));
   };
 
   const loadAvailableMaterials = async () => {
@@ -251,7 +251,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setAvailableMaterials(available);
+    setAvailableMaterials(sortByPurchaseNumber(available));
   };
 
 
@@ -288,7 +288,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       });
     });
 
-    setInProcessMaterials(result);
+    setInProcessMaterials(sortByPurchaseNumber(result));
   };
 
   const handleAllocateClick = (materials: AvailableMaterial[]) => {
