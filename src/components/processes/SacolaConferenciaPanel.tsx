@@ -212,10 +212,12 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const handleRemove = async (index: number) => {
     const piece = pieces[index];
     if (piece.id) {
-      await supabase.from("purchase_items").delete().eq("id", piece.id);
+      const { error } = await supabase.from("purchase_items").delete().eq("id", piece.id);
+      if (error) { toast.error(`Não foi possível remover a peça: ${error.message}`); return; }
     }
     setPieces(prev => prev.filter((_, i) => i !== index));
   };
+
 
   const setExcluded = (index: number, value: boolean) => {
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
