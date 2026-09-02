@@ -230,23 +230,31 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
   const persistPieces = async () => {
-    await supabase
+    const { error: delErr } = await supabase
       .from("purchase_items")
       .delete()
       .eq("purchase_id", purchase.id)
       .in("item_type", ["peca", "peca_sacola"]);
+    if (delErr) throw new Error(`Não foi possível limpar os itens anteriores: ${delErr.message}`);
 
-    await supabase.from("purchase_items").insert(
-      pieces.map(p => ({
-        purchase_id: purchase.id,
-        item_type: itemType,
-        category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
-        quantity: p.quantity,
-        weight: p.unitWeight * p.quantity,
-        catalog_part_id: p.catalogPartId,
-        seq: p.seq,
-      }))
-    );
+    const rows = pieces.map(p => ({
+      purchase_id: purchase.id,
+      item_type: itemType,
+      category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
+      quantity: p.quantity,
+      weight: p.unitWeight * p.quantity,
+      catalog_part_id: p.catalogPartId,
+      seq: p.seq,
+    }));
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("purchase_items")
+      .insert(rows)
+      .select("id");
+    if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
+    if ((inserted?.length ?? 0) !== rows.length) {
+      throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+    }
   };
 
   const handleSave = async () => {
@@ -258,12 +266,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       await persistReturns();
       toast.success("Conferência salva");
       onOpenChange(false);
-    } catch {
-      toast.error("Erro ao salvar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
     } finally {
       setSaving(false);
     }
   };
+
 
   const activePieces = pieces.filter(p => !p.excluded);
   const excludedPieces = pieces.filter(p => p.excluded);
