@@ -199,8 +199,8 @@ Deno.serve(async (req) => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(showItemLab ? 8 : 9);
       const pHeaders = showItemLab
-        ? ["#", "Peça", "Qtd / Peso", "Pt", "Pd", "Rh", "Valor unit.", "Subtotal"]
-        : ["#", "Peça", "Qtd / Peso", "Valor unit.", "Subtotal"];
+        ? ["#", "Peça", "Qtd", "Pt", "Pd", "Rh", "Valor unit.", "Subtotal"]
+        : ["#", "Peça", "Qtd", "Valor unit.", "Subtotal"];
       for (let i = 0; i < pHeaders.length; i++) doc.text(pHeaders[i], pX[i] + 2, y + 5);
       y += 7;
 
@@ -211,7 +211,6 @@ Deno.serve(async (req) => {
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
         const qty = Number(item.quantity) || 1;
         const tv = Number(item.total_value) || 0;
-        const w = Number(item.weight) || 0;
         const rowH = 11;
         if (i % 2 === 0) {
           doc.setFillColor(250, 250, 250);
@@ -221,7 +220,6 @@ Deno.serve(async (req) => {
         doc.text(clip(`Código: ${cp?.code || item.part_code || "Manual"}`, 1), pX[1] + 2, y + 4);
         if (cp?.reference) doc.text(clip(`Referência: ${cp.reference}`, 1), pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
-        if (w > 0) doc.text(`${fmt(w, 4)} kg`, pX[2] + 2, y + 8);
         let vi = 3;
         if (showItemLab) {
           const a = itemLabAgg[item.id];
