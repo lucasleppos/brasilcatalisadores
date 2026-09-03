@@ -20,6 +20,7 @@ interface AvailableMaterial {
   purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
+  supplierBranch?: string;
   weight: number;
   isRealWeight?: boolean;
   paidValue: number;
@@ -37,6 +38,7 @@ interface InProcessMaterial {
   purchaseId: string;
   purchaseNumber: string;
   supplierName: string;
+  supplierBranch?: string;
   itemType: string;
   weight: number;
   value: number;
@@ -48,6 +50,7 @@ interface AllocatedMaterial {
   purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
+  supplierBranch?: string;
   weight: number;
   paidValue: number;
   itemType: string;
@@ -66,6 +69,15 @@ const statusColors: Record<string, string> = {
 function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.purchaseNumber.localeCompare(b.purchaseNumber));
 }
+
+/** Filial cadastrada no fornecedor, por supplier_id */
+async function loadSupplierBranches(supplierIds: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const ids = [...new Set(supplierIds.filter(Boolean) as string[])];
+  if (ids.length === 0) return new Map();
+  const { data } = await supabase.from("suppliers").select("id, branch").in("id", ids);
+  return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
+}
+
 
 interface AllocationPanelProps {
   bags: Bag[];
