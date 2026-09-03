@@ -110,9 +110,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const totalBrutoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).bruto, 0);
   const totalLiquidoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).liquido, 0);
 
-  const catalogFixedItems = items.filter(i => i.pricing_source === "catalogo");
-  const calcItems = items.filter(i => i.pricing_source === "calculadora");
-  const regularItems = items.filter(i => !i.pricing_source || i.pricing_source === "diesel");
+  const catalogFixedItems = itemsNoBonus.filter(i => i.pricing_source === "catalogo");
+  const calcItems = itemsNoBonus.filter(i => i.pricing_source === "calculadora");
+  const regularItems = itemsNoBonus.filter(i => !i.pricing_source || i.pricing_source === "diesel");
   const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
 
   // Lab map per item (average across versoes) + latest versao per item
@@ -249,6 +249,14 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         </tr>
                       );
                     })}
+                    {bonusQty > 0 && (
+                      <tr className="border-t">
+                        <td className="p-2 align-top">Bônus</td>
+                        <td className="p-2 align-top text-right">{bonusQty} un</td>
+                        <td className="p-2 align-top text-right">{fmtBrl(bonusQty > 0 ? bonusValue / bonusQty : 0)}</td>
+                        <td className="p-2 align-top text-right font-medium">{fmtBrl(bonusValue)}</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
