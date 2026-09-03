@@ -203,8 +203,8 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
-    // Pesos reais pós-trituração (peças), separados em Flex/Carbono
-    const fractions = await getRealWeightFractionsByItem(purchaseIds);
+    // Pesos reais pós-trituração (peças), separados em Flex/Carbono — por COMPRA
+    const fractions = await getRealWeightFractionsByPurchase(purchaseIds);
 
     // Zr(%) / Ce(%) do laboratório — apenas informativo (selo "Carbono")
     const { data: labRows } = await supabase
