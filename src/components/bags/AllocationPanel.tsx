@@ -576,7 +576,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     {selectedIds.size} selecionado{selectedIds.size !== 1 ? "s" : ""}
                   </span>
                 </div>
-                {availableMaterials.map((m) => (
+                {filteredAvailable.map((m) => (
                   <div
                     key={m.purchaseItemId}
                     onClick={() => toggleOne(m.purchaseItemId)}
