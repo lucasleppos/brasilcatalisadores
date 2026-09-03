@@ -549,6 +549,16 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <p className="text-[11px] text-muted-foreground">
               Registradas nesta compra para histórico. Devem ser incluídas em uma nova compra no fluxo de cerâmico.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={saving}
+              onClick={handleSeparatedReport}
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Printer className="h-3.5 w-3.5 mr-1" />}
+              Gerar PDF das peças separadas
+            </Button>
             {pieces.map((p, i) => {
               if (!p.excluded) return null;
               const check = weightCheck(p.catalogWeight, p.unitWeight);
