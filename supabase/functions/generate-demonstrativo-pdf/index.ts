@@ -626,6 +626,14 @@ Deno.serve(async (req) => {
     doc.setFontSize(9);
     doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas} un`, margin, y);
     y += 5;
+    const segregadasQty = items
+      .filter((i: any) => i.category === "conferencia_excluida")
+      .reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+    if (segregadasQty > 0) {
+      doc.text(`Peças segregadas do processo: ${segregadasQty} un`, margin, y);
+      y += 5;
+    }
+
     if (isCeramico) {
       doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
       doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);
