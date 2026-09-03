@@ -96,6 +96,7 @@ function labelHtml(l: LabelData, qr: string): string {
         <div class="lote">${esc(l.displayCode || l.code)}${stage}</div>
         <div class="row"><span>Comprador: </span><span class="val">${esc(l.buyer || "—")}</span></div>
         <div class="row"><span>Fornecedor: </span><span class="val">${esc(l.supplierName)}</span></div>
+        ${branch}
         ${mid}
         ${qty}
         ${declared}
