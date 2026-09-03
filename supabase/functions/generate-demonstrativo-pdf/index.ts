@@ -354,7 +354,7 @@ Deno.serve(async (req) => {
       const colX = [margin];
       for (let i = 1; i < colWidths.length; i++) colX.push(colX[i - 1] + colWidths[i - 1]);
 
-      const headers = ["#", "Tipo", "Qtd/Peso", "Valor Unit.", "Valor Total"];
+      const headers = ["#", "Tipo", "Qtd/Peso", "Valor/kg", "Valor Total"];
 
       doc.rect(margin, y, contentWidth, 7, "F");
       doc.setFont("helvetica", "bold");
