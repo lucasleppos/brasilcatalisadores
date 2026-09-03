@@ -344,6 +344,54 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                       </div>
                     );
                   })}
+
+                  {/* Bônus — preço fixo, quantidade digitada pelo operador */}
+                  <div className="px-3 py-3 sm:px-4 sm:py-2.5 bg-muted/10">
+                    <div className="sm:hidden space-y-2">
+                      <p className="text-sm font-medium">Bônus</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Valor unit.</p>
+                          <p className="text-sm">{fmtBrl(BONUS_UNIT_PRICE)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Subtotal</p>
+                          <p className="text-sm font-semibold">{fmtBrl(bonusTotal)}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Quantidade</p>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={bonusQty}
+                          onChange={(e) => setBonusQty(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
+                          className="h-9 text-right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-4 min-w-0">
+                        <p className="text-sm font-medium">Bônus</p>
+                        <p className="text-[11px] text-muted-foreground">Preço fixo de {fmtBrl(BONUS_UNIT_PRICE)} por unidade</p>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={bonusQty}
+                          onChange={(e) => setBonusQty(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
+                          className="h-9 text-right"
+                        />
+                      </div>
+                      <div className="col-span-2 text-right text-sm text-muted-foreground">—</div>
+                      <div className="col-span-2 text-right text-sm text-muted-foreground">{fmtBrl(BONUS_UNIT_PRICE)}</div>
+                      <div className="col-span-2 text-right text-sm font-semibold">{fmtBrl(bonusTotal)}</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
