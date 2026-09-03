@@ -299,7 +299,16 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const paidValue = Number(item.total_value) || (result?.finalValueBrl || 0);
 
       if (allocatedIds.has(item.id)) return;
-      const legacyWeight = fractions.get(item.purchase_id)?.legacy || 0;
+      // Peso legado (campo único) é rateado entre os itens da compra pelo peso de catálogo
+      const legacyTotal = fractions.get(item.purchase_id)?.legacy || 0;
+      let legacyWeight = 0;
+      if (legacyTotal > 0) {
+        const opItems = (items || []).filter((i: any) => i.purchase_id === item.purchase_id);
+        const catalogTotal = opItems.reduce((s: number, i: any) => s + (Number(i.weight) || 0), 0);
+        legacyWeight = catalogTotal > 0
+          ? legacyTotal * ((Number(item.weight) || 0) / catalogTotal)
+          : legacyTotal / opItems.length;
+      }
       available.push({
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
