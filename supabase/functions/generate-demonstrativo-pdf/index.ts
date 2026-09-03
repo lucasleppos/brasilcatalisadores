@@ -166,9 +166,24 @@ Deno.serve(async (req) => {
 
     const hasSacolaBlocks = isCeramico && (catalogFixedItems.length > 0 || calcItems.length > 0);
 
-    // === Peças / Peça em Sacola: single table (Código/Referência, Qtd/Peso, Valor unit., Subtotal) ===
+    // === Peças / Peça em Sacola: single table (Código/Referência, Qtd/Peso, [Pt/Pd/Rh], Valor unit., Subtotal) ===
     if (!isCeramico) {
-      const pCols = [10, contentWidth - 115, 30, 35, 40];
+      // Lab analysis per piece (average across versions) — Peça em Sacola
+      const itemLabAgg: Record<string, { pt: number; pd: number; rh: number; n: number }> = {};
+      for (const lr of allLabRows) {
+        if (!lr.purchase_item_id) continue;
+        const a = itemLabAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0 };
+        a.pt += Number(lr.pt_ppm) || 0;
+        a.pd += Number(lr.pd_ppm) || 0;
+        a.rh += Number(lr.rh_ppm) || 0;
+        a.n += 1;
+        itemLabAgg[lr.purchase_item_id] = a;
+      }
+      const showItemLab = Object.keys(itemLabAgg).length > 0;
+
+      const pCols = showItemLab
+        ? [10, contentWidth - 160, 26, 17, 17, 17, 33, 40]
+        : [10, contentWidth - 115, 30, 35, 40];
       const pX = [margin];
       for (let i = 1; i < pCols.length; i++) pX.push(pX[i - 1] + pCols[i - 1]);
 
@@ -176,7 +191,9 @@ Deno.serve(async (req) => {
       doc.rect(margin, y, contentWidth, 7, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      const pHeaders = ["#", "Peça", "Qtd / Peso", "Valor unit.", "Subtotal"];
+      const pHeaders = showItemLab
+        ? ["#", "Peça", "Qtd / Peso", "Pt", "Pd", "Rh", "Valor unit.", "Subtotal"]
+        : ["#", "Peça", "Qtd / Peso", "Valor unit.", "Subtotal"];
       for (let i = 0; i < pHeaders.length; i++) doc.text(pHeaders[i], pX[i] + 2, y + 5);
       y += 7;
 
@@ -197,23 +214,38 @@ Deno.serve(async (req) => {
         if (cp?.reference) doc.text(`Referência: ${cp.reference}`, pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         if (w > 0) doc.text(`${fmt(w, 4)} kg`, pX[2] + 2, y + 8);
-        doc.text(tv > 0 ? fmtBrl(tv / qty) : "—", pX[3] + 2, y + 4);
-        doc.text(tv > 0 ? fmtBrl(tv) : "Pendente", pX[4] + 2, y + 4);
+        let vi = 3;
+        if (showItemLab) {
+          const a = itemLabAgg[item.id];
+          doc.text(a ? fmt(a.pt / a.n, 0) : "—", pX[3] + 2, y + 4);
+          doc.text(a ? fmt(a.pd / a.n, 0) : "—", pX[4] + 2, y + 4);
+          doc.text(a ? fmt(a.rh / a.n, 0) : "—", pX[5] + 2, y + 4);
+          vi = 6;
+        }
+        doc.text(tv > 0 ? fmtBrl(tv / qty) : "—", pX[vi] + 2, y + 4);
+        doc.text(tv > 0 ? fmtBrl(tv) : "Pendente", pX[vi + 1] + 2, y + 4);
         y += rowH;
         if (y > 265) { doc.addPage(); y = margin; }
       }
       if (bonusQty > 0) {
         const rowH = 11;
+        const vi = showItemLab ? 6 : 3;
         doc.text("—", pX[0] + 2, y + 4);
         doc.text("Bônus", pX[1] + 2, y + 4);
         doc.text(`${bonusQty} un`, pX[2] + 2, y + 4);
-        doc.text(fmtBrl(bonusValue / bonusQty), pX[3] + 2, y + 4);
-        doc.text(fmtBrl(bonusValue), pX[4] + 2, y + 4);
+        if (showItemLab) {
+          doc.text("—", pX[3] + 2, y + 4);
+          doc.text("—", pX[4] + 2, y + 4);
+          doc.text("—", pX[5] + 2, y + 4);
+        }
+        doc.text(fmtBrl(bonusValue / bonusQty), pX[vi] + 2, y + 4);
+        doc.text(fmtBrl(bonusValue), pX[vi + 1] + 2, y + 4);
         y += rowH;
         if (y > 265) { doc.addPage(); y = margin; }
       }
       y += 4;
     }
+
 
 
     if (hasSacolaBlocks) {
