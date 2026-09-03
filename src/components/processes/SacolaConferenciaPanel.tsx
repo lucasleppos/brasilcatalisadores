@@ -115,7 +115,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, created_at")
+      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at")
       .order("created_at", { ascending: true })
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
