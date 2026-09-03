@@ -327,11 +327,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
 
     const code = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const branch = await getSupplierBranch(purchase.supplierId);
     const base: LabelData = {
       code,
       displayCode: code,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
+      branch: branch || undefined,
       group: "",
       typeLabel: isSacola ? "Peças em Sacola" : "Peças",
       qtyApproved: totalQty,
