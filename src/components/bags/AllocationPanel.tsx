@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
-import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
+import { syncCeramicoAllocation, getRealWeightFractionsByItem } from "@/lib/purchases";
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
