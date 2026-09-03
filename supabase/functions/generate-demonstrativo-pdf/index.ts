@@ -211,7 +211,6 @@ Deno.serve(async (req) => {
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
         const qty = Number(item.quantity) || 1;
         const tv = Number(item.total_value) || 0;
-        const w = Number(item.weight) || 0;
         const rowH = 11;
         if (i % 2 === 0) {
           doc.setFillColor(250, 250, 250);
