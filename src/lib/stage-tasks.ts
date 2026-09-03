@@ -249,7 +249,7 @@ export function canAdvanceStage(
   const pending: TaskRequirement[] = [];
 
   for (const req of reqs) {
-    if (!req.required) continue;
+    if (!req.required || req.group) continue;
 
     if (req.type === "analysis") {
       // Check lab_analyses
@@ -262,8 +262,26 @@ export function canAdvanceStage(
     }
   }
 
+  // Grupos "pelo menos um preenchido"
+  const groups = [...new Set(reqs.map(r => r.group).filter(Boolean) as string[])];
+  for (const group of groups) {
+    const groupReqs = reqs.filter(r => r.group === group);
+    const keys = [...groupReqs.map(r => r.key), ...(GROUP_LEGACY_KEYS[group] || [])];
+    const found = evidences.some(e => keys.includes(e.taskKey) && Number(e.valueNumeric) > 0);
+    if (!found) {
+      pending.push({
+        key: `group_${group}`,
+        type: "weight",
+        label: GROUP_LABELS[group] || "Informe pelo menos um peso",
+        required: true,
+        group,
+      });
+    }
+  }
+
   return { canAdvance: pending.length === 0, pending };
 }
+
 
 // ===== Analysis average + deviation =====
 
