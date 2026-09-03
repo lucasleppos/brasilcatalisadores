@@ -87,6 +87,9 @@ function labelHtml(l: LabelData, qr: string): string {
       ? `<div class="weights">Peso Bruto: ${esc(fmtNum(l.weightGross, 3))} kg</div>`
       : "";
   const stage = l.stageLabel ? `<span class="stage">${esc(l.stageLabel)}</span>` : "";
+  const branch = l.branch
+    ? `<div class="row"><span>Filial: </span><span class="val">${esc(l.branch)}</span></div>`
+    : "";
   return `
     <div class="label">
       <div class="info">
