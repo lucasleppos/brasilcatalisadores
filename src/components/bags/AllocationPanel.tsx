@@ -677,7 +677,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {availableMaterials.map((m) => (
+                    {filteredAvailable.map((m) => (
                       <TableRow
                         key={m.purchaseItemId}
                         data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
