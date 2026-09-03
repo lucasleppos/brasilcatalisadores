@@ -703,6 +703,7 @@ export type Database = {
           created_at: string | null
           id: string
           item_type: string
+          material_kind: string | null
           part_code: string | null
           part_reference: string | null
           part_vehicle: string | null
@@ -724,6 +725,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type: string
+          material_kind?: string | null
           part_code?: string | null
           part_reference?: string | null
           part_vehicle?: string | null
@@ -745,6 +747,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           item_type?: string
+          material_kind?: string | null
           part_code?: string | null
           part_reference?: string | null
           part_vehicle?: string | null
