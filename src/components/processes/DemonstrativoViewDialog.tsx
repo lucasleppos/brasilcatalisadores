@@ -259,18 +259,24 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       <th className="p-1 text-left">#</th>
                       <th className="p-1 text-left">{isCeramico ? "Material" : "Peça"}</th>
                       <th className="p-1 text-left">Peso</th>
+                      <th className="p-1 text-left">Valor/kg</th>
                       <th className="p-1 text-left">Valor</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {catalogFixedItems.map((it, i) => (
-                      <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
-                        <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
-                        <td className="p-1">{partLabel(it.catalog_part_id)}</td>
-                        <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
-                        <td className="p-1">{Number(it.total_value) > 0 ? fmtBrl(Number(it.total_value)) : "—"}</td>
-                      </tr>
-                    ))}
+                    {catalogFixedItems.map((it, i) => {
+                      const tv = Number(it.total_value) || 0;
+                      const w = weights(it).liquido;
+                      return (
+                        <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
+                          <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
+                          <td className="p-1">{partLabel(it.catalog_part_id)}</td>
+                          <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
+                          <td className="p-1">{tv > 0 && w > 0 ? fmtBrl(tv / w) : "—"}</td>
+                          <td className="p-1">{tv > 0 ? fmtBrl(tv) : "—"}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
