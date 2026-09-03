@@ -320,11 +320,13 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       src = saved;
     }
     const displayCode = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const branch = await getSupplierBranch(purchase.supplierId);
     const all = src.flatMap(l => expandCopies({
       code: l.labelCode!,
       displayCode,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
+      branch: branch || undefined,
       group: l.category,
       weightGross: l.weightGross,
     }));
