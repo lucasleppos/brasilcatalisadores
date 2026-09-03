@@ -20,6 +20,7 @@ interface AvailableMaterial {
   purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
+  supplierBranch?: string;
   weight: number;
   isRealWeight?: boolean;
   paidValue: number;
@@ -37,6 +38,7 @@ interface InProcessMaterial {
   purchaseId: string;
   purchaseNumber: string;
   supplierName: string;
+  supplierBranch?: string;
   itemType: string;
   weight: number;
   value: number;
@@ -48,6 +50,7 @@ interface AllocatedMaterial {
   purchaseNumber: string;
   purchaseItemId: string;
   supplierName: string;
+  supplierBranch?: string;
   weight: number;
   paidValue: number;
   itemType: string;
@@ -66,6 +69,15 @@ const statusColors: Record<string, string> = {
 function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.purchaseNumber.localeCompare(b.purchaseNumber));
 }
+
+/** Filial cadastrada no fornecedor, por supplier_id */
+async function loadSupplierBranches(supplierIds: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const ids = [...new Set(supplierIds.filter(Boolean) as string[])];
+  if (ids.length === 0) return new Map();
+  const { data } = await supabase.from("suppliers").select("id, branch").in("id", ids);
+  return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
+}
+
 
 interface AllocationPanelProps {
   bags: Bag[];
@@ -125,7 +137,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, status, op_status")
+      .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
       .eq("status", "Cerâmico: Aprovado");
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
@@ -145,18 +157,20 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       .in("id", itemIds);
 
     const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
+    const branchMap = await loadSupplierBranches((ceramicPurchases || []).map((p: any) => p.supplier_id));
 
 
     const allocated: AllocatedMaterial[] = [];
     (bagItems || []).forEach((bi: any) => {
       const bag = bags.find(b => b.id === bi.bag_id);
-      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id);
+      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id) as any;
       const item = itemsMap.get(String(bi.purchase_item_id).split("::")[0]) as any;
       allocated.push({
         purchaseId: bi.purchase_id,
         purchaseNumber: purchase?.purchase_number || "—",
         purchaseItemId: bi.purchase_item_id,
         supplierName: bi.supplier_name || purchase?.supplier_name || "—",
+        supplierBranch: branchMap.get(purchase?.supplier_id) || "",
         weight: Number(bi.weight) || 0,
         paidValue: Number(bi.paid_value) || 0,
         itemType: item?.item_type || "—",
@@ -173,22 +187,24 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Query 1: purchases by direct status
     const { data: directPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     // Query 2: ceramic purchases in parallel phase
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .eq("status", "Cerâmico: Aprovado")
       .eq("op_status", "Alocando Bag");
 
-    const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])];
+    const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])] as any[];
     if (purchases.length === 0) { setAvailableMaterials([]); return; }
 
     const purchaseIds = purchases.map(p => p.id);
+    const branchMap = await loadSupplierBranches(purchases.map(p => p.supplier_id));
+
 
     const { data: items } = await supabase
       .from("purchase_items")
@@ -267,6 +283,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         purchaseId: pid,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         ptPpm: wSum > 0 ? ptW / wSum : 0,
         pdPpm: wSum > 0 ? pdW / wSum : 0,
         rhPpm: wSum > 0 ? rhW / wSum : 0,
@@ -313,6 +330,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         ptPpm: input?.ptPpm || 0,
         pdPpm: input?.pdPpm || 0,
         rhPpm: input?.rhPpm || 0,
@@ -333,7 +351,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const loadInProcessMaterials = async () => {
     const { data: purchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, status, total_brl")
+      .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
       .eq("location", "matriz")
       .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
 
@@ -342,6 +360,8 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const purchaseIds = purchases.map(p => p.id);
     if (purchaseIds.length === 0) { setInProcessMaterials([]); return; }
 
+    const branchMap = await loadSupplierBranches(purchases.map((p: any) => p.supplier_id));
+
     const { data: items } = await supabase
       .from("purchase_items")
       .select("*")
@@ -349,13 +369,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const result: InProcessMaterial[] = [];
     (items || []).forEach((item: any) => {
-      const purchase = purchases.find(p => p.id === item.purchase_id);
+      const purchase = purchases.find(p => p.id === item.purchase_id) as any;
       if (!purchase) return;
       const calcResult = item.calc_result as any;
       result.push({
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         itemType: item.item_type,
         weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
         value: Number(item.total_value) || (calcResult?.finalValueBrl || 0),
@@ -518,6 +539,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           <p className="font-medium text-sm truncate" title={m.supplierName}>
                             {m.supplierName}
                           </p>
+                          {m.supplierBranch && (
+                            <p className="text-xs text-muted-foreground truncate">{m.supplierBranch}</p>
+                          )}
                         </div>
                       </div>
                       <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
@@ -582,6 +606,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       </TableHead>
                       <TableHead>OP</TableHead>
                       <TableHead className="w-[180px]">Fornecedor</TableHead>
+                      <TableHead className="w-[140px]">Filial</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Carbono</TableHead>
                       <TableHead className="text-right">Peso (kg)</TableHead>
@@ -610,6 +635,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                         <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
                           {m.supplierName}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground truncate max-w-[140px]" title={m.supplierBranch || ""}>
+                          {m.supplierBranch || "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{m.itemType}</Badge>
@@ -673,6 +701,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <p className="font-medium text-sm truncate" title={m.supplierName}>
                       {m.supplierName}
                     </p>
+                    {m.supplierBranch && (
+                      <p className="text-xs text-muted-foreground truncate">{m.supplierBranch}</p>
+                    )}
                   </div>
                   <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
                 </div>
@@ -696,6 +727,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 <TableRow>
                   <TableHead>OP</TableHead>
                   <TableHead className="w-[180px]">Fornecedor</TableHead>
+                  <TableHead className="w-[140px]">Filial</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
@@ -708,6 +740,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
                       {m.supplierName}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[140px]" title={m.supplierBranch || ""}>
+                      {m.supplierBranch || "—"}
                     </TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
@@ -750,6 +785,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <p className="font-medium text-sm truncate" title={m.supplierName}>
                       {m.supplierName}
                     </p>
+                    {m.supplierBranch && (
+                      <p className="text-xs text-muted-foreground truncate">{m.supplierBranch}</p>
+                    )}
                   </div>
                   <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
                 </div>
@@ -773,6 +811,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 <TableRow>
                   <TableHead>OP</TableHead>
                   <TableHead className="w-[180px]">Fornecedor</TableHead>
+                  <TableHead className="w-[140px]">Filial</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
@@ -785,6 +824,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
                       {m.supplierName}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[140px]" title={m.supplierBranch || ""}>
+                      {m.supplierBranch || "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.itemType}</Badge>
