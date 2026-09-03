@@ -603,6 +603,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       </TableHead>
                       <TableHead>OP</TableHead>
                       <TableHead className="w-[180px]">Fornecedor</TableHead>
+                      <TableHead className="w-[140px]">Filial</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Carbono</TableHead>
                       <TableHead className="text-right">Peso (kg)</TableHead>
