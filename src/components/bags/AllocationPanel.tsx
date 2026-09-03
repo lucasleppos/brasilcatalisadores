@@ -730,6 +730,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
                       {m.supplierName}
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[140px]" title={m.supplierBranch || ""}>
+                      {m.supplierBranch || "—"}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{m.itemType}</Badge></TableCell>
                     <TableCell className="text-right">{fmtNum(m.weight, 1)}</TableCell>
                     <TableCell className="text-right hidden md:table-cell">
