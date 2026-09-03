@@ -259,6 +259,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       weight: p.unitWeight * p.quantity,
       catalog_part_id: p.catalogPartId,
       seq: p.seq,
+      material_kind: isSacola ? (p.materialKind || "flex") : null,
     }));
 
     const { data: inserted, error: insErr } = await supabase
