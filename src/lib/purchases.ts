@@ -1254,6 +1254,79 @@ export async function getRealWeightsByItem(purchaseIds: string[]): Promise<Map<s
   return map;
 }
 
+export interface RealWeightFractions {
+  flex: number;
+  carbono: number;
+  /** peso legado (campo único de trituração), sem identificação de fração */
+  legacy: number;
+}
+
+/**
+ * Pesos reais pós-trituração separados em Flex / Carbono, rateados por item de
+ * conferência proporcionalmente ao peso de catálogo. Compras antigas (peso único)
+ * retornam o valor em `legacy`.
+ */
+export async function getRealWeightFractionsByItem(
+  purchaseIds: string[]
+): Promise<Map<string, RealWeightFractions>> {
+  const map = new Map<string, RealWeightFractions>();
+  if (purchaseIds.length === 0) return map;
+
+  const KEYS: Record<string, keyof RealWeightFractions> = {
+    weight_flex_trituracao: "flex",
+    weight_carbono_trituracao: "carbono",
+    weight_pos_trituracao: "legacy",
+  };
+
+  const { data: evidence } = await supabase
+    .from("stage_evidence")
+    .select("purchase_id, task_key, value_numeric, created_at")
+    .in("task_key", Object.keys(KEYS))
+    .in("purchase_id", purchaseIds)
+    .order("created_at", { ascending: true });
+
+  const byPurchase = new Map<string, RealWeightFractions>();
+  (evidence || []).forEach((e: any) => {
+    const v = Number(e.value_numeric) || 0;
+    if (v <= 0) return;
+    const field = KEYS[e.task_key as string];
+    const cur = byPurchase.get(e.purchase_id) || { flex: 0, carbono: 0, legacy: 0 };
+    cur[field] = v; // última evidência da chave prevalece
+    byPurchase.set(e.purchase_id, cur);
+  });
+  if (byPurchase.size === 0) return map;
+
+  const ids = [...byPurchase.keys()];
+  const { data: items } = await supabase
+    .from("purchase_items")
+    .select("id, purchase_id, weight")
+    .eq("category", "conferencia")
+    .in("purchase_id", ids);
+
+  const grouped = new Map<string, { id: string; weight: number }[]>();
+  (items || []).forEach((i: any) => {
+    const list = grouped.get(i.purchase_id) || [];
+    list.push({ id: i.id, weight: Number(i.weight) || 0 });
+    grouped.set(i.purchase_id, list);
+  });
+
+  grouped.forEach((list, pid) => {
+    const w = byPurchase.get(pid)!;
+    const totalCatalog = list.reduce((s, i) => s + i.weight, 0);
+    list.forEach((i, idx) => {
+      const share = totalCatalog > 0 ? i.weight / totalCatalog : (idx === 0 ? 1 : 0);
+      map.set(i.id, {
+        flex: w.flex * share,
+        carbono: w.carbono * share,
+        legacy: w.legacy * share,
+      });
+    });
+  });
+
+  return map;
+}
+
+
 
 /** Update the Boleto Syge / ERP number on a purchase */
 export async function updatePurchaseErp(id: string, erpNumber: string): Promise<boolean> {

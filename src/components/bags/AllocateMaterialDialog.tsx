@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight, getMaterialTypeLabel } from "@/lib/bags";
-import { syncCeramicoAllocation, getRealWeightsByItem } from "@/lib/purchases";
+import { syncCeramicoAllocation, getRealWeightFractionsByItem } from "@/lib/purchases";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fmtNum, fmtBrl } from "@/lib/utils";
@@ -21,6 +21,7 @@ interface AvailableMaterial {
   pdPpm: number;
   rhPpm: number;
   itemType: string;
+  fraction?: "flex" | "carbono";
 }
 
 interface AllocateMaterialDialogProps {
@@ -76,37 +77,56 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
-    // Peso real pós-trituração (peças), rateado por item de conferência
-    const realWeights = await getRealWeightsByItem(purchaseIds);
+    // Peso real pós-trituração (peças), separado em Flex/Carbono
+    const fractions = await getRealWeightFractionsByItem(purchaseIds);
 
     const available: AvailableMaterial[] = [];
     (items || []).forEach((item: any) => {
-      if (allocatedIds.has(item.id)) return;
       const purchase = purchases.find(p => p.id === item.purchase_id);
       if (!purchase) return;
 
       const result = item.calc_result as any;
-      const realWeight = realWeights.get(item.id);
-      available.push({
-        purchaseId: item.purchase_id,
-        purchaseItemId: item.id,
-        supplierName: purchase.supplier_name,
-        weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
-
-        paidValue: Number(item.total_value) || (result?.finalValueBrl || 0),
-        ptPpm: result?.ptContentG ? 0 : 0,
-        pdPpm: 0,
-        rhPpm: 0,
-        itemType: item.item_type,
-      });
-
       const input = item.calc_input as any;
-      if (input) {
-        available[available.length - 1].ptPpm = input.ptPpm || 0;
-        available[available.length - 1].pdPpm = input.pdPpm || 0;
-        available[available.length - 1].rhPpm = input.rhPpm || 0;
+      const frac = fractions.get(item.id);
+      const paidValue = Number(item.total_value) || (result?.finalValueBrl || 0);
+      const base = {
+        purchaseId: item.purchase_id,
+        supplierName: purchase.supplier_name,
+        ptPpm: input?.ptPpm || 0,
+        pdPpm: input?.pdPpm || 0,
+        rhPpm: input?.rhPpm || 0,
+        itemType: item.item_type,
+      };
+
+      const flex = frac?.flex || 0;
+      const carbono = frac?.carbono || 0;
+      if (flex > 0 || carbono > 0) {
+        const total = flex + carbono;
+        ([["flex", flex], ["carbono", carbono]] as const).forEach(([fraction, weight]) => {
+          if (weight <= 0) return;
+          const id = `${item.id}::${fraction}`;
+          if (allocatedIds.has(id)) return;
+          available.push({
+            ...base,
+            purchaseItemId: id,
+            weight,
+            paidValue: total > 0 ? paidValue * (weight / total) : paidValue,
+            fraction,
+          });
+        });
+        return;
       }
+
+      if (allocatedIds.has(item.id)) return;
+      const legacy = frac?.legacy || 0;
+      available.push({
+        ...base,
+        purchaseItemId: item.id,
+        weight: legacy > 0 ? legacy : (Number(item.weight) || (result?.netWeightKg || 0)),
+        paidValue,
+      });
     });
+
 
     setMaterials(available);
   };
@@ -170,7 +190,7 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
                 <SelectContent>
                   {materials.map((m) => (
                     <SelectItem key={m.purchaseItemId} value={m.purchaseItemId}>
-                      {m.supplierName} — {fmtNum(m.weight, 4)}kg — {fmtBrl(m.paidValue)}
+                      {m.supplierName}{m.fraction ? ` (${m.fraction === "flex" ? "Flex" : "Carbono"})` : ""} — {fmtNum(m.weight, 4)}kg — {fmtBrl(m.paidValue)}
                     </SelectItem>
                   ))}
                 </SelectContent>

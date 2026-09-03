@@ -137,9 +137,14 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
     }
   };
 
+  const groupPending = canAdvanceStage(status, evidences, labAnalyses).pending.filter(p => p.group);
+
   return (
     <div className="space-y-2 pt-1 border-t border-border/40">
       <p className="text-xs font-medium text-muted-foreground">Checklist da Etapa</p>
+      {groupPending.map(p => (
+        <p key={p.key} className="text-[10px] text-amber-600">{p.label}</p>
+      ))}
       {requirements.filter(r => r.type !== "analysis").map((req) => {
         const done = isCompleted(req);
         const taskEvidences = getEvidences(req.key);
@@ -154,7 +159,8 @@ export default function StageChecklist({ purchaseId, status, onChecklistChange, 
               <span className="text-xs flex items-center gap-1">
                 {getIcon(req.type)}
                 {req.label}
-                {!req.required && <span className="text-muted-foreground">(opcional)</span>}
+                {!req.required && !req.group && <span className="text-muted-foreground">(opcional)</span>}
+
                 {isMulti && taskEvidences.length > 0 && (
                   <span className="text-muted-foreground">({taskEvidences.length})</span>
                 )}
