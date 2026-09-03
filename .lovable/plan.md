@@ -16,13 +16,16 @@ As fotos opcionais de cada etapa continuam como estão. O resumo "Pesagens do pr
 
 ## O que muda na Alocação
 
-Na tela **Alocar Material**, uma compra de peças com os dois pesos após trituração passa a aparecer em **duas linhas** com a mesma OP:
-- `OP — Flex` com o peso Flex após trituração
-- `OP — Carbono` com o peso Carbono após trituração
+Na tela **Alocar Material**, uma compra de peças com os dois pesos após trituração passa a aparecer em **duas linhas** com a mesma OP. A identificação da fração usa a coluna **Carbono** que já existe:
+- linha com peso Flex → coluna Carbono mostra **Flex**
+- linha com peso Carbono → coluna Carbono mostra **Carbono**
+
+Nos materiais cerâmicos a coluna Carbono continua funcionando como hoje (selo pelo Ce/Zr do laboratório ou "—").
 
 O valor pago é dividido proporcionalmente aos pesos após trituração digitados (ex.: 6 kg Flex + 4 kg Carbono → 60% / 40% do valor). Se apenas um peso for informado, aparece uma única linha com o valor integral.
 
-Cada linha é alocada de forma independente (inclusive na seleção múltipla) e, depois de alocada, deixa de aparecer como disponível. As colunas Carbono/Pt/Pd/Rh, ordenação por OP e a versão mobile continuam iguais.
+Cada linha é alocada de forma independente (inclusive na seleção múltipla) e, depois de alocada, deixa de aparecer como disponível. Ordenação por OP, colunas Pt/Pd/Rh e a versão mobile continuam iguais.
+
 
 Fora da alocação nada muda: demonstrativo, PDF, precificação e relatórios seguem usando o valor e o peso totais da compra.
 
@@ -32,5 +35,5 @@ Fora da alocação nada muda: demonstrativo, PDF, precificação e relatórios s
 - `src/components/processes/StageChecklist.tsx`: renderiza os campos e mostra o pendente do grupo quando nenhum dos dois foi salvo.
 - `src/components/processes/PecasLossSummary.tsx`: linhas separadas Flex/Carbono para corte e trituração, com fallback para os valores legados.
 - `src/lib/purchases.ts`: `getRealWeightsByItem` passa a retornar, por item de conferência, as frações `flex` e `carbono` (rateio proporcional ao peso de catálogo), mantendo o comportamento atual quando só existe o peso legado.
-- `src/components/bags/AllocationPanel.tsx` (e `AllocateMaterialDialog.tsx` para consistência): gera linhas virtuais por fração usando `purchase_item_id` sufixado (`<id>::flex` / `<id>::carbono`), com `label` de fração exibido junto à OP; a checagem de itens já alocados considera o sufixo.
+- `src/components/bags/AllocationPanel.tsx` (e `AllocateMaterialDialog.tsx` para consistência): gera linhas virtuais por fração usando `purchase_item_id` sufixado (`<id>::flex` / `<id>::carbono`); a célula da coluna **Carbono** passa a exibir `Flex`/`Carbono` para essas linhas de peças, mantendo o selo atual (Ce/Zr) para cerâmico; a checagem de itens já alocados considera o sufixo.
 - Sem alterações de schema, RLS ou de lógica de precificação (`bag_items.purchase_item_id` já é texto).
