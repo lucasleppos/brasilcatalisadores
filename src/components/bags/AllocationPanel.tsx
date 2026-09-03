@@ -92,6 +92,10 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filter state
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+
   // Allocate dialog state
   const [allocatingMaterials, setAllocatingMaterials] = useState<AvailableMaterial[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
