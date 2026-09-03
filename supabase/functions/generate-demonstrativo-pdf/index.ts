@@ -202,6 +202,16 @@ Deno.serve(async (req) => {
         y += rowH;
         if (y > 265) { doc.addPage(); y = margin; }
       }
+      if (bonusQty > 0) {
+        const rowH = 11;
+        doc.text("—", pX[0] + 2, y + 4);
+        doc.text("Bônus", pX[1] + 2, y + 4);
+        doc.text(`${bonusQty} un`, pX[2] + 2, y + 4);
+        doc.text(fmtBrl(bonusValue / bonusQty), pX[3] + 2, y + 4);
+        doc.text(fmtBrl(bonusValue), pX[4] + 2, y + 4);
+        y += rowH;
+        if (y > 265) { doc.addPage(); y = margin; }
+      }
       y += 4;
     }
 
