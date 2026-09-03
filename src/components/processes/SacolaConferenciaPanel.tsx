@@ -348,6 +348,40 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   };
 
 
+  const handleSeparatedReport = async () => {
+    if (excludedPieces.length === 0) return;
+    setSaving(true);
+    try {
+      await persistPieces();
+      await persistReturns();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de gerar o PDF");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+
+    const branch = await getSupplierBranch(purchase.supplierId);
+    try {
+      await printSeparatedPiecesReport({
+        purchaseNumber: purchase.purchaseNumber,
+        date: purchase.date,
+        supplierName: purchase.supplierName,
+        branch: branch || undefined,
+        buyer: purchase.buyer,
+        erpNumber: purchase.erpNumber || undefined,
+        pieces: excludedPieces.map((p, i) => ({
+          seq: p.seq ?? i + 1,
+          code: p.code,
+          reference: p.reference,
+        })),
+      });
+    } catch {
+      toast.error("Erro ao gerar o PDF das peças separadas");
+    }
+  };
+
+
   const handleFinish = async () => {
     if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
     if (isSacola && activePieces.some(p => p.unitWeight <= 0)) {
