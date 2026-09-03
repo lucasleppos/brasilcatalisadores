@@ -31,6 +31,9 @@ const parseNum = (v: string) => {
 const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 const fmtWeight = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
+const BONUS_CATEGORY = "bonus";
+const BONUS_UNIT_PRICE = 50;
+
 export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricingPanelProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,15 +44,25 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [calcUnit, setCalcUnit] = useState<Record<string, number>>({});
   const [calcData, setCalcData] = useState<Record<string, { input: CalculatorInput; result: CalculatorResult }>>({});
   const [unitValues, setUnitValues] = useState<Record<string, string>>({});
+  const [bonusQty, setBonusQty] = useState("");
+
+  const bonusItem = useMemo(
+    () => purchase.items.find(i => i.category === BONUS_CATEGORY) || null,
+    [purchase]
+  );
 
   const items = useMemo(() => {
-    const conf = getConferenciaItems(purchase).filter(i => i.itemType === "peca" || i.itemType === "peca_sacola");
+    const isPeca = (i: { itemType: string; category?: string | null }) =>
+      (i.itemType === "peca" || i.itemType === "peca_sacola") && i.category !== BONUS_CATEGORY;
+    const conf = getConferenciaItems(purchase).filter(isPeca);
     if (conf.length > 0) return conf;
-    return getOriginalItems(purchase).filter(i => i.itemType === "peca" || i.itemType === "peca_sacola");
+    return getOriginalItems(purchase).filter(isPeca);
   }, [purchase]);
 
   const totalQty = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
   const totalWeight = items.reduce((sum, i) => sum + (i.weight || 0), 0);
+  const bonusQtyNum = Math.max(0, Math.floor(parseNum(bonusQty)));
+  const bonusTotal = bonusQtyNum * BONUS_UNIT_PRICE;
 
   const labelOf = (item: typeof items[number], idx: number) =>
     item.catalogPartCode || item.category || `Item ${idx + 1}`;
@@ -121,6 +134,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
         initial[item.id] = toStr(saved > 0 ? saved : units[item.id] || 0);
       });
       setUnitValues(initial);
+      setBonusQty(bonusItem?.quantity ? String(bonusItem.quantity) : "");
     } finally {
       setLoading(false);
     }
@@ -145,7 +159,8 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
     return typed > 0 && Math.abs(typed - calc) > 0.005;
   };
 
-  const computedTotal = items.reduce((sum, i) => sum + parseNum(unitValues[i.id] || "") * (i.quantity || 1), 0);
+  const computedTotal =
+    items.reduce((sum, i) => sum + parseNum(unitValues[i.id] || "") * (i.quantity || 1), 0) + bonusTotal;
 
   const handleSave = async () => {
     setSaving(true);
@@ -164,7 +179,28 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
           })
           .eq("id", item.id);
       }
+
+      // Bônus: cria / atualiza / remove conforme a quantidade digitada
+      if (bonusQtyNum > 0) {
+        const payload = {
+          purchase_id: purchase.id,
+          item_type: "peca",
+          category: BONUS_CATEGORY,
+          pricing_source: BONUS_CATEGORY,
+          quantity: bonusQtyNum,
+          total_value: bonusTotal,
+        };
+        const { error } = bonusItem
+          ? await supabase.from("purchase_items").update(payload).eq("id", bonusItem.id)
+          : await supabase.from("purchase_items").insert(payload);
+        if (error) throw error;
+      } else if (bonusItem) {
+        const { error } = await supabase.from("purchase_items").delete().eq("id", bonusItem.id);
+        if (error) throw error;
+      }
+
       await batchUpdateItemPricing(purchase.id, []);
+
 
       toast.success("Precificação salva");
       setOpen(false);
@@ -308,6 +344,54 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                       </div>
                     );
                   })}
+
+                  {/* Bônus — preço fixo, quantidade digitada pelo operador */}
+                  <div className="px-3 py-3 sm:px-4 sm:py-2.5 bg-muted/10">
+                    <div className="sm:hidden space-y-2">
+                      <p className="text-sm font-medium">Bônus</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Valor unit.</p>
+                          <p className="text-sm">{fmtBrl(BONUS_UNIT_PRICE)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Subtotal</p>
+                          <p className="text-sm font-semibold">{fmtBrl(bonusTotal)}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Quantidade</p>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={bonusQty}
+                          onChange={(e) => setBonusQty(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
+                          className="h-9 text-right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-4 min-w-0">
+                        <p className="text-sm font-medium">Bônus</p>
+                        <p className="text-[11px] text-muted-foreground">Preço fixo de {fmtBrl(BONUS_UNIT_PRICE)} por unidade</p>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={bonusQty}
+                          onChange={(e) => setBonusQty(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
+                          className="h-9 text-right"
+                        />
+                      </div>
+                      <div className="col-span-2 text-right text-sm text-muted-foreground">—</div>
+                      <div className="col-span-2 text-right text-sm text-muted-foreground">{fmtBrl(BONUS_UNIT_PRICE)}</div>
+                      <div className="col-span-2 text-right text-sm font-semibold">{fmtBrl(bonusTotal)}</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -96,18 +96,23 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
   const isCeramico = purchase.materialFlow === "ceramico";
 
-  const conferenceItems = items.filter(i => i.category === "conferencia");
-  const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
-  const calculatedTotal = itemsForTotal.reduce((acc, i) => acc + (Number(i.total_value) || 0), 0);
+  const bonusItem = items.find(i => i.category === "bonus") || null;
+  const bonusQty = Number(bonusItem?.quantity) || 0;
+  const bonusValue = Number(bonusItem?.total_value) || 0;
+  const itemsNoBonus = items.filter(i => i.category !== "bonus");
+
+  const conferenceItems = itemsNoBonus.filter(i => i.category === "conferencia");
+  const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : itemsNoBonus;
+  const calculatedTotal = itemsForTotal.reduce((acc, i) => acc + (Number(i.total_value) || 0), 0) + bonusValue;
   const effectiveTotal = Math.max(calculatedTotal, Number(demo?.valorTotal) || 0);
   const totalPecas = itemsForTotal.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
   const totalGrupos = itemsForTotal.length;
   const totalBrutoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).bruto, 0);
   const totalLiquidoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).liquido, 0);
 
-  const catalogFixedItems = items.filter(i => i.pricing_source === "catalogo");
-  const calcItems = items.filter(i => i.pricing_source === "calculadora");
-  const regularItems = items.filter(i => !i.pricing_source || i.pricing_source === "diesel");
+  const catalogFixedItems = itemsNoBonus.filter(i => i.pricing_source === "catalogo");
+  const calcItems = itemsNoBonus.filter(i => i.pricing_source === "calculadora");
+  const regularItems = itemsNoBonus.filter(i => !i.pricing_source || i.pricing_source === "diesel");
   const hasSacolaBlocks = catalogFixedItems.length > 0 || calcItems.length > 0;
 
   // Lab map per item (average across versoes) + latest versao per item
@@ -244,6 +249,14 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         </tr>
                       );
                     })}
+                    {bonusQty > 0 && (
+                      <tr className="border-t">
+                        <td className="p-2 align-top">Bônus</td>
+                        <td className="p-2 align-top text-right">{bonusQty} un</td>
+                        <td className="p-2 align-top text-right">{fmtBrl(bonusQty > 0 ? bonusValue / bonusQty : 0)}</td>
+                        <td className="p-2 align-top text-right font-medium">{fmtBrl(bonusValue)}</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
