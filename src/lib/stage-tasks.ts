@@ -8,23 +8,38 @@ export interface TaskRequirement {
   label: string;
   required: boolean;
   multi?: boolean;
+  /** Grupo "pelo menos um preenchido": basta uma das tarefas do grupo para liberar a etapa */
+  group?: string;
 }
+
+/** Chaves legadas que satisfazem um grupo (compras antigas com peso único) */
+export const GROUP_LEGACY_KEYS: Record<string, string[]> = {
+  peso_corte: ["weight_ceramica_extraida"],
+  peso_trituracao: ["weight_pos_trituracao"],
+};
+
+export const GROUP_LABELS: Record<string, string> = {
+  peso_corte: "Informe o peso Flex e/ou Carbono extraído",
+  peso_trituracao: "Informe o peso Flex e/ou Carbono após trituração",
+};
 
 export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
   // Conferência — sem checklist genérico: cerâmico usa CeramicoConferenciaPanel
   // e peças/peça em sacola usam SacolaConferenciaPanel
   "Em Conferência": [],
 
-  // Peças: Trituração e Amostragem (unified stage) — peso final antes da alocação no bag
+  // Peças: Trituração e Amostragem (unified stage) — pesos finais antes da alocação no bag
   "Peças: Trituração e Amostragem": [
-    { key: "weight_pos_trituracao", type: "weight", label: "Peso após trituração (kg)", required: true },
+    { key: "weight_flex_trituracao", type: "weight", label: "Peso Flex após trituração (kg)", required: false, group: "peso_trituracao" },
+    { key: "weight_carbono_trituracao", type: "weight", label: "Peso Carbono após trituração (kg)", required: false, group: "peso_trituracao" },
     { key: "photo_material_triturado", type: "photo", label: "Foto do material triturado (opcional)", required: false },
   ],
 
   // Cerâmico: Separação foi removido do fluxo (a separação acontece durante a Conferência)
   // Peças: Corte — abertura das carcaças metálicas e pesagem real da cerâmica
   "Peças: Em Corte": [
-    { key: "weight_ceramica_extraida", type: "weight", label: "Peso real da cerâmica extraída (kg)", required: true },
+    { key: "weight_flex_extraido", type: "weight", label: "Peso Real Flex Extraído (kg)", required: false, group: "peso_corte" },
+    { key: "weight_carbono_extraido", type: "weight", label: "Peso Real Carbono Extraído (kg)", required: false, group: "peso_corte" },
     { key: "photo_pos_corte", type: "photo", label: "Foto pós-corte (opcional)", required: false },
   ],
   // Peças: Trituração (legado)
@@ -33,6 +48,7 @@ export const STAGE_REQUIREMENTS: Record<string, TaskRequirement[]> = {
     { key: "weight_pos_trituracao", type: "weight", label: "Peso pós-trituração (kg)", required: true },
     { key: "photo_amostra", type: "photo", label: "Foto da amostra preparada", required: true },
   ],
+
   // Cerâmico: Trituração/Homogeneização/Amostragem — handled by CeramicoTrituracaoPanel (TARA + foto por grupo)
   "Cerâmico: Em Trituração/Homogeneização": [],
   // Lab analysis — handled by TripleAnalysisForm, not generic checklist
