@@ -10,6 +10,8 @@ export interface LabelData {
   displayCode?: string;
   buyer: string;
   supplierName: string;
+  /** Filial cadastrada no fornecedor (opcional) */
+  branch?: string;
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
   weightGross?: number;
