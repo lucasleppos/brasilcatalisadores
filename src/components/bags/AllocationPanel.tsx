@@ -335,7 +335,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         rhPpm: input?.rhPpm || 0,
         itemType: item.item_type,
         purchaseItemId: item.id,
-        weight: legacyWeight > 0 ? legacyWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+        weight: legacyWeight > 0 ? legacyWeight : (netWeightOf(item) || (result?.netWeightKg || 0)),
         isRealWeight: legacyWeight > 0,
         paidValue,
         carbono: carbonoIds.has(item.id),
