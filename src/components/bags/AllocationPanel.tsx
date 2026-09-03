@@ -449,14 +449,41 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     loadData();
   };
 
+  // Reset selection when filters change to avoid allocating hidden items
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [supplierFilter, branchFilter]);
+
+  // Unique filter options from all loaded materials
+  const allSuppliers = [...new Set([
+    ...availableMaterials.map(m => m.supplierName),
+    ...allocatedMaterials.map(m => m.supplierName),
+    ...inProcessMaterials.map(m => m.supplierName),
+  ])].sort((a, b) => a.localeCompare(b));
+
+  const allBranches = [...new Set([
+    ...availableMaterials.map(m => m.supplierBranch || "—"),
+    ...allocatedMaterials.map(m => m.supplierBranch || "—"),
+    ...inProcessMaterials.map(m => m.supplierBranch || "—"),
+  ])].sort((a, b) => a.localeCompare(b));
+
+  const matchesFilters = (m: { supplierName: string; supplierBranch?: string }) => {
+    if (supplierFilter !== "all" && m.supplierName !== supplierFilter) return false;
+    if (branchFilter !== "all" && (m.supplierBranch || "—") !== branchFilter) return false;
+    return true;
+  };
+
+  const filteredAvailable = availableMaterials.filter(matchesFilters);
+  const filteredAllocated = allocatedMaterials.filter(matchesFilters);
+  const filteredInProcess = inProcessMaterials.filter(matchesFilters);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Carregando materiais...</p>;
   }
 
-  const totalAvailableKg = availableMaterials.reduce((sum, m) => sum + m.weight, 0);
-  const totalAvailableValue = availableMaterials.reduce((sum, m) => sum + m.paidValue, 0);
-  const totalInProcessKg = inProcessMaterials.reduce((sum, m) => sum + m.weight, 0);
+  const totalAvailableKg = filteredAvailable.reduce((sum, m) => sum + m.weight, 0);
+  const totalAvailableValue = filteredAvailable.reduce((sum, m) => sum + m.paidValue, 0);
+  const totalInProcessKg = filteredInProcess.reduce((sum, m) => sum + m.weight, 0);
 
   return (
     <div className="space-y-8">
