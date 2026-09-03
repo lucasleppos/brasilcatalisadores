@@ -22,6 +22,9 @@ import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 
 const LABEL_COPIES = 3;
 
+type MaterialKind = "flex" | "carbono";
+
+
 
 interface ConferenciaPiece {
   id?: string;
