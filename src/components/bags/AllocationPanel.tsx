@@ -377,7 +377,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         supplierName: purchase.supplier_name,
         supplierBranch: branchMap.get(purchase.supplier_id) || "",
         itemType: item.item_type,
-        weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
+        weight: netWeightOf(item) || (calcResult?.netWeightKg || 0),
         value: Number(item.total_value) || (calcResult?.finalValueBrl || 0),
         status: purchase.status,
       });
