@@ -18,6 +18,7 @@ import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-valida
 import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
 import { getSupplierBranch } from "@/lib/suppliers";
 import { buildLabelCodeDisplay } from "@/lib/labels";
+import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 
 const LABEL_COPIES = 3;
 
