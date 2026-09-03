@@ -157,18 +157,20 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       .in("id", itemIds);
 
     const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
+    const branchMap = await loadSupplierBranches((ceramicPurchases || []).map((p: any) => p.supplier_id));
 
 
     const allocated: AllocatedMaterial[] = [];
     (bagItems || []).forEach((bi: any) => {
       const bag = bags.find(b => b.id === bi.bag_id);
-      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id);
+      const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id) as any;
       const item = itemsMap.get(String(bi.purchase_item_id).split("::")[0]) as any;
       allocated.push({
         purchaseId: bi.purchase_id,
         purchaseNumber: purchase?.purchase_number || "—",
         purchaseItemId: bi.purchase_item_id,
         supplierName: bi.supplier_name || purchase?.supplier_name || "—",
+        supplierBranch: branchMap.get(purchase?.supplier_id) || "",
         weight: Number(bi.weight) || 0,
         paidValue: Number(bi.paid_value) || 0,
         itemType: item?.item_type || "—",
