@@ -64,6 +64,19 @@ export const PROCESS_GROUPS: ProcessGroup[] = [
 ];
 
 
+/** Ordena por OP no formato DDMMYY-NN de forma cronológica crescente */
+export function comparePurchaseNumber(a: string, b: string): number {
+  const key = (n: string) => {
+    const m = (n || "").match(/^(\d{2})(\d{2})(\d{2})-(\d+)$/);
+    if (!m) return null;
+    return `${m[3]}${m[2]}${m[1]}-${m[4].padStart(6, "0")}`;
+  };
+  const ka = key(a);
+  const kb = key(b);
+  if (ka && kb) return ka.localeCompare(kb);
+  return (a || "").localeCompare(b || "", "pt-BR", { numeric: true });
+}
+
 /** Check if a user role can see a group (has permission on at least one status in the group) */
 export function canRoleSeeGroup(role: string | null, group: ProcessGroup): boolean {
   if (!role) return false;
@@ -147,6 +160,11 @@ export default function ProcessBoard() {
         }
       }
     });
+
+    // OP mais antiga primeiro (ordem crescente pelo número da OP)
+    Object.values(map).forEach((list) =>
+      list.sort((a, b) => comparePurchaseNumber(a.purchaseNumber, b.purchaseNumber))
+    );
 
     return map;
   }, [boardPurchases, visibleGroups]);

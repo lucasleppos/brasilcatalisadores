@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import { fmtNum } from "@/lib/utils";
-import { PROCESS_GROUPS, canRoleSeeGroup } from "./ProcessBoard";
+import { PROCESS_GROUPS, canRoleSeeGroup, comparePurchaseNumber } from "./ProcessBoard";
 import StageActionCard from "./StageActionCard";
 import { MobileListRow, MobileListDivider } from "@/components/mobile/MobileListRow";
 import { MobileSheet } from "@/components/mobile/MobileSheet";
@@ -99,9 +99,9 @@ export default function MobileProcessBoard() {
         }
       }
     });
-    // mais antigo na etapa primeiro
+    // OP mais antiga primeiro (ordem crescente pelo número da OP)
     Object.values(map).forEach((list) =>
-      list.sort((a, b) => new Date(lastChangeDate(a)).getTime() - new Date(lastChangeDate(b)).getTime())
+      list.sort((a, b) => comparePurchaseNumber(a.purchaseNumber, b.purchaseNumber))
     );
     return map;
   }, [boardPurchases, visibleGroups]);
@@ -126,8 +126,7 @@ export default function MobileProcessBoard() {
     return list.filter(
       (p) =>
         p.supplierName.toLowerCase().includes(q) ||
-        p.purchaseNumber.toLowerCase().includes(q) ||
-        (p.erpNumber || "").toLowerCase().includes(q)
+        p.purchaseNumber.toLowerCase().includes(q)
     );
   }, [tasksByGroup, activeGroup, search]);
 
@@ -168,7 +167,7 @@ export default function MobileProcessBoard() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar fornecedor, nº ou boleto…"
+            placeholder="Buscar OP ou fornecedor…"
             className="pl-9 h-10 rounded-full bg-muted/60 border-0"
           />
         </div>
