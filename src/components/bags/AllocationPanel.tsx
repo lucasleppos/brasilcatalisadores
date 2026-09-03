@@ -826,17 +826,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-muted-foreground" />
           <h2 className="text-lg font-semibold">Materiais em Processo (Próximos)</h2>
-          <Badge variant="secondary">{inProcessMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredInProcess.length}</Badge>
         </div>
 
-        {inProcessMaterials.length === 0 ? (
+        {filteredInProcess.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material em processo no momento.</p>
           </div>
         ) : isMobile ? (
           <div className="space-y-2">
-            {inProcessMaterials.map((m, idx) => (
+            {filteredInProcess.map((m, idx) => (
               <div key={`${m.purchaseId}-${idx}`} className="rounded-lg border bg-card p-3 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
