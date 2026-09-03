@@ -212,10 +212,10 @@ Deno.serve(async (req) => {
         // Table header
         doc.setDrawColor(150);
         doc.setFillColor(240, 240, 240);
-        const fixedCols = [10, 45, 30, contentWidth - 85];
+        const fixedCols = [10, 45, 25, 35, contentWidth - 115];
         const fixedX = [margin];
         for (let i = 1; i < fixedCols.length; i++) fixedX.push(fixedX[i - 1] + fixedCols[i - 1]);
-        const fixedHeaders = ["#", isCeramico ? "Material" : "Peça", "Peso", "Valor"];
+        const fixedHeaders = ["#", isCeramico ? "Material" : "Peça", "Peso", "Valor/kg", "Valor"];
 
         doc.rect(margin, y, contentWidth, 7, "F");
         doc.setFont("helvetica", "bold");
@@ -236,12 +236,16 @@ Deno.serve(async (req) => {
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
           const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
-          const val = Number(item.total_value) > 0 ? fmtBrl(Number(item.total_value)) : "—";
+          const tv = Number(item.total_value) || 0;
+          const liquido = Math.max(0, Number(item.weight) - Number(item.weight_loss || 0));
+          const valKg = tv > 0 && liquido > 0 ? fmtBrl(tv / liquido) : "—";
+          const val = tv > 0 ? fmtBrl(tv) : "—";
 
           doc.text(`${item.seq ?? i + 1}`, fixedX[0] + 2, y + 4);
           doc.text(label || "—", fixedX[1] + 2, y + 4);
           doc.text(weight, fixedX[2] + 2, y + 4);
-          doc.text(val, fixedX[3] + 2, y + 4);
+          doc.text(valKg, fixedX[3] + 2, y + 4);
+          doc.text(val, fixedX[4] + 2, y + 4);
           y += 6;
 
           if (y > 270) { doc.addPage(); y = margin; }
