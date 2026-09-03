@@ -1262,6 +1262,41 @@ export interface RealWeightFractions {
 }
 
 /**
+ * Pesos reais pós-trituração por COMPRA (sem rateio por item): Flex / Carbono,
+ * ou `legacy` quando a compra só tem o campo único antigo.
+ */
+export async function getRealWeightFractionsByPurchase(
+  purchaseIds: string[]
+): Promise<Map<string, RealWeightFractions>> {
+  const map = new Map<string, RealWeightFractions>();
+  if (purchaseIds.length === 0) return map;
+
+  const KEYS: Record<string, keyof RealWeightFractions> = {
+    weight_flex_trituracao: "flex",
+    weight_carbono_trituracao: "carbono",
+    weight_pos_trituracao: "legacy",
+  };
+
+  const { data: evidence } = await supabase
+    .from("stage_evidence")
+    .select("purchase_id, task_key, value_numeric, created_at")
+    .in("task_key", Object.keys(KEYS))
+    .in("purchase_id", purchaseIds)
+    .order("created_at", { ascending: true });
+
+  (evidence || []).forEach((e: any) => {
+    const v = Number(e.value_numeric) || 0;
+    if (v <= 0) return;
+    const field = KEYS[e.task_key as string];
+    const cur = map.get(e.purchase_id) || { flex: 0, carbono: 0, legacy: 0 };
+    cur[field] = v; // última evidência da chave prevalece
+    map.set(e.purchase_id, cur);
+  });
+
+  return map;
+}
+
+/**
  * Pesos reais pós-trituração separados em Flex / Carbono, rateados por item de
  * conferência proporcionalmente ao peso de catálogo. Compras antigas (peso único)
  * retornam o valor em `legacy`.

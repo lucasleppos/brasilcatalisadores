@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight, getMaterialTypeLabel } from "@/lib/bags";
-import { syncCeramicoAllocation, getRealWeightFractionsByItem } from "@/lib/purchases";
+import { syncCeramicoAllocation, getRealWeightFractionsByPurchase } from "@/lib/purchases";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fmtNum, fmtBrl } from "@/lib/utils";
@@ -77,53 +77,87 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
-    // Peso real pós-trituração (peças), separado em Flex/Carbono
-    const fractions = await getRealWeightFractionsByItem(purchaseIds);
+    // Peso real pós-trituração (peças), separado em Flex/Carbono — por compra
+    const fractions = await getRealWeightFractionsByPurchase(purchaseIds);
 
     const available: AvailableMaterial[] = [];
+
+    const splitPurchaseIds = new Set(
+      purchaseIds.filter(pid => {
+        const f = fractions.get(pid);
+        return (f?.flex || 0) > 0 || (f?.carbono || 0) > 0;
+      })
+    );
+
+    splitPurchaseIds.forEach(pid => {
+      const purchase = purchases.find(p => p.id === pid);
+      const opItems = (items || []).filter((i: any) => i.purchase_id === pid);
+      if (!purchase || opItems.length === 0) return;
+
+      const f = fractions.get(pid)!;
+      const flex = f.flex || 0;
+      const carbono = f.carbono || 0;
+      const total = flex + carbono;
+
+      let paidTotal = 0, wSum = 0, ptW = 0, pdW = 0, rhW = 0;
+      opItems.forEach((item: any) => {
+        const result = item.calc_result as any;
+        const input = item.calc_input as any;
+        paidTotal += Number(item.total_value) || (result?.finalValueBrl || 0);
+        const w = Number(item.weight) || (result?.netWeightKg || 0) || 1;
+        wSum += w;
+        ptW += (input?.ptPpm || 0) * w;
+        pdW += (input?.pdPpm || 0) * w;
+        rhW += (input?.rhPpm || 0) * w;
+      });
+
+      ([["flex", flex], ["carbono", carbono]] as const).forEach(([fraction, weight]) => {
+        if (weight <= 0) return;
+        const id = `${pid}::${fraction}`;
+        if (allocatedIds.has(id)) return;
+        available.push({
+          purchaseId: pid,
+          supplierName: purchase.supplier_name,
+          ptPpm: wSum > 0 ? ptW / wSum : 0,
+          pdPpm: wSum > 0 ? pdW / wSum : 0,
+          rhPpm: wSum > 0 ? rhW / wSum : 0,
+          itemType: opItems[0].item_type,
+          purchaseItemId: id,
+          weight,
+          paidValue: total > 0 ? paidTotal * (weight / total) : paidTotal,
+          fraction,
+        });
+      });
+    });
+
     (items || []).forEach((item: any) => {
+      if (splitPurchaseIds.has(item.purchase_id)) return;
       const purchase = purchases.find(p => p.id === item.purchase_id);
       if (!purchase) return;
+      if (allocatedIds.has(item.id)) return;
 
       const result = item.calc_result as any;
       const input = item.calc_input as any;
-      const frac = fractions.get(item.id);
-      const paidValue = Number(item.total_value) || (result?.finalValueBrl || 0);
-      const base = {
+      const legacyTotal = fractions.get(item.purchase_id)?.legacy || 0;
+      let legacyWeight = 0;
+      if (legacyTotal > 0) {
+        const opItems = (items || []).filter((i: any) => i.purchase_id === item.purchase_id);
+        const catalogTotal = opItems.reduce((s: number, i: any) => s + (Number(i.weight) || 0), 0);
+        legacyWeight = catalogTotal > 0
+          ? legacyTotal * ((Number(item.weight) || 0) / catalogTotal)
+          : legacyTotal / opItems.length;
+      }
+
+      available.push({
         purchaseId: item.purchase_id,
         supplierName: purchase.supplier_name,
         ptPpm: input?.ptPpm || 0,
         pdPpm: input?.pdPpm || 0,
         rhPpm: input?.rhPpm || 0,
         itemType: item.item_type,
-      };
-
-      const flex = frac?.flex || 0;
-      const carbono = frac?.carbono || 0;
-      if (flex > 0 || carbono > 0) {
-        const total = flex + carbono;
-        ([["flex", flex], ["carbono", carbono]] as const).forEach(([fraction, weight]) => {
-          if (weight <= 0) return;
-          const id = `${item.id}::${fraction}`;
-          if (allocatedIds.has(id)) return;
-          available.push({
-            ...base,
-            purchaseItemId: id,
-            weight,
-            paidValue: total > 0 ? paidValue * (weight / total) : paidValue,
-            fraction,
-          });
-        });
-        return;
-      }
-
-      if (allocatedIds.has(item.id)) return;
-      const legacy = frac?.legacy || 0;
-      available.push({
-        ...base,
         purchaseItemId: item.id,
-        weight: legacy > 0 ? legacy : (Number(item.weight) || (result?.netWeightKg || 0)),
-        paidValue,
+        weight: legacyWeight > 0 ? legacyWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+        paidValue: Number(item.total_value) || (result?.finalValueBrl || 0),
       });
     });
 
