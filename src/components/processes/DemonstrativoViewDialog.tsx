@@ -109,6 +109,10 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const totalGrupos = itemsForTotal.length;
   const totalBrutoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).bruto, 0);
   const totalLiquidoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).liquido, 0);
+  const segregadasQty = itemsNoBonus
+    .filter(i => i.category === "conferencia_excluida")
+    .reduce((s, i) => s + (Number(i.quantity) || 1), 0);
+
 
   const catalogFixedItems = itemsNoBonus.filter(i => i.pricing_source === "catalogo");
   const calcItems = itemsNoBonus.filter(i => i.pricing_source === "calculadora");
