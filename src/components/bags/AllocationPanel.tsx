@@ -78,6 +78,19 @@ async function loadSupplierBranches(supplierIds: (string | null | undefined)[]):
   return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
 }
 
+/**
+ * Peso líquido do lote: nos cerâmicos, `weight` é bruto e `weight_loss` é a tara.
+ * No fluxo de peças `weight_loss` representa perda, então nada é descontado.
+ */
+function netWeightOf(item: any): number {
+  const gross = Number(item?.weight) || 0;
+  if (item?.item_type !== "ceramico") return gross;
+  const tare = Number(item?.weight_loss) || 0;
+  return Math.max(0, gross - tare);
+}
+
+
+
 
 interface AllocationPanelProps {
   bags: Bag[];
