@@ -640,16 +640,36 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
 
           {isSacola ? (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Peso pesado (kg)</Label>
-              <Input
-                inputMode="decimal"
-                value={weighed}
-                onChange={e => setWeighed(e.target.value.replace(/[^0-9.,]/g, ""))}
-                placeholder="0,000"
-                className="h-8 text-sm"
-              />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Peso pesado (kg)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={weighed}
+                  onChange={e => setWeighed(e.target.value.replace(/[^0-9.,]/g, ""))}
+                  placeholder="0,000"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Material</Label>
+                <div className="flex gap-2">
+                  {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                    <Button
+                      key={k}
+                      type="button"
+                      size="sm"
+                      variant={newKind === k ? "default" : "outline"}
+                      className="h-8 flex-1 text-xs"
+                      onClick={() => setNewKind(k)}
+                    >
+                      {k === "flex" ? "Flex" : "Carbono"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
+
           ) : (
             <div className="space-y-1.5">
               <Label className="text-xs">Quantidade (un)</Label>
