@@ -150,6 +150,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         catalogWeight: info?.weight || 0,
         quantity: q,
         excluded: d.category === EXCLUDED_CATEGORY,
+        materialKind: ((d as { material_kind?: string | null }).material_kind === "carbono" ? "carbono" : "flex") as MaterialKind,
       };
     }));
   };
