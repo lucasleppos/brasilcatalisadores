@@ -96,9 +96,14 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
 
   const isCeramico = purchase.materialFlow === "ceramico";
 
-  const conferenceItems = items.filter(i => i.category === "conferencia");
-  const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
-  const calculatedTotal = itemsForTotal.reduce((acc, i) => acc + (Number(i.total_value) || 0), 0);
+  const bonusItem = items.find(i => i.category === "bonus") || null;
+  const bonusQty = Number(bonusItem?.quantity) || 0;
+  const bonusValue = Number(bonusItem?.total_value) || 0;
+  const itemsNoBonus = items.filter(i => i.category !== "bonus");
+
+  const conferenceItems = itemsNoBonus.filter(i => i.category === "conferencia");
+  const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : itemsNoBonus;
+  const calculatedTotal = itemsForTotal.reduce((acc, i) => acc + (Number(i.total_value) || 0), 0) + bonusValue;
   const effectiveTotal = Math.max(calculatedTotal, Number(demo?.valorTotal) || 0);
   const totalPecas = itemsForTotal.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
   const totalGrupos = itemsForTotal.length;
