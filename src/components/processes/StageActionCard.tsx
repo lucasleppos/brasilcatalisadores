@@ -380,6 +380,17 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
           </Button>
         )}
 
+        {separatedItems.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-7 text-[11px]"
+            onClick={handleSeparatedReport}
+          >
+            <Printer className="h-3 w-3 mr-1" /> Peças separadas (PDF)
+          </Button>
+        )}
+
 
 
 
