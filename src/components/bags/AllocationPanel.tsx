@@ -187,22 +187,24 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Query 1: purchases by direct status
     const { data: directPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
 
     // Query 2: ceramic purchases in parallel phase
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, total_brl, location")
+      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
       .eq("location", "matriz")
       .eq("status", "Cerâmico: Aprovado")
       .eq("op_status", "Alocando Bag");
 
-    const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])];
+    const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])] as any[];
     if (purchases.length === 0) { setAvailableMaterials([]); return; }
 
     const purchaseIds = purchases.map(p => p.id);
+    const branchMap = await loadSupplierBranches(purchases.map(p => p.supplier_id));
+
 
     const { data: items } = await supabase
       .from("purchase_items")
