@@ -92,6 +92,10 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filter state
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+
   // Allocate dialog state
   const [allocatingMaterials, setAllocatingMaterials] = useState<AvailableMaterial[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -103,24 +107,6 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const selectedBag = bags.find(b => b.id === selectedBagId);
   const allocatingWeight = allocatingMaterials.reduce((s, m) => s + m.weight, 0);
   const allocatingValue = allocatingMaterials.reduce((s, m) => s + m.paidValue, 0);
-  const selectedMaterials = availableMaterials.filter(m => selectedIds.has(m.purchaseItemId));
-  const selectedWeight = selectedMaterials.reduce((s, m) => s + m.weight, 0);
-  const selectedValue = selectedMaterials.reduce((s, m) => s + m.paidValue, 0);
-  const allSelected = availableMaterials.length > 0 && selectedIds.size === availableMaterials.length;
-
-  const toggleOne = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds(prev =>
-      prev.size === availableMaterials.length ? new Set() : new Set(availableMaterials.map(m => m.purchaseItemId))
-    );
-  };
 
 
   useEffect(() => {
@@ -445,14 +431,60 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     loadData();
   };
 
+  // Reset selection when filters change to avoid allocating hidden items
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [supplierFilter, branchFilter]);
+
+  // Unique filter options from all loaded materials
+  const allSuppliers = [...new Set([
+    ...availableMaterials.map(m => m.supplierName),
+    ...allocatedMaterials.map(m => m.supplierName),
+    ...inProcessMaterials.map(m => m.supplierName),
+  ])].sort((a, b) => a.localeCompare(b));
+
+  const allBranches = [...new Set([
+    ...availableMaterials.map(m => m.supplierBranch || "—"),
+    ...allocatedMaterials.map(m => m.supplierBranch || "—"),
+    ...inProcessMaterials.map(m => m.supplierBranch || "—"),
+  ])].sort((a, b) => a.localeCompare(b));
+
+  const matchesFilters = (m: { supplierName: string; supplierBranch?: string }) => {
+    if (supplierFilter !== "all" && m.supplierName !== supplierFilter) return false;
+    if (branchFilter !== "all" && (m.supplierBranch || "—") !== branchFilter) return false;
+    return true;
+  };
+
+  const filteredAvailable = availableMaterials.filter(matchesFilters);
+  const filteredAllocated = allocatedMaterials.filter(matchesFilters);
+  const filteredInProcess = inProcessMaterials.filter(matchesFilters);
+
+  const selectedMaterials = filteredAvailable.filter(m => selectedIds.has(m.purchaseItemId));
+  const selectedWeight = selectedMaterials.reduce((s, m) => s + m.weight, 0);
+  const selectedValue = selectedMaterials.reduce((s, m) => s + m.paidValue, 0);
+  const allSelected = filteredAvailable.length > 0 && selectedIds.size === filteredAvailable.length;
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds(prev =>
+      prev.size === filteredAvailable.length ? new Set() : new Set(filteredAvailable.map(m => m.purchaseItemId))
+    );
+  };
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Carregando materiais...</p>;
   }
 
-  const totalAvailableKg = availableMaterials.reduce((sum, m) => sum + m.weight, 0);
-  const totalAvailableValue = availableMaterials.reduce((sum, m) => sum + m.paidValue, 0);
-  const totalInProcessKg = inProcessMaterials.reduce((sum, m) => sum + m.weight, 0);
+  const totalAvailableKg = filteredAvailable.reduce((sum, m) => sum + m.weight, 0);
+  const totalAvailableValue = filteredAvailable.reduce((sum, m) => sum + m.paidValue, 0);
+  const totalInProcessKg = filteredInProcess.reduce((sum, m) => sum + m.weight, 0);
 
   return (
     <div className="space-y-8">
@@ -460,7 +492,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Lotes Disponíveis</p>
-          <p className="text-2xl font-bold">{availableMaterials.length}</p>
+          <p className="text-2xl font-bold">{filteredAvailable.length}</p>
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Peso Disponível</p>
@@ -472,8 +504,35 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Em Processo (Próximos)</p>
-          <p className="text-2xl font-bold">{inProcessMaterials.length} <span className="text-sm font-normal text-muted-foreground">lotes · {fmtNum(totalInProcessKg, 1)} kg</span></p>
+          <p className="text-2xl font-bold">{filteredInProcess.length} <span className="text-sm font-normal text-muted-foreground">lotes · {fmtNum(totalInProcessKg, 1)} kg</span></p>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+          <SelectTrigger className="h-8 text-sm w-full sm:w-56">
+            <SelectValue placeholder="Todos fornecedores" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos fornecedores</SelectItem>
+            {allSuppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="h-8 text-sm w-full sm:w-48">
+            <SelectValue placeholder="Todas filiais" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas filiais</SelectItem>
+            {allBranches.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {(supplierFilter !== "all" || branchFilter !== "all") && (
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setSupplierFilter("all"); setBranchFilter("all"); }}>
+            Limpar filtros
+          </Button>
+        )}
       </div>
 
       {/* Section 1: Available for allocation */}
@@ -481,10 +540,10 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Materiais Disponíveis para Alocação</h2>
-          <Badge variant="secondary">{availableMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredAvailable.length}</Badge>
         </div>
 
-        {availableMaterials.length === 0 ? (
+        {filteredAvailable.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material disponível para alocação no momento.</p>
@@ -517,7 +576,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     {selectedIds.size} selecionado{selectedIds.size !== 1 ? "s" : ""}
                   </span>
                 </div>
-                {availableMaterials.map((m) => (
+                {filteredAvailable.map((m) => (
                   <div
                     key={m.purchaseItemId}
                     onClick={() => toggleOne(m.purchaseItemId)}
@@ -618,7 +677,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {availableMaterials.map((m) => (
+                    {filteredAvailable.map((m) => (
                       <TableRow
                         key={m.purchaseItemId}
                         data-state={selectedIds.has(m.purchaseItemId) ? "selected" : undefined}
@@ -684,16 +743,16 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
           <h2 className="text-lg font-semibold">Materiais Alocados</h2>
-          <Badge variant="secondary">{allocatedMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredAllocated.length}</Badge>
         </div>
-        {allocatedMaterials.length === 0 ? (
+        {filteredAllocated.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material alocado no momento.</p>
           </div>
         ) : isMobile ? (
           <div className="space-y-2">
-            {allocatedMaterials.map((m) => (
+            {filteredAllocated.map((m) => (
               <div key={m.purchaseItemId} className="rounded-lg border bg-card p-3 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -735,7 +794,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allocatedMaterials.map((m) => (
+                {filteredAllocated.map((m) => (
                   <TableRow key={m.purchaseItemId}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
@@ -767,17 +826,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-muted-foreground" />
           <h2 className="text-lg font-semibold">Materiais em Processo (Próximos)</h2>
-          <Badge variant="secondary">{inProcessMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredInProcess.length}</Badge>
         </div>
 
-        {inProcessMaterials.length === 0 ? (
+        {filteredInProcess.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material em processo no momento.</p>
           </div>
         ) : isMobile ? (
           <div className="space-y-2">
-            {inProcessMaterials.map((m, idx) => (
+            {filteredInProcess.map((m, idx) => (
               <div key={`${m.purchaseId}-${idx}`} className="rounded-lg border bg-card p-3 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -819,7 +878,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inProcessMaterials.map((m, idx) => (
+                {filteredInProcess.map((m, idx) => (
                   <TableRow key={`${m.purchaseId}-${idx}`}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
