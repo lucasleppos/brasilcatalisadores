@@ -60,7 +60,11 @@ Deno.serve(async (req) => {
       !i.category && !i.pricing_source && !i.catalog_part_id &&
       !i.calc_input && !i.calc_result &&
       !(Number(i.weight) > 0) && !(Number(i.weight_loss) > 0) && !(Number(i.total_value) > 0);
-    const items = rawItems.filter((i: any) => !isPlaceholder(i));
+    const allItems = rawItems.filter((i: any) => !isPlaceholder(i));
+    const bonusItem = allItems.find((i: any) => i.category === "bonus") || null;
+    const bonusQty = Number(bonusItem?.quantity) || 0;
+    const bonusValue = Number(bonusItem?.total_value) || 0;
+    const items = allItems.filter((i: any) => i.category !== "bonus");
     const allLabRows: any[] = allLabRes.data || [];
     const generalLabRows = allLabRows.filter(l => !l.purchase_item_id);
     const latestLab = generalLabRows.length > 0
@@ -70,7 +74,8 @@ Deno.serve(async (req) => {
     // Calculate real total from items (conference items or all items)
     const conferenceItems = items.filter((i: any) => i.category === "conferencia");
     const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
-    const calculatedTotal = itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.total_value) || 0), 0);
+    const calculatedTotal =
+      itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.total_value) || 0), 0) + bonusValue;
     const effectiveTotal = Math.max(calculatedTotal, Number(demo.valor_total) || 0);
 
     // Sync demonstrativo if stored value is 0 but items have values
