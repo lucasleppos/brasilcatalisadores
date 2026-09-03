@@ -351,7 +351,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const loadInProcessMaterials = async () => {
     const { data: purchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, status, total_brl")
+      .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
       .eq("location", "matriz")
       .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
 
@@ -360,6 +360,8 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const purchaseIds = purchases.map(p => p.id);
     if (purchaseIds.length === 0) { setInProcessMaterials([]); return; }
 
+    const branchMap = await loadSupplierBranches(purchases.map((p: any) => p.supplier_id));
+
     const { data: items } = await supabase
       .from("purchase_items")
       .select("*")
@@ -367,13 +369,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const result: InProcessMaterial[] = [];
     (items || []).forEach((item: any) => {
-      const purchase = purchases.find(p => p.id === item.purchase_id);
+      const purchase = purchases.find(p => p.id === item.purchase_id) as any;
       if (!purchase) return;
       const calcResult = item.calc_result as any;
       result.push({
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         itemType: item.item_type,
         weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
         value: Number(item.total_value) || (calcResult?.finalValueBrl || 0),
