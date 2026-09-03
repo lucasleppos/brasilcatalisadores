@@ -330,7 +330,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       <th className="p-1 text-left">#</th>
                       <th className="p-1 text-left">Tipo</th>
                       <th className="p-1 text-left">{isCeramico ? "Pesos" : "Qtd/Peso"}</th>
-                      <th className="p-1 text-left">Valor Unit.</th>
+                      <th className="p-1 text-left">{isCeramico ? "Valor/kg" : "Valor Unit."}</th>
                       <th className="p-1 text-left">Valor Total</th>
                     </tr>
                   </thead>
