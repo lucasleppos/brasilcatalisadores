@@ -139,8 +139,7 @@ export default function MobileProcessBoard() {
     return list.filter(
       (p) =>
         p.supplierName.toLowerCase().includes(q) ||
-        p.purchaseNumber.toLowerCase().includes(q) ||
-        (p.erpNumber || "").toLowerCase().includes(q)
+        p.purchaseNumber.toLowerCase().includes(q)
     );
   }, [tasksByGroup, activeGroup, search]);
 
