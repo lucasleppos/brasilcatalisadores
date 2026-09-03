@@ -148,6 +148,11 @@ export default function ProcessBoard() {
       }
     });
 
+    // OP mais antiga primeiro (ordem crescente pelo número da OP)
+    Object.values(map).forEach((list) =>
+      list.sort((a, b) => comparePurchaseNumber(a.purchaseNumber, b.purchaseNumber))
+    );
+
     return map;
   }, [boardPurchases, visibleGroups]);
 
