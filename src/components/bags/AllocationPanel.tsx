@@ -503,8 +503,35 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Em Processo (Próximos)</p>
-          <p className="text-2xl font-bold">{inProcessMaterials.length} <span className="text-sm font-normal text-muted-foreground">lotes · {fmtNum(totalInProcessKg, 1)} kg</span></p>
+          <p className="text-2xl font-bold">{filteredInProcess.length} <span className="text-sm font-normal text-muted-foreground">lotes · {fmtNum(totalInProcessKg, 1)} kg</span></p>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+          <SelectTrigger className="h-8 text-sm w-full sm:w-56">
+            <SelectValue placeholder="Todos fornecedores" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos fornecedores</SelectItem>
+            {allSuppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="h-8 text-sm w-full sm:w-48">
+            <SelectValue placeholder="Todas filiais" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas filiais</SelectItem>
+            {allBranches.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {(supplierFilter !== "all" || branchFilter !== "all") && (
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setSupplierFilter("all"); setBranchFilter("all"); }}>
+            Limpar filtros
+          </Button>
+        )}
       </div>
 
       {/* Section 1: Available for allocation */}
@@ -512,7 +539,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Materiais Disponíveis para Alocação</h2>
-          <Badge variant="secondary">{availableMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredAvailable.length}</Badge>
         </div>
 
         {availableMaterials.length === 0 ? (
