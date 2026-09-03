@@ -189,6 +189,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
     : [];
   const groupAvgRows = [...matchedGroupRows, ...orphanGroupRows];
   const hasAnyLab = isCeramico && (groupAvgRows.length > 0 || !!generalAvg);
+  // Peça em Sacola: lab analysis per piece shown inline in the pieces table
+  const showItemLab = !isCeramico && Object.keys(labMap).length > 0;
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
