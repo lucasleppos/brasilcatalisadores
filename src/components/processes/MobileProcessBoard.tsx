@@ -112,9 +112,9 @@ export default function MobileProcessBoard() {
         }
       }
     });
-    // mais antigo na etapa primeiro
+    // OP mais antiga primeiro (ordem crescente pelo número da OP)
     Object.values(map).forEach((list) =>
-      list.sort((a, b) => new Date(lastChangeDate(a)).getTime() - new Date(lastChangeDate(b)).getTime())
+      list.sort((a, b) => comparePurchaseNumber(a.purchaseNumber, b.purchaseNumber))
     );
     return map;
   }, [boardPurchases, visibleGroups]);
