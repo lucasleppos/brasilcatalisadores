@@ -228,7 +228,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-2 text-left">Peça</th>
-                      <th className="p-2 text-right">Qtd / Peso</th>
+                      <th className="p-2 text-right">Qtd</th>
                       {showItemLab && (
                         <>
                           <th className="p-2 text-right">Pt (ppm)</th>
@@ -257,7 +257,6 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                           </td>
                           <td className="p-2 align-top text-right">
                             <div>{qty} un</div>
-                            {w > 0 && <div className="text-muted-foreground">{fmtNum(w, 4)} kg</div>}
                           </td>
                           {showItemLab && (
                             <>
