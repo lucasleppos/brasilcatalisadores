@@ -743,16 +743,16 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
           <h2 className="text-lg font-semibold">Materiais Alocados</h2>
-          <Badge variant="secondary">{allocatedMaterials.length}</Badge>
+          <Badge variant="secondary">{filteredAllocated.length}</Badge>
         </div>
-        {allocatedMaterials.length === 0 ? (
+        {filteredAllocated.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material alocado no momento.</p>
           </div>
         ) : isMobile ? (
           <div className="space-y-2">
-            {allocatedMaterials.map((m) => (
+            {filteredAllocated.map((m) => (
               <div key={m.purchaseItemId} className="rounded-lg border bg-card p-3 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
