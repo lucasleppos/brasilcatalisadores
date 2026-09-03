@@ -134,6 +134,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
         initial[item.id] = toStr(saved > 0 ? saved : units[item.id] || 0);
       });
       setUnitValues(initial);
+      setBonusQty(bonusItem?.quantity ? String(bonusItem.quantity) : "");
     } finally {
       setLoading(false);
     }
@@ -158,7 +159,8 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
     return typed > 0 && Math.abs(typed - calc) > 0.005;
   };
 
-  const computedTotal = items.reduce((sum, i) => sum + parseNum(unitValues[i.id] || "") * (i.quantity || 1), 0);
+  const computedTotal =
+    items.reduce((sum, i) => sum + parseNum(unitValues[i.id] || "") * (i.quantity || 1), 0) + bonusTotal;
 
   const handleSave = async () => {
     setSaving(true);
@@ -177,7 +179,28 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
           })
           .eq("id", item.id);
       }
+
+      // Bônus: cria / atualiza / remove conforme a quantidade digitada
+      if (bonusQtyNum > 0) {
+        const payload = {
+          purchase_id: purchase.id,
+          item_type: "peca",
+          category: BONUS_CATEGORY,
+          pricing_source: BONUS_CATEGORY,
+          quantity: bonusQtyNum,
+          total_value: bonusTotal,
+        };
+        const { error } = bonusItem
+          ? await supabase.from("purchase_items").update(payload).eq("id", bonusItem.id)
+          : await supabase.from("purchase_items").insert(payload);
+        if (error) throw error;
+      } else if (bonusItem) {
+        const { error } = await supabase.from("purchase_items").delete().eq("id", bonusItem.id);
+        if (error) throw error;
+      }
+
       await batchUpdateItemPricing(purchase.id, []);
+
 
       toast.success("Precificação salva");
       setOpen(false);
