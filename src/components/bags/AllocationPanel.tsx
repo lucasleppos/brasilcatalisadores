@@ -138,13 +138,14 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
 
-    const itemIds = bagItems.map((b: any) => b.purchase_item_id);
+    const itemIds = bagItems.map((b: any) => String(b.purchase_item_id).split("::")[0]);
     const { data: items } = await supabase
       .from("purchase_items")
       .select("id, item_type")
       .in("id", itemIds);
 
     const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
+
 
     const allocated: AllocatedMaterial[] = [];
     (bagItems || []).forEach((bi: any) => {
