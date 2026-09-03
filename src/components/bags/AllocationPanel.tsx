@@ -330,6 +330,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         ptPpm: input?.ptPpm || 0,
         pdPpm: input?.pdPpm || 0,
         rhPpm: input?.rhPpm || 0,
