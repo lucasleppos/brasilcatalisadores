@@ -200,8 +200,8 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
-    // Peso real pós-trituração (peças), rateado por item de conferência
-    const realWeights = await getRealWeightsByItem(purchaseIds);
+    // Pesos reais pós-trituração (peças), separados em Flex/Carbono
+    const fractions = await getRealWeightFractionsByItem(purchaseIds);
 
     // Zr(%) / Ce(%) do laboratório — apenas informativo (selo "Carbono")
     const { data: labRows } = await supabase
@@ -228,28 +228,57 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const available: AvailableMaterial[] = [];
     (items || []).forEach((item: any) => {
-      if (allocatedIds.has(item.id)) return;
       const purchase = purchases.find(p => p.id === item.purchase_id);
       if (!purchase) return;
 
       const result = item.calc_result as any;
       const input = item.calc_input as any;
-      const realWeight = realWeights.get(item.id);
-      available.push({
+      const frac = fractions.get(item.id);
+      const paidValue = Number(item.total_value) || (result?.finalValueBrl || 0);
+      const base = {
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
-        purchaseItemId: item.id,
         supplierName: purchase.supplier_name,
-        weight: realWeight != null ? realWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
-        isRealWeight: realWeight != null,
-        paidValue: Number(item.total_value) || (result?.finalValueBrl || 0),
         ptPpm: input?.ptPpm || 0,
         pdPpm: input?.pdPpm || 0,
         rhPpm: input?.rhPpm || 0,
         itemType: item.item_type,
+      };
+
+      // Peças com pesos Flex/Carbono após trituração → duas linhas, valor rateado
+      const flex = frac?.flex || 0;
+      const carbono = frac?.carbono || 0;
+      if (flex > 0 || carbono > 0) {
+        const total = flex + carbono;
+        ([["flex", flex], ["carbono", carbono]] as const).forEach(([fraction, weight]) => {
+          if (weight <= 0) return;
+          const id = `${item.id}::${fraction}`;
+          if (allocatedIds.has(id)) return;
+          available.push({
+            ...base,
+            purchaseItemId: id,
+            weight,
+            isRealWeight: true,
+            paidValue: total > 0 ? paidValue * (weight / total) : paidValue,
+            fraction,
+            carbono: carbonoIds.has(item.id),
+          });
+        });
+        return;
+      }
+
+      if (allocatedIds.has(item.id)) return;
+      const legacyWeight = frac?.legacy || 0;
+      available.push({
+        ...base,
+        purchaseItemId: item.id,
+        weight: legacyWeight > 0 ? legacyWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+        isRealWeight: legacyWeight > 0,
+        paidValue,
         carbono: carbonoIds.has(item.id),
       });
     });
+
 
     setAvailableMaterials(sortByPurchaseNumber(available));
   };
