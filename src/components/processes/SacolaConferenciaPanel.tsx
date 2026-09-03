@@ -181,6 +181,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         unitWeight: w,
         catalogWeight,
         quantity: 1,
+        materialKind: newKind,
       }]);
       setSelectedPart(null);
       setWeighed("");
