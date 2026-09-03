@@ -35,5 +35,5 @@ Fora da alocação nada muda: demonstrativo, PDF, precificação e relatórios s
 - `src/components/processes/StageChecklist.tsx`: renderiza os campos e mostra o pendente do grupo quando nenhum dos dois foi salvo.
 - `src/components/processes/PecasLossSummary.tsx`: linhas separadas Flex/Carbono para corte e trituração, com fallback para os valores legados.
 - `src/lib/purchases.ts`: `getRealWeightsByItem` passa a retornar, por item de conferência, as frações `flex` e `carbono` (rateio proporcional ao peso de catálogo), mantendo o comportamento atual quando só existe o peso legado.
-- `src/components/bags/AllocationPanel.tsx` (e `AllocateMaterialDialog.tsx` para consistência): gera linhas virtuais por fração usando `purchase_item_id` sufixado (`<id>::flex` / `<id>::carbono`), com `label` de fração exibido junto à OP; a checagem de itens já alocados considera o sufixo.
+- `src/components/bags/AllocationPanel.tsx` (e `AllocateMaterialDialog.tsx` para consistência): gera linhas virtuais por fração usando `purchase_item_id` sufixado (`<id>::flex` / `<id>::carbono`); a célula da coluna **Carbono** passa a exibir `Flex`/`Carbono` para essas linhas de peças, mantendo o selo atual (Ce/Zr) para cerâmico; a checagem de itens já alocados considera o sufixo.
 - Sem alterações de schema, RLS ou de lógica de precificação (`bag_items.purchase_item_id` já é texto).
