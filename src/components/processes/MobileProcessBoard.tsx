@@ -180,7 +180,7 @@ export default function MobileProcessBoard() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar fornecedor, nº ou boleto…"
+            placeholder="Buscar OP ou fornecedor…"
             className="pl-9 h-10 rounded-full bg-muted/60 border-0"
           />
         </div>
