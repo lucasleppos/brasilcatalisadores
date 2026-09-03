@@ -491,7 +491,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Lotes Disponíveis</p>
-          <p className="text-2xl font-bold">{availableMaterials.length}</p>
+          <p className="text-2xl font-bold">{filteredAvailable.length}</p>
         </div>
         <div className="rounded-lg border bg-card p-4 space-y-1">
           <p className="text-xs text-muted-foreground font-medium">Peso Disponível</p>
