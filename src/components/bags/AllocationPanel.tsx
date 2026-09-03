@@ -107,24 +107,6 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const selectedBag = bags.find(b => b.id === selectedBagId);
   const allocatingWeight = allocatingMaterials.reduce((s, m) => s + m.weight, 0);
   const allocatingValue = allocatingMaterials.reduce((s, m) => s + m.paidValue, 0);
-  const selectedMaterials = filteredAvailable.filter(m => selectedIds.has(m.purchaseItemId));
-  const selectedWeight = selectedMaterials.reduce((s, m) => s + m.weight, 0);
-  const selectedValue = selectedMaterials.reduce((s, m) => s + m.paidValue, 0);
-  const allSelected = filteredAvailable.length > 0 && selectedIds.size === filteredAvailable.length;
-
-  const toggleOne = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds(prev =>
-      prev.size === filteredAvailable.length ? new Set() : new Set(filteredAvailable.map(m => m.purchaseItemId))
-    );
-  };
 
 
   useEffect(() => {
