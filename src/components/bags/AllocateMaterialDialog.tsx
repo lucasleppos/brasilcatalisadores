@@ -21,6 +21,7 @@ interface AvailableMaterial {
   pdPpm: number;
   rhPpm: number;
   itemType: string;
+  fraction?: "flex" | "carbono";
 }
 
 interface AllocateMaterialDialogProps {
