@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/lib/permissions";
 import { fmtNum } from "@/lib/utils";
-import { PROCESS_GROUPS, canRoleSeeGroup } from "./ProcessBoard";
+import { PROCESS_GROUPS, canRoleSeeGroup, comparePurchaseNumber } from "./ProcessBoard";
 import StageActionCard from "./StageActionCard";
 import { MobileListRow, MobileListDivider } from "@/components/mobile/MobileListRow";
 import { MobileSheet } from "@/components/mobile/MobileSheet";
@@ -44,19 +44,6 @@ function purchaseWeight(p: Purchase): number {
 function lastChangeDate(p: Purchase): string {
   const last = p.statusHistory[p.statusHistory.length - 1];
   return last?.date || p.date;
-}
-
-/** Ordena por OP no formato DDMMYY-NN de forma cronológica crescente */
-export function comparePurchaseNumber(a: string, b: string): number {
-  const key = (n: string) => {
-    const m = (n || "").match(/^(\d{2})(\d{2})(\d{2})-(\d+)$/);
-    if (!m) return null;
-    return `${m[3]}${m[2]}${m[1]}-${m[4].padStart(6, "0")}`;
-  };
-  const ka = key(a);
-  const kb = key(b);
-  if (ka && kb) return ka.localeCompare(kb);
-  return (a || "").localeCompare(b || "", "pt-BR", { numeric: true });
 }
 
 export default function MobileProcessBoard() {
