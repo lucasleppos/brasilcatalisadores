@@ -16,6 +16,7 @@ import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
 import { buildLabelCode, buildLabelCodeDisplay } from "@/lib/labels";
 import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
+import { getSupplierBranch } from "@/lib/suppliers";
 
 const LABEL_COPIES_PER_GROUP = 3;
 

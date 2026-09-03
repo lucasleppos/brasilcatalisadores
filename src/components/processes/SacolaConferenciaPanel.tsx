@@ -16,6 +16,7 @@ import PartSearch from "@/components/catalog/PartSearch";
 import { CatalogPart } from "@/lib/catalog";
 import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-validation";
 import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
+import { getSupplierBranch } from "@/lib/suppliers";
 import { buildLabelCodeDisplay } from "@/lib/labels";
 
 const LABEL_COPIES = 3;
