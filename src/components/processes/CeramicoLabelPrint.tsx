@@ -173,6 +173,7 @@ const FLOW_LABEL: Record<string, string> = {
  */
 export function buildEntryLabel(
   purchase: Pick<Purchase, "purchaseNumber" | "date" | "buyer" | "supplierName" | "materialFlow" | "bulkWeight">,
+  branch?: string,
 ): LabelData {
   const isCeramico = purchase.materialFlow === "ceramico";
   const declared = Number(purchase.bulkWeight ?? 0);
@@ -182,6 +183,7 @@ export function buildEntryLabel(
     stageLabel: "ENTRADA",
     buyer: purchase.buyer,
     supplierName: purchase.supplierName,
+    branch: branch || undefined,
     group: "—",
     typeLabel: FLOW_LABEL[purchase.materialFlow || ""] || "Material",
     weightGross: isCeramico && declared > 0 ? declared : undefined,
@@ -191,9 +193,10 @@ export function buildEntryLabel(
 
 /** Prints a single entry label for the given purchase. */
 export async function printEntryLabel(
-  purchase: Parameters<typeof buildEntryLabel>[0],
+  purchase: Parameters<typeof buildEntryLabel>[0] & { supplierId?: string },
 ): Promise<void> {
-  await printLabelSheet([buildEntryLabel(purchase)]);
+  const branch = await getSupplierBranch(purchase.supplierId);
+  await printLabelSheet([buildEntryLabel(purchase, branch)]);
 }
 
 
