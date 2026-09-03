@@ -28,6 +28,8 @@ interface AvailableMaterial {
   rhPpm: number;
   itemType: string;
   carbono?: boolean;
+  /** fração de peças pós-trituração (Flex/Carbono) */
+  fraction?: "flex" | "carbono";
 }
 
 
