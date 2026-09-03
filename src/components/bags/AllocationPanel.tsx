@@ -505,7 +505,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           <span className="font-medium">{fmtNum(m.rhPpm, 0)}</span>
                         </span>
                       </div>
-                      {m.carbono ? (
+                      {m.fraction ? (
+                        <Badge variant="secondary" className="shrink-0">{m.fraction === "flex" ? "Flex" : "Carbono"}</Badge>
+                      ) : m.carbono ? (
                         <Badge variant="secondary" className="shrink-0">Carbono</Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs shrink-0">—</span>
