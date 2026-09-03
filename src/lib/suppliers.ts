@@ -39,6 +39,23 @@ export async function loadSuppliers(): Promise<Supplier[]> {
   return data.map(mapRow);
 }
 
+const branchCache = new Map<string, string>();
+
+/** Filial cadastrada no fornecedor (com cache simples em memória). */
+export async function getSupplierBranch(supplierId?: string | null): Promise<string> {
+  if (!supplierId) return "";
+  const cached = branchCache.get(supplierId);
+  if (cached !== undefined) return cached;
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("branch")
+    .eq("id", supplierId)
+    .maybeSingle();
+  const branch = error || !data ? "" : (data.branch || "");
+  branchCache.set(supplierId, branch);
+  return branch;
+}
+
 export async function addSupplier(data: Omit<Supplier, "id" | "createdAt">): Promise<Supplier | null> {
   const { data: row, error } = await supabase
     .from("suppliers")

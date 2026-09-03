@@ -16,6 +16,7 @@ import { fmtNum, fmtPct } from "@/lib/utils";
 import { uploadStagePhoto } from "@/lib/stage-tasks";
 import { buildLabelCode, buildLabelCodeDisplay } from "@/lib/labels";
 import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
+import { getSupplierBranch } from "@/lib/suppliers";
 
 const LABEL_COPIES_PER_GROUP = 3;
 
@@ -299,11 +300,13 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       l = saved[index];
     }
     const displayCode = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const branch = await getSupplierBranch(purchase.supplierId);
     openPrint(expandCopies({
       code: l.labelCode!,
       displayCode,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
+      branch: branch || undefined,
       group: l.category,
       weightGross: l.weightGross,
     }));
@@ -318,11 +321,13 @@ export default function CeramicoConferenciaPanel({ purchase, open, onOpenChange,
       src = saved;
     }
     const displayCode = buildLabelCodeDisplay(purchase.purchaseNumber, purchase.date);
+    const branch = await getSupplierBranch(purchase.supplierId);
     const all = src.flatMap(l => expandCopies({
       code: l.labelCode!,
       displayCode,
       buyer: purchase.buyer,
       supplierName: purchase.supplierName,
+      branch: branch || undefined,
       group: l.category,
       weightGross: l.weightGross,
     }));

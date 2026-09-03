@@ -1,5 +1,6 @@
 import { buildLabelCode, buildLabelCodeDisplay, buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
 import { fmtNum } from "@/lib/utils";
+import { getSupplierBranch } from "@/lib/suppliers";
 import type { Purchase } from "@/lib/purchases";
 
 
@@ -10,6 +11,8 @@ export interface LabelData {
   displayCode?: string;
   buyer: string;
   supplierName: string;
+  /** Filial cadastrada no fornecedor (opcional) */
+  branch?: string;
   group: string;
   /** Weight shown as "Peso Bruto" because tara is not informed at this stage */
   weightGross?: number;
@@ -85,12 +88,16 @@ function labelHtml(l: LabelData, qr: string): string {
       ? `<div class="weights">Peso Bruto: ${esc(fmtNum(l.weightGross, 3))} kg</div>`
       : "";
   const stage = l.stageLabel ? `<span class="stage">${esc(l.stageLabel)}</span>` : "";
+  const branch = l.branch
+    ? `<div class="row"><span>Filial: </span><span class="val">${esc(l.branch)}</span></div>`
+    : "";
   return `
     <div class="label">
       <div class="info">
         <div class="lote">${esc(l.displayCode || l.code)}${stage}</div>
         <div class="row"><span>Comprador: </span><span class="val">${esc(l.buyer || "—")}</span></div>
         <div class="row"><span>Fornecedor: </span><span class="val">${esc(l.supplierName)}</span></div>
+        ${branch}
         ${mid}
         ${qty}
         ${declared}
@@ -167,6 +174,7 @@ const FLOW_LABEL: Record<string, string> = {
  */
 export function buildEntryLabel(
   purchase: Pick<Purchase, "purchaseNumber" | "date" | "buyer" | "supplierName" | "materialFlow" | "bulkWeight">,
+  branch?: string,
 ): LabelData {
   const isCeramico = purchase.materialFlow === "ceramico";
   const declared = Number(purchase.bulkWeight ?? 0);
@@ -176,6 +184,7 @@ export function buildEntryLabel(
     stageLabel: "ENTRADA",
     buyer: purchase.buyer,
     supplierName: purchase.supplierName,
+    branch: branch || undefined,
     group: "—",
     typeLabel: FLOW_LABEL[purchase.materialFlow || ""] || "Material",
     weightGross: isCeramico && declared > 0 ? declared : undefined,
@@ -185,9 +194,10 @@ export function buildEntryLabel(
 
 /** Prints a single entry label for the given purchase. */
 export async function printEntryLabel(
-  purchase: Parameters<typeof buildEntryLabel>[0],
+  purchase: Parameters<typeof buildEntryLabel>[0] & { supplierId?: string },
 ): Promise<void> {
-  await printLabelSheet([buildEntryLabel(purchase)]);
+  const branch = await getSupplierBranch(purchase.supplierId);
+  await printLabelSheet([buildEntryLabel(purchase, branch)]);
 }
 
 
