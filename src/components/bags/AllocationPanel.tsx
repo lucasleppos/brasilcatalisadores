@@ -794,6 +794,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 <TableRow>
                   <TableHead>OP</TableHead>
                   <TableHead className="w-[180px]">Fornecedor</TableHead>
+                  <TableHead className="w-[140px]">Filial</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
