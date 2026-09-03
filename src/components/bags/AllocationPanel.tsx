@@ -151,7 +151,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     (bagItems || []).forEach((bi: any) => {
       const bag = bags.find(b => b.id === bi.bag_id);
       const purchase = ceramicPurchases?.find(p => p.id === bi.purchase_id);
-      const item = itemsMap.get(bi.purchase_item_id) as any;
+      const item = itemsMap.get(String(bi.purchase_item_id).split("::")[0]) as any;
       allocated.push({
         purchaseId: bi.purchase_id,
         purchaseNumber: purchase?.purchase_number || "—",
