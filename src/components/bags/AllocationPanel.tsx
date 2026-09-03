@@ -542,7 +542,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
           <Badge variant="secondary">{filteredAvailable.length}</Badge>
         </div>
 
-        {availableMaterials.length === 0 ? (
+        {filteredAvailable.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Nenhum material disponível para alocação no momento.</p>
