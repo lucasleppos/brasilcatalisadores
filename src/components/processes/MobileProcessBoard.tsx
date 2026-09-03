@@ -46,6 +46,19 @@ function lastChangeDate(p: Purchase): string {
   return last?.date || p.date;
 }
 
+/** Ordena por OP no formato DDMMYY-NN de forma cronológica crescente */
+export function comparePurchaseNumber(a: string, b: string): number {
+  const key = (n: string) => {
+    const m = (n || "").match(/^(\d{2})(\d{2})(\d{2})-(\d+)$/);
+    if (!m) return null;
+    return `${m[3]}${m[2]}${m[1]}-${m[4].padStart(6, "0")}`;
+  };
+  const ka = key(a);
+  const kb = key(b);
+  if (ka && kb) return ka.localeCompare(kb);
+  return (a || "").localeCompare(b || "", "pt-BR", { numeric: true });
+}
+
 export default function MobileProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
