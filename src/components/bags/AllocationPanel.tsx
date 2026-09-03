@@ -283,6 +283,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         purchaseId: pid,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
+        supplierBranch: branchMap.get(purchase.supplier_id) || "",
         ptPpm: wSum > 0 ? ptW / wSum : 0,
         pdPpm: wSum > 0 ? pdW / wSum : 0,
         rhPpm: wSum > 0 ? rhW / wSum : 0,
