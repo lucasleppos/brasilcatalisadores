@@ -31,6 +31,9 @@ const parseNum = (v: string) => {
 const toStr = (n: number) => (n > 0 ? n.toFixed(2).replace(".", ",") : "");
 const fmtWeight = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
+const BONUS_CATEGORY = "bonus";
+const BONUS_UNIT_PRICE = 50;
+
 export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricingPanelProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,15 +44,25 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
   const [calcUnit, setCalcUnit] = useState<Record<string, number>>({});
   const [calcData, setCalcData] = useState<Record<string, { input: CalculatorInput; result: CalculatorResult }>>({});
   const [unitValues, setUnitValues] = useState<Record<string, string>>({});
+  const [bonusQty, setBonusQty] = useState("");
+
+  const bonusItem = useMemo(
+    () => purchase.items.find(i => i.category === BONUS_CATEGORY) || null,
+    [purchase]
+  );
 
   const items = useMemo(() => {
-    const conf = getConferenciaItems(purchase).filter(i => i.itemType === "peca" || i.itemType === "peca_sacola");
+    const isPeca = (i: { itemType: string; category?: string | null }) =>
+      (i.itemType === "peca" || i.itemType === "peca_sacola") && i.category !== BONUS_CATEGORY;
+    const conf = getConferenciaItems(purchase).filter(isPeca);
     if (conf.length > 0) return conf;
-    return getOriginalItems(purchase).filter(i => i.itemType === "peca" || i.itemType === "peca_sacola");
+    return getOriginalItems(purchase).filter(isPeca);
   }, [purchase]);
 
   const totalQty = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
   const totalWeight = items.reduce((sum, i) => sum + (i.weight || 0), 0);
+  const bonusQtyNum = Math.max(0, Math.floor(parseNum(bonusQty)));
+  const bonusTotal = bonusQtyNum * BONUS_UNIT_PRICE;
 
   const labelOf = (item: typeof items[number], idx: number) =>
     item.catalogPartCode || item.category || `Item ${idx + 1}`;
