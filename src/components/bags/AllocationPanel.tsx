@@ -878,7 +878,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inProcessMaterials.map((m, idx) => (
+                {filteredInProcess.map((m, idx) => (
                   <TableRow key={`${m.purchaseId}-${idx}`}>
                     <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
                     <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
