@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye, Printer } from "lucide-react";
 import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow, getExcludedItems } from "@/lib/purchases";
+import { getSupplierBranch } from "@/lib/suppliers";
+import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -147,6 +149,30 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       }
     } finally {
       setSavingErp(false);
+    }
+  };
+
+  /** Peças separadas do fluxo (sacola) — PDF disponível em qualquer etapa */
+  const separatedItems = getExcludedItems(purchase);
+
+  const handleSeparatedReport = async () => {
+    const branch = await getSupplierBranch(purchase.supplierId);
+    try {
+      await printSeparatedPiecesReport({
+        purchaseNumber: purchase.purchaseNumber,
+        date: purchase.date,
+        supplierName: purchase.supplierName,
+        branch: branch || undefined,
+        buyer: purchase.buyer,
+        erpNumber: purchase.erpNumber || undefined,
+        pieces: separatedItems.map((i, idx) => ({
+          seq: i.seq ?? idx + 1,
+          code: i.catalogPartCode || i.partCode || "—",
+          reference: i.catalogPartRef || i.partReference || null,
+        })),
+      });
+    } catch {
+      toast.error("Erro ao gerar o PDF das peças separadas");
     }
   };
 
@@ -377,6 +403,17 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
             }}
           >
             <Printer className="h-3 w-3 mr-1" /> Imprimir Etiqueta de Entrada
+          </Button>
+        )}
+
+        {separatedItems.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-7 text-[11px]"
+            onClick={handleSeparatedReport}
+          >
+            <Printer className="h-3 w-3 mr-1" /> Peças separadas (PDF)
           </Button>
         )}
 

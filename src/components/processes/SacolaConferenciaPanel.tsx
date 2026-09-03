@@ -18,6 +18,7 @@ import { weightCheck, marginColor, WEIGHT_MARGIN_PCT } from "@/lib/sacola-valida
 import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
 import { getSupplierBranch } from "@/lib/suppliers";
 import { buildLabelCodeDisplay } from "@/lib/labels";
+import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 
 const LABEL_COPIES = 3;
 
@@ -347,6 +348,40 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   };
 
 
+  const handleSeparatedReport = async () => {
+    if (excludedPieces.length === 0) return;
+    setSaving(true);
+    try {
+      await persistPieces();
+      await persistReturns();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de gerar o PDF");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+
+    const branch = await getSupplierBranch(purchase.supplierId);
+    try {
+      await printSeparatedPiecesReport({
+        purchaseNumber: purchase.purchaseNumber,
+        date: purchase.date,
+        supplierName: purchase.supplierName,
+        branch: branch || undefined,
+        buyer: purchase.buyer,
+        erpNumber: purchase.erpNumber || undefined,
+        pieces: excludedPieces.map((p, i) => ({
+          seq: p.seq ?? i + 1,
+          code: p.code,
+          reference: p.reference,
+        })),
+      });
+    } catch {
+      toast.error("Erro ao gerar o PDF das peças separadas");
+    }
+  };
+
+
   const handleFinish = async () => {
     if (activePieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
     if (isSacola && activePieces.some(p => p.unitWeight <= 0)) {
@@ -514,6 +549,16 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             <p className="text-[11px] text-muted-foreground">
               Registradas nesta compra para histórico. Devem ser incluídas em uma nova compra no fluxo de cerâmico.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={saving}
+              onClick={handleSeparatedReport}
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Printer className="h-3.5 w-3.5 mr-1" />}
+              Gerar PDF das peças separadas
+            </Button>
             {pieces.map((p, i) => {
               if (!p.excluded) return null;
               const check = weightCheck(p.catalogWeight, p.unitWeight);
