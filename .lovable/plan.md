@@ -16,13 +16,16 @@ As fotos opcionais de cada etapa continuam como estão. O resumo "Pesagens do pr
 
 ## O que muda na Alocação
 
-Na tela **Alocar Material**, uma compra de peças com os dois pesos após trituração passa a aparecer em **duas linhas** com a mesma OP:
-- `OP — Flex` com o peso Flex após trituração
-- `OP — Carbono` com o peso Carbono após trituração
+Na tela **Alocar Material**, uma compra de peças com os dois pesos após trituração passa a aparecer em **duas linhas** com a mesma OP. A identificação da fração usa a coluna **Carbono** que já existe:
+- linha com peso Flex → coluna Carbono mostra **Flex**
+- linha com peso Carbono → coluna Carbono mostra **Carbono**
+
+Nos materiais cerâmicos a coluna Carbono continua funcionando como hoje (selo pelo Ce/Zr do laboratório ou "—").
 
 O valor pago é dividido proporcionalmente aos pesos após trituração digitados (ex.: 6 kg Flex + 4 kg Carbono → 60% / 40% do valor). Se apenas um peso for informado, aparece uma única linha com o valor integral.
 
-Cada linha é alocada de forma independente (inclusive na seleção múltipla) e, depois de alocada, deixa de aparecer como disponível. As colunas Carbono/Pt/Pd/Rh, ordenação por OP e a versão mobile continuam iguais.
+Cada linha é alocada de forma independente (inclusive na seleção múltipla) e, depois de alocada, deixa de aparecer como disponível. Ordenação por OP, colunas Pt/Pd/Rh e a versão mobile continuam iguais.
+
 
 Fora da alocação nada muda: demonstrativo, PDF, precificação e relatórios seguem usando o valor e o peso totais da compra.
 
