@@ -78,6 +78,19 @@ async function loadSupplierBranches(supplierIds: (string | null | undefined)[]):
   return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
 }
 
+/**
+ * Peso líquido do lote: nos cerâmicos, `weight` é bruto e `weight_loss` é a tara.
+ * No fluxo de peças `weight_loss` representa perda, então nada é descontado.
+ */
+function netWeightOf(item: any): number {
+  const gross = Number(item?.weight) || 0;
+  if (item?.item_type !== "ceramico") return gross;
+  const tare = Number(item?.weight_loss) || 0;
+  return Math.max(0, gross - tare);
+}
+
+
+
 
 interface AllocationPanelProps {
   bags: Bag[];
@@ -322,7 +335,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         rhPpm: input?.rhPpm || 0,
         itemType: item.item_type,
         purchaseItemId: item.id,
-        weight: legacyWeight > 0 ? legacyWeight : (Number(item.weight) || (result?.netWeightKg || 0)),
+        weight: legacyWeight > 0 ? legacyWeight : (netWeightOf(item) || (result?.netWeightKg || 0)),
         isRealWeight: legacyWeight > 0,
         paidValue,
         carbono: carbonoIds.has(item.id),
@@ -364,7 +377,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         supplierName: purchase.supplier_name,
         supplierBranch: branchMap.get(purchase.supplier_id) || "",
         itemType: item.item_type,
-        weight: Number(item.weight) || (calcResult?.netWeightKg || 0),
+        weight: netWeightOf(item) || (calcResult?.netWeightKg || 0),
         value: Number(item.total_value) || (calcResult?.finalValueBrl || 0),
         status: purchase.status,
       });
