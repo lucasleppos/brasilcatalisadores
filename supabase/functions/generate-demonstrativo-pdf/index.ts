@@ -182,15 +182,22 @@ Deno.serve(async (req) => {
       const showItemLab = Object.keys(itemLabAgg).length > 0;
 
       const pCols = showItemLab
-        ? [10, contentWidth - 160, 26, 17, 17, 17, 33, 40]
+        ? [8, contentWidth - 130, 24, 14, 14, 14, 30, 26]
         : [10, contentWidth - 115, 30, 35, 40];
       const pX = [margin];
       for (let i = 1; i < pCols.length; i++) pX.push(pX[i - 1] + pCols[i - 1]);
+      const bodyFontSize = showItemLab ? 8 : 9;
+      const clip = (txt: string, colIdx: number) => {
+        const maxW = pCols[colIdx] - 3;
+        let s = txt;
+        while (s.length > 2 && doc.getTextWidth(s) > maxW) s = s.slice(0, -1);
+        return s === txt ? txt : `${s.slice(0, -1)}…`;
+      };
 
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, y, contentWidth, 7, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
+      doc.setFontSize(showItemLab ? 8 : 9);
       const pHeaders = showItemLab
         ? ["#", "Peça", "Qtd / Peso", "Pt", "Pd", "Rh", "Valor unit.", "Subtotal"]
         : ["#", "Peça", "Qtd / Peso", "Valor unit.", "Subtotal"];
@@ -198,6 +205,7 @@ Deno.serve(async (req) => {
       y += 7;
 
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(bodyFontSize);
       for (let i = 0; i < itemsForTotal.length; i++) {
         const item = itemsForTotal[i];
         const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
@@ -210,8 +218,8 @@ Deno.serve(async (req) => {
           doc.rect(margin, y, contentWidth, rowH, "F");
         }
         doc.text(`${item.seq ?? i + 1}`, pX[0] + 2, y + 4);
-        doc.text(`Código: ${cp?.code || item.part_code || "Manual"}`, pX[1] + 2, y + 4);
-        if (cp?.reference) doc.text(`Referência: ${cp.reference}`, pX[1] + 2, y + 8);
+        doc.text(clip(`Código: ${cp?.code || item.part_code || "Manual"}`, 1), pX[1] + 2, y + 4);
+        if (cp?.reference) doc.text(clip(`Referência: ${cp.reference}`, 1), pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         if (w > 0) doc.text(`${fmt(w, 4)} kg`, pX[2] + 2, y + 8);
         let vi = 3;
@@ -243,8 +251,10 @@ Deno.serve(async (req) => {
         y += rowH;
         if (y > 265) { doc.addPage(); y = margin; }
       }
+      doc.setFontSize(9);
       y += 4;
     }
+
 
 
 
@@ -616,6 +626,14 @@ Deno.serve(async (req) => {
     doc.setFontSize(9);
     doc.text(isCeramico ? `Total de grupos: ${itemsForTotal.length}` : `Total de peças: ${totalPecas} un`, margin, y);
     y += 5;
+    const segregadasQty = items
+      .filter((i: any) => i.category === "conferencia_excluida")
+      .reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+    if (segregadasQty > 0) {
+      doc.text(`Peças segregadas do processo: ${segregadasQty} un`, margin, y);
+      y += 5;
+    }
+
     if (isCeramico) {
       doc.text(`Peso bruto total: ${fmt(totalBrutoKg, 4)} kg`, margin, y);
       doc.text(`Peso líquido total: ${fmt(totalLiquidoKg, 4)} kg`, pageWidth / 2, y);

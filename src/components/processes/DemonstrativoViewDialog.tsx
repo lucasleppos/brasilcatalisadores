@@ -109,6 +109,10 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const totalGrupos = itemsForTotal.length;
   const totalBrutoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).bruto, 0);
   const totalLiquidoKg = itemsForTotal.reduce((acc, i) => acc + weights(i).liquido, 0);
+  const segregadasQty = itemsNoBonus
+    .filter(i => i.category === "conferencia_excluida")
+    .reduce((s, i) => s + (Number(i.quantity) || 1), 0);
+
 
   const catalogFixedItems = itemsNoBonus.filter(i => i.pricing_source === "catalogo");
   const calcItems = itemsNoBonus.filter(i => i.pricing_source === "calculadora");
@@ -478,10 +482,18 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
             )}
 
             <div className="border-t pt-3 grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
-                {isCeramico ? totalGrupos : `${totalPecas} un`}
+              <div className="space-y-0.5">
+                <div>
+                  <span className="font-semibold">{isCeramico ? "Total de grupos:" : "Total de peças:"}</span>{" "}
+                  {isCeramico ? totalGrupos : `${totalPecas} un`}
+                </div>
+                {segregadasQty > 0 && (
+                  <div>
+                    <span className="font-semibold">Peças segregadas do processo:</span> {segregadasQty} un
+                  </div>
+                )}
               </div>
+
               <div className="space-y-0.5 text-right">
                 {isCeramico ? (
                   <>
