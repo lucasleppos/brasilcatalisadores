@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, FlaskConical, Send, Loader2, AlertTriangle, ArrowRight, Scale, FileDown, MessageCircle, Search, Calculator, Undo2, Package, ArrowLeftRight, Eye, Printer } from "lucide-react";
 import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow } from "@/lib/purchases";
+import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow, getExcludedItems } from "@/lib/purchases";
+import { getSupplierBranch } from "@/lib/suppliers";
+import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
