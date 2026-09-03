@@ -37,7 +37,10 @@ interface ConferenciaPiece {
   quantity: number;
   /** Separada do fluxo de sacola (irá para nova compra de cerâmico) */
   excluded?: boolean;
+  /** Classificação do material (apenas informativa, usada na alocação) */
+  materialKind?: MaterialKind;
 }
+
 
 
 interface SacolaConferenciaPanelProps {
