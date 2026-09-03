@@ -15,8 +15,7 @@ interface Props {
  * Sem cálculo de perdas (isso fica para o relatório).
  */
 export default function PecasLossSummary({ purchase, refreshKey = 0 }: Props) {
-  const [cutWeight, setCutWeight] = useState<number | null>(null);
-  const [tritWeight, setTritWeight] = useState<number | null>(null);
+  const [weights, setWeights] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     let active = true;
@@ -27,8 +26,14 @@ export default function PecasLossSummary({ purchase, refreshKey = 0 }: Props) {
         const found = evs.filter(e => e.taskKey === key && e.valueNumeric != null);
         return found.length ? Number(found[found.length - 1].valueNumeric) : null;
       };
-      setCutWeight(last("weight_ceramica_extraida"));
-      setTritWeight(last("weight_pos_trituracao"));
+      setWeights({
+        cutLegacy: last("weight_ceramica_extraida"),
+        cutFlex: last("weight_flex_extraido"),
+        cutCarbono: last("weight_carbono_extraido"),
+        tritLegacy: last("weight_pos_trituracao"),
+        tritFlex: last("weight_flex_trituracao"),
+        tritCarbono: last("weight_carbono_trituracao"),
+      });
     })();
     return () => { active = false; };
   }, [purchase.id, refreshKey]);
@@ -39,9 +44,22 @@ export default function PecasLossSummary({ purchase, refreshKey = 0 }: Props) {
 
   const rows: { label: string; value: number | null }[] = [
     { label: "Peso conferido (peças)", value: confWeight > 0 ? confWeight : null },
-    { label: "Peso após corte (cerâmica extraída)", value: cutWeight },
-    { label: "Peso após trituração", value: tritWeight },
   ];
+
+  if (weights.cutFlex != null || weights.cutCarbono != null || weights.cutLegacy == null) {
+    rows.push({ label: "Peso Real Flex extraído", value: weights.cutFlex ?? null });
+    rows.push({ label: "Peso Real Carbono extraído", value: weights.cutCarbono ?? null });
+  } else {
+    rows.push({ label: "Peso após corte (cerâmica extraída)", value: weights.cutLegacy });
+  }
+
+  if (weights.tritFlex != null || weights.tritCarbono != null || weights.tritLegacy == null) {
+    rows.push({ label: "Peso Flex após trituração", value: weights.tritFlex ?? null });
+    rows.push({ label: "Peso Carbono após trituração", value: weights.tritCarbono ?? null });
+  } else {
+    rows.push({ label: "Peso após trituração", value: weights.tritLegacy });
+  }
+
 
   if (rows.every(r => r.value == null)) return null;
 
