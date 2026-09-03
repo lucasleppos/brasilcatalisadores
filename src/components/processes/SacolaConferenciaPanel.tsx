@@ -235,6 +235,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
   };
 
+  const setMaterialKind = (index: number, kind: MaterialKind) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, materialKind: kind } : p));
+  };
+
+
   const excludeAllOutOfMargin = () => {
     setPieces(prev => prev.map(p => {
       const c = weightCheck(p.catalogWeight, p.unitWeight);
