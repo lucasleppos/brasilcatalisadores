@@ -694,6 +694,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <p className="font-medium text-sm truncate" title={m.supplierName}>
                       {m.supplierName}
                     </p>
+                    {m.supplierBranch && (
+                      <p className="text-xs text-muted-foreground truncate">{m.supplierBranch}</p>
+                    )}
                   </div>
                   <Badge variant="outline" className="shrink-0">{m.itemType}</Badge>
                 </div>
