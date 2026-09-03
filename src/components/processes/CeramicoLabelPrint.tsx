@@ -1,5 +1,6 @@
 import { buildLabelCode, buildLabelCodeDisplay, buildLabelUrl, generateQRCodeDataUrl } from "@/lib/labels";
 import { fmtNum } from "@/lib/utils";
+import { getSupplierBranch } from "@/lib/suppliers";
 import type { Purchase } from "@/lib/purchases";
 
 
