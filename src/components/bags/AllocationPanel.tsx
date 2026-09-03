@@ -137,7 +137,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
     const { data: ceramicPurchases } = await supabase
       .from("purchases")
-      .select("id, purchase_number, supplier_name, status, op_status")
+      .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
       .eq("status", "Cerâmico: Aprovado");
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
