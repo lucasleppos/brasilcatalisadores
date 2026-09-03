@@ -57,6 +57,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [pieces, setPieces] = useState<ConferenciaPiece[]>([]);
   const [qty, setQty] = useState("1");
   const [weighed, setWeighed] = useState("");
+  const [newKind, setNewKind] = useState<MaterialKind>("flex");
+
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [returnedQtyStr, setReturnedQtyStr] = useState("0");
