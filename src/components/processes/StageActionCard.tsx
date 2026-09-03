@@ -150,6 +150,30 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
     }
   };
 
+  /** Peças separadas do fluxo (sacola) — PDF disponível em qualquer etapa */
+  const separatedItems = getExcludedItems(purchase);
+
+  const handleSeparatedReport = async () => {
+    const branch = await getSupplierBranch(purchase.supplierId);
+    try {
+      await printSeparatedPiecesReport({
+        purchaseNumber: purchase.purchaseNumber,
+        date: purchase.date,
+        supplierName: purchase.supplierName,
+        branch: branch || undefined,
+        buyer: purchase.buyer,
+        erpNumber: purchase.erpNumber || undefined,
+        pieces: separatedItems.map((i, idx) => ({
+          seq: i.seq ?? idx + 1,
+          code: i.catalogPartCode || i.partCode || "—",
+          reference: i.catalogPartRef || i.partReference || null,
+        })),
+      });
+    } catch {
+      toast.error("Erro ao gerar o PDF das peças separadas");
+    }
+  };
+
   const ErpInlineInput = (
     <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2 space-y-2">
       <div className="flex items-center gap-2">
