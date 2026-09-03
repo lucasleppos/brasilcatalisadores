@@ -22,6 +22,9 @@ import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
 
 const LABEL_COPIES = 3;
 
+type MaterialKind = "flex" | "carbono";
+
+
 
 interface ConferenciaPiece {
   id?: string;
@@ -37,7 +40,10 @@ interface ConferenciaPiece {
   quantity: number;
   /** Separada do fluxo de sacola (irá para nova compra de cerâmico) */
   excluded?: boolean;
+  /** Classificação do material (apenas informativa, usada na alocação) */
+  materialKind?: MaterialKind;
 }
+
 
 
 interface SacolaConferenciaPanelProps {
@@ -51,6 +57,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [pieces, setPieces] = useState<ConferenciaPiece[]>([]);
   const [qty, setQty] = useState("1");
   const [weighed, setWeighed] = useState("");
+  const [newKind, setNewKind] = useState<MaterialKind>("flex");
+
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [returnedQtyStr, setReturnedQtyStr] = useState("0");
@@ -107,7 +115,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, created_at")
+      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at")
       .order("created_at", { ascending: true })
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
@@ -142,6 +150,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         catalogWeight: info?.weight || 0,
         quantity: q,
         excluded: d.category === EXCLUDED_CATEGORY,
+        materialKind: ((d as { material_kind?: string | null }).material_kind === "carbono" ? "carbono" : "flex") as MaterialKind,
       };
     }));
   };
@@ -172,6 +181,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         unitWeight: w,
         catalogWeight,
         quantity: 1,
+        materialKind: newKind,
       }]);
       setSelectedPart(null);
       setWeighed("");
@@ -225,6 +235,11 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, excluded: value } : p));
   };
 
+  const setMaterialKind = (index: number, kind: MaterialKind) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, materialKind: kind } : p));
+  };
+
+
   const excludeAllOutOfMargin = () => {
     setPieces(prev => prev.map(p => {
       const c = weightCheck(p.catalogWeight, p.unitWeight);
@@ -249,6 +264,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       weight: p.unitWeight * p.quantity,
       catalog_part_id: p.catalogPartId,
       seq: p.seq,
+      material_kind: isSacola ? (p.materialKind || "flex") : null,
     }));
 
     const { data: inserted, error: insErr } = await supabase
@@ -494,6 +510,22 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                             <span className="text-muted-foreground">Catálogo: {fmtNum(p.catalogWeight, 3)} kg</span>
                             <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
                           </div>
+                          <div className="flex items-center gap-1 pt-0.5">
+                            <span className="text-[10px] text-muted-foreground mr-1">Material:</span>
+                            {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                              <Button
+                                key={k}
+                                type="button"
+                                size="sm"
+                                variant={(p.materialKind || "flex") === k ? "default" : "outline"}
+                                className="h-6 px-2 text-[10px]"
+                                onClick={() => setMaterialKind(i, k)}
+                              >
+                                {k === "flex" ? "Flex" : "Carbono"}
+                              </Button>
+                            ))}
+                          </div>
+
                           {outside && (
                             <div className="space-y-1">
                               <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
@@ -608,16 +640,36 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
 
           {isSacola ? (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Peso pesado (kg)</Label>
-              <Input
-                inputMode="decimal"
-                value={weighed}
-                onChange={e => setWeighed(e.target.value.replace(/[^0-9.,]/g, ""))}
-                placeholder="0,000"
-                className="h-8 text-sm"
-              />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Peso pesado (kg)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={weighed}
+                  onChange={e => setWeighed(e.target.value.replace(/[^0-9.,]/g, ""))}
+                  placeholder="0,000"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Material</Label>
+                <div className="flex gap-2">
+                  {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                    <Button
+                      key={k}
+                      type="button"
+                      size="sm"
+                      variant={newKind === k ? "default" : "outline"}
+                      className="h-8 flex-1 text-xs"
+                      onClick={() => setNewKind(k)}
+                    >
+                      {k === "flex" ? "Flex" : "Carbono"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
+
           ) : (
             <div className="space-y-1.5">
               <Label className="text-xs">Quantidade (un)</Label>

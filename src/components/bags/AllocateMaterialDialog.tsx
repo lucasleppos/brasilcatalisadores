@@ -130,8 +130,58 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
       });
     });
 
+    // Peça em Sacola → 2 linhas por OP (soma Flex / soma Carbono)
+    const sacolaAggIds = new Set(
+      (items || [])
+        .filter((i: any) => i.item_type === "peca_sacola" && !splitPurchaseIds.has(i.purchase_id))
+        .map((i: any) => i.purchase_id as string)
+    );
+
+    sacolaAggIds.forEach(pid => {
+      const purchase = purchases.find(p => p.id === pid);
+      const opItems = (items || []).filter((i: any) => i.purchase_id === pid);
+      if (!purchase || opItems.length === 0) return;
+
+      (["flex", "carbono"] as const).forEach(kind => {
+        const kindItems = opItems.filter(
+          (i: any) => (i.material_kind === "carbono" ? "carbono" : "flex") === kind
+        );
+        if (kindItems.length === 0) return;
+        const id = `${pid}::kind_${kind}`;
+        if (allocatedIds.has(id)) return;
+
+        let weight = 0, paid = 0, ptW = 0, pdW = 0, rhW = 0;
+        kindItems.forEach((item: any) => {
+          const result = item.calc_result as any;
+          const input = item.calc_input as any;
+          const w = Number(item.weight) || (result?.netWeightKg || 0);
+          weight += w;
+          paid += Number(item.total_value) || (result?.finalValueBrl || 0);
+          ptW += (input?.ptPpm || 0) * w;
+          pdW += (input?.pdPpm || 0) * w;
+          rhW += (input?.rhPpm || 0) * w;
+        });
+        if (weight <= 0) return;
+
+        available.push({
+          purchaseId: pid,
+          supplierName: purchase.supplier_name,
+          ptPpm: ptW / weight,
+          pdPpm: pdW / weight,
+          rhPpm: rhW / weight,
+          itemType: kindItems[0].item_type,
+          purchaseItemId: id,
+          weight,
+          paidValue: paid,
+          fraction: kind,
+        });
+      });
+    });
+
     (items || []).forEach((item: any) => {
       if (splitPurchaseIds.has(item.purchase_id)) return;
+      if (sacolaAggIds.has(item.purchase_id)) return;
+
       const purchase = purchases.find(p => p.id === item.purchase_id);
       if (!purchase) return;
       if (allocatedIds.has(item.id)) return;
