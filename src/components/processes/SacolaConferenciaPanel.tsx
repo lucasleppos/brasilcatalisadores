@@ -510,6 +510,22 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                             <span className="text-muted-foreground">Catálogo: {fmtNum(p.catalogWeight, 3)} kg</span>
                             <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
                           </div>
+                          <div className="flex items-center gap-1 pt-0.5">
+                            <span className="text-[10px] text-muted-foreground mr-1">Material:</span>
+                            {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                              <Button
+                                key={k}
+                                type="button"
+                                size="sm"
+                                variant={(p.materialKind || "flex") === k ? "default" : "outline"}
+                                className="h-6 px-2 text-[10px]"
+                                onClick={() => setMaterialKind(i, k)}
+                              >
+                                {k === "flex" ? "Flex" : "Carbono"}
+                              </Button>
+                            ))}
+                          </div>
+
                           {outside && (
                             <div className="space-y-1">
                               <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
