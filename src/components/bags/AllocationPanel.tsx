@@ -571,7 +571,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           <Badge variant="outline">{m.itemType}</Badge>
                         </TableCell>
                         <TableCell>
-                          {m.carbono ? (
+                          {m.fraction ? (
+                            <Badge variant="secondary">{m.fraction === "flex" ? "Flex" : "Carbono"}</Badge>
+                          ) : m.carbono ? (
                             <Badge variant="secondary">Carbono</Badge>
                           ) : (
                             <span className="text-muted-foreground">—</span>
