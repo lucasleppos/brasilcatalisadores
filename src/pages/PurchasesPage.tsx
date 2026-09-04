@@ -15,6 +15,8 @@ import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
+import { STAGE_ORDER, stageOfPurchase, flowLabel } from "@/lib/status-stages";
+
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -75,15 +77,17 @@ export default function PurchasesPage() {
 
 
   const buyers = [...new Set(purchases.map(p => p.buyer).filter(Boolean))];
-  const activeStatuses = [...new Set(purchases.map(p => p.status))];
+  const presentStages = new Set(purchases.map(p => stageOfPurchase(p)));
+  const activeStages = STAGE_ORDER.filter(s => presentStages.has(s));
 
   const filtered = purchases.filter((p) => {
     const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber, p.buyer]
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
+    const matchStatus = statusFilter === "all" || stageOfPurchase(p) === statusFilter;
     const matchBuyer = buyerFilter === "all" || p.buyer === buyerFilter;
     return matchSearch && matchStatus && matchBuyer;
   });
+
 
   const { sorted, sort, toggleSort } = useSortable(filtered);
 
@@ -140,10 +144,11 @@ export default function PurchasesPage() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {activeStatuses.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
+            <SelectItem value="all">Todas as etapas</SelectItem>
+            {activeStages.map((s) => (
+              <SelectItem key={s} value={s}>{s === "Concluído" ? "Concluídos" : s}</SelectItem>
             ))}
+
           </SelectContent>
         </Select>
         {!isBuyer && (
@@ -231,9 +236,13 @@ export default function PurchasesPage() {
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
-                        {p.status}
+                      <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`} title={p.status}>
+                        {stageOfPurchase(p)}
+                        {flowLabel(p.materialFlow) && (
+                          <span className="ml-1 opacity-60">· {flowLabel(p.materialFlow)}</span>
+                        )}
                       </Badge>
+
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 items-center">

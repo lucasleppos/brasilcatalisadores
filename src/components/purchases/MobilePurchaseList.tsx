@@ -1,5 +1,6 @@
 import { Purchase, getItemLabel, isSacolaFlow } from "@/lib/purchases";
 import { fmtBrl } from "@/lib/utils";
+import { stageOfPurchase } from "@/lib/status-stages";
 import { MobileListRow, MobileListDivider } from "@/components/mobile/MobileListRow";
 import { MobileSearchBar } from "@/components/mobile/MobileSearchBar";
 import { MobileFab } from "@/components/mobile/MobileFab";
@@ -54,7 +55,7 @@ export default function MobilePurchaseList({
                 badge={flow.label}
                 badgeClassName={flow.className}
                 title={p.supplierName}
-                subtitle={`${p.purchaseNumber} · ${p.status}`}
+                subtitle={`${p.purchaseNumber} · ${stageOfPurchase(p)}`}
                 detail={`${getItemLabel(p)}${
                   !hideTotal && p.totalBrl > 0 ? ` · ${fmtBrl(p.totalBrl)}` : ""
                 }${p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""}`}

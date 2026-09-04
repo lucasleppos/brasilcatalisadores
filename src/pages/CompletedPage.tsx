@@ -14,6 +14,7 @@ import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
+import { stageOfPurchase } from "@/lib/status-stages";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileCompletedList from "@/components/purchases/MobileCompletedList";
 
@@ -218,9 +219,10 @@ export default function CompletedPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
-                            {p.status}
+                          <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`} title={p.status}>
+                            {stageOfPurchase(p)}
                           </Badge>
+
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
