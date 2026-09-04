@@ -21,6 +21,8 @@ import { UserActions, UserRow } from "@/components/users/UserActions";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { loadPermissionProfiles, PermissionProfile } from "@/lib/permissions";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isBuyerRole } from "@/lib/buyers";
 
 function generatePassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -40,6 +42,7 @@ export default function UsersPage() {
   const [roleProfiles, setRoleProfiles] = useState<PermissionProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"buyers" | "others">("others");
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createdInfo, setCreatedInfo] = useState<{ email: string; password: string } | null>(null);
@@ -92,7 +95,11 @@ export default function UsersPage() {
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  const { sorted, sort, toggleSort } = useSortable(filtered);
+  const buyerRows = filtered.filter((u) => isBuyerRole(u.role));
+  const otherRows = filtered.filter((u) => !isBuyerRole(u.role));
+  const visible = tab === "buyers" ? buyerRows : otherRows;
+
+  const { sorted, sort, toggleSort } = useSortable(visible);
 
   const handleCreate = async () => {
     if (createLoading) return;
@@ -158,9 +165,17 @@ export default function UsersPage() {
         )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-        <Input placeholder="Buscar usuário..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "buyers" | "others")}>
+          <TabsList className="h-8">
+            <TabsTrigger value="others" className="text-xs">Usuários ({otherRows.length})</TabsTrigger>
+            <TabsTrigger value="buyers" className="text-xs">Compradores ({buyerRows.length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar usuário..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+        </div>
       </div>
 
       <Card>
@@ -170,6 +185,7 @@ export default function UsersPage() {
               <TableRow>
                 <SortableTableHead column="full_name" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nome</SortableTableHead>
                 <SortableTableHead column="email" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>E-mail</SortableTableHead>
+                {tab === "buyers" && <TableHead>Nomes de comprador</TableHead>}
                 <SortableTableHead column="branch" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Filial</SortableTableHead>
                 <SortableTableHead column="job_title" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Cargo</SortableTableHead>
                 <SortableTableHead column="role" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Perfil</SortableTableHead>
@@ -180,14 +196,14 @@ export default function UsersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={tab === "buyers" ? 8 : 7} className="text-center py-8 text-muted-foreground">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário encontrado
+                  <TableCell colSpan={tab === "buyers" ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                    {tab === "buyers" ? "Nenhum comprador cadastrado" : "Nenhum usuário encontrado"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -195,6 +211,19 @@ export default function UsersPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                     <TableCell className="text-sm">{u.email || "—"}</TableCell>
+                    {tab === "buyers" && (
+                      <TableCell>
+                        {(u.buyer_names || []).length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {(u.buyer_names || []).map((n) => (
+                              <Badge key={n} variant="outline" className="text-[10px]">{n}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Sem vínculo</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>{u.branch || "—"}</TableCell>
                     <TableCell>{u.job_title || "—"}</TableCell>
                     <TableCell>

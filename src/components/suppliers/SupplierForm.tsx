@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Supplier } from "@/lib/suppliers";
 import { parseNum, fmtNum } from "@/lib/utils";
+import { loadBuyerOptions } from "@/lib/buyers";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
@@ -28,6 +29,7 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
   const [marginPecasStr, setMarginPecasStr] = useState(marginToStr(initial?.marginPecas));
   const [marginCeramicoStr, setMarginCeramicoStr] = useState(marginToStr(initial?.marginCeramico));
+  const [buyerOptions, setBuyerOptions] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -38,8 +40,10 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
       setBuyer(initial?.buyer ?? "");
       setMarginPecasStr(marginToStr(initial?.marginPecas));
       setMarginCeramicoStr(marginToStr(initial?.marginCeramico));
+      loadBuyerOptions().then(setBuyerOptions).catch(() => setBuyerOptions([]));
     }
   }, [open, initial]);
+
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -84,7 +88,22 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Comprador</Label>
-              <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} className="h-8 text-sm" />
+              <Input
+                value={buyer}
+                onChange={(e) => setBuyer(e.target.value)}
+                className="h-8 text-sm"
+                list="buyer-options"
+                autoComplete="off"
+                placeholder={buyerOptions.length ? "Selecione ou digite" : "Digite o nome"}
+              />
+              <datalist id="buyer-options">
+                {buyerOptions.map((b) => <option key={b} value={b} />)}
+              </datalist>
+              <p className="text-[11px] text-muted-foreground">
+                {buyerOptions.length
+                  ? "Escolha um comprador da lista ou digite outro nome."
+                  : "Cadastre os compradores no módulo Usuários para que apareçam nesta lista."}
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
