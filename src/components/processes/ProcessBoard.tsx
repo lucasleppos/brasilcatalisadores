@@ -88,6 +88,7 @@ export function canRoleSeeGroup(role: string | null, group: ProcessGroup): boole
 export default function ProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
+  const { scopeByBuyer } = useBuyerScope();
   const canAdvance = canDo("processos", "advance_stage");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
@@ -98,7 +99,7 @@ export default function ProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases((await loadPurchases()).filter(p => !isBranchPreTransfer(p)));
+      setPurchases(scopeByBuyer((await loadPurchases()).filter(p => !isBranchPreTransfer(p))));
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }

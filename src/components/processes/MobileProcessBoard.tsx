@@ -50,6 +50,7 @@ function lastChangeDate(p: Purchase): string {
 export default function MobileProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
+  const { scopeByBuyer } = useBuyerScope();
   const { setOwnsHeader, stageTabsInBar, activeStage: navStage, setActiveStage: setNavStage, setStageCounts } = useMobileNav();
   const canAdvance = canDo("processos", "advance_stage");
 
