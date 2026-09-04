@@ -165,9 +165,17 @@ export default function UsersPage() {
         )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-        <Input placeholder="Buscar usuário..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "buyers" | "others")}>
+          <TabsList className="h-8">
+            <TabsTrigger value="others" className="text-xs">Usuários ({otherRows.length})</TabsTrigger>
+            <TabsTrigger value="buyers" className="text-xs">Compradores ({buyerRows.length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar usuário..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+        </div>
       </div>
 
       <Card>
@@ -177,6 +185,7 @@ export default function UsersPage() {
               <TableRow>
                 <SortableTableHead column="full_name" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Nome</SortableTableHead>
                 <SortableTableHead column="email" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>E-mail</SortableTableHead>
+                {tab === "buyers" && <TableHead>Nomes de comprador</TableHead>}
                 <SortableTableHead column="branch" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Filial</SortableTableHead>
                 <SortableTableHead column="job_title" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Cargo</SortableTableHead>
                 <SortableTableHead column="role" currentColumn={sort.column} direction={sort.direction} onToggle={toggleSort}>Perfil</SortableTableHead>
