@@ -248,7 +248,7 @@ export default function ProcessBoard() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {(tasksByGroup[group.label] || []).map((purchase) => (
-                    <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} />
+                    <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} readOnly={!canAdvance} />
                   ))}
                 </div>
               )}
