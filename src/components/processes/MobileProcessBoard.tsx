@@ -69,7 +69,7 @@ export default function MobileProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases(await loadPurchases());
+      setPurchases(scopeByBuyer(await loadPurchases()));
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }
