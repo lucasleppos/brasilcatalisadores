@@ -14,6 +14,7 @@ import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
+import { stageOfPurchase } from "@/lib/status-stages";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileCompletedList from "@/components/purchases/MobileCompletedList";
 

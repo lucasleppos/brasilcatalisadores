@@ -1,5 +1,6 @@
 import { Purchase, getItemLabel } from "@/lib/purchases";
 import { fmtBrl } from "@/lib/utils";
+import { stageOfPurchase } from "@/lib/status-stages";
 import { MobileListRow, MobileListDivider } from "@/components/mobile/MobileListRow";
 import { MobileSearchBar } from "@/components/mobile/MobileSearchBar";
 import { purchaseFlowBadge } from "@/components/purchases/MobilePurchaseList";
@@ -34,7 +35,7 @@ export default function MobileCompletedList({ purchases, bagsByPurchase, search,
                 badge={flow.label}
                 badgeClassName={flow.className}
                 title={p.supplierName}
-                subtitle={`${p.purchaseNumber} · ${p.status}`}
+                subtitle={`${p.purchaseNumber} · ${stageOfPurchase(p)}`}
                 detail={`${getItemLabel(p)} · ${fmtBrl(p.totalBrl)}${
                   bags.length ? ` · Bag ${bags.map((b) => b.bagNumber).join(", ")}` : " · Aguardando bag"
                 }`}

@@ -36,7 +36,7 @@ export const PROCESS_GROUPS: ProcessGroup[] = [
     ],
   },
   {
-    label: "Laboratorio",
+    label: "Laboratório",
     statuses: [
       "Cerâmico: Amostra Enviada ao Lab",
       "Cerâmico: Lab em Análise",

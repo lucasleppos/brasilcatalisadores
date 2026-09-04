@@ -19,7 +19,7 @@ interface GroupUI {
 export const PROCESS_GROUP_UI: Record<string, GroupUI> = {
   "Conferência": { short: "Confer.", icon: ClipboardCheck },
   "Moagem": { short: "Moagem", icon: Cog },
-  "Laboratorio": { short: "Lab", icon: FlaskConical },
+  "Laboratório": { short: "Lab", icon: FlaskConical },
   "Demonstrativo": { short: "Demonstr.", icon: DollarSign },
   "Aprovação": { short: "Aprovação", icon: Stamp },
   "Corte": { short: "Corte", icon: Scissors },
