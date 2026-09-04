@@ -26,7 +26,7 @@ No cadastro do fornecedor o campo **Comprador** é digitado livremente. Isso cri
 ## Detalhes técnicos
 
 - Novo helper `src/lib/buyers.ts`: `loadBuyerOptions()` — chama a Edge Function `manage-user` (action `list`, já retorna `buyer_names` e `role`), filtra usuários cujo perfil é de comprador e devolve nomes únicos ordenados (`buyer_names` ou fallback `full_name`), usando `normalizeName` de `src/lib/buyer-scope.ts` para deduplicar.
-- `src/components/suppliers/SupplierForm.tsx`: trocar o `Input` de Comprador pelo `SearchableSelect` (`src/components/ui/searchable-select.tsx`), alimentado por `loadBuyerOptions()`; incluir a opção legada quando `initial.buyer` não estiver na lista.
+- `src/components/suppliers/SupplierForm.tsx`: campo Comprador com sugestões da lista (combobox permitindo valor livre), preservando `initial.buyer` como valor válido; nenhuma normalização ou reescrita do valor salvo.
 - `src/pages/UsersPage.tsx`: `Tabs` (Compradores / Usuários) sobre a mesma lista `users`, particionada pelo `role` de comprador; coluna "Nomes de comprador" apenas na aba Compradores.
-- `src/components/suppliers/SupplierImport.tsx`: comparar `buyer` de cada linha com as opções normalizadas e exibir contagem de divergências no resumo da pré-visualização.
-- Sem mudanças de banco de dados.
+- `SupplierImport.tsx`, `NewPurchaseDialog.tsx`, `purchases` e `suppliers` permanecem intocados.
+- Sem mudanças de banco de dados e sem scripts de atualização de dados.
