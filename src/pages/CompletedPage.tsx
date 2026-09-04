@@ -218,9 +218,10 @@ export default function CompletedPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
-                            {p.status}
+                          <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`} title={p.status}>
+                            {stageOfPurchase(p)}
                           </Badge>
+
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedPurchase(p)}>
