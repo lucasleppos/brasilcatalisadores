@@ -277,9 +277,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         <td className="p-2 align-top text-right">{bonusQty} un</td>
                         {showItemLab && (
                           <>
-                            <td className="p-2 align-top text-right">—</td>
-                            <td className="p-2 align-top text-right">—</td>
-                            <td className="p-2 align-top text-right">—</td>
+                            <td className="p-2 align-top text-right" />
+                            <td className="p-2 align-top text-right" />
+                            <td className="p-2 align-top text-right" />
                           </>
                         )}
                         <td className="p-2 align-top text-right">{fmtBrl(bonusQty > 0 ? bonusValue / bonusQty : 0)}</td>
