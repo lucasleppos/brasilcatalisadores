@@ -11,6 +11,7 @@ export interface Profile {
   phone: string;
   branch: string;
   job_title: string;
+  buyer_names?: string[];
 }
 
 interface AuthContextValue {
