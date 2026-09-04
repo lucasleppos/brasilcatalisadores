@@ -51,7 +51,7 @@ function timeSince(dateStr: string) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function StageActionCard({ purchase, onCompleted }: StageActionCardProps) {
+export default function StageActionCard({ purchase, onCompleted, readOnly = false }: StageActionCardProps) {
   const { role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [ptPpm, setPtPpm] = useState("");
