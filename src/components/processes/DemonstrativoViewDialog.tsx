@@ -261,9 +261,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                           </td>
                           {showItemLab && (
                             <>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pt, 0) : "—"}</td>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pd, 0) : "—"}</td>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.rh, 0) : "—"}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pt, 0) : ""}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pd, 0) : ""}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.rh, 0) : ""}</td>
                             </>
                           )}
                           <td className="p-2 align-top text-right">{tv > 0 ? fmtBrl(tv / qty) : "—"}</td>
