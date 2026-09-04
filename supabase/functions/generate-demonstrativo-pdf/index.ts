@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
           doc.rect(margin, y, contentWidth, rowH, "F");
         }
         doc.text(`${item.seq ?? i + 1}`, pX[0] + 2, y + 4);
-        doc.text(clip(`Código: ${cp?.code || item.part_code || "Manual"}`, 1), pX[1] + 2, y + 4);
+        doc.text(clip(`Código: ${materialLabel(item, i)}`, 1), pX[1] + 2, y + 4);
         if (cp?.reference) doc.text(clip(`Referência: ${cp.reference}`, 1), pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         let vi = 3;
@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
+          const label = materialLabel(item, i);
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const tv = Number(item.total_value) || 0;
           const liquido = Math.max(0, Number(item.weight) - Number(item.weight_loss || 0));
@@ -389,7 +389,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
+          const label = materialLabel(item, i);
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
           const tv = Number(item.total_value) || 0;
@@ -543,7 +543,7 @@ Deno.serve(async (req) => {
         .map((it: any) => {
           const a = labAgg[it.id];
           const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (it.part_code || it.part_reference || typeLabels[it.item_type] || it.item_type);
+          const label = materialLabel(it);
           return { label: label || "—", pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
         });
       const orphanIds = Object.keys(labAgg).filter(id => !currentIds.has(id)).sort();
