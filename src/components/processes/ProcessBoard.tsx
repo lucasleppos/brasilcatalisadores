@@ -145,7 +145,8 @@ export default function ProcessBoard() {
 
   // Which groups this user can see
   const visibleGroups = useMemo(() => {
-    if (!canAdvance) return [];
+    // Perfis sem permissão de avançar etapas acompanham todas as etapas em leitura
+    if (!canAdvance) return PROCESS_GROUPS;
     return PROCESS_GROUPS.filter((g) => canRoleSeeGroup(role, g));
   }, [role, canAdvance]);
 
@@ -247,7 +248,7 @@ export default function ProcessBoard() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {(tasksByGroup[group.label] || []).map((purchase) => (
-                    <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} />
+                    <StageActionCard key={purchase.id} purchase={purchase} onCompleted={reload} readOnly={!canAdvance} />
                   ))}
                 </div>
               )}

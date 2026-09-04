@@ -39,6 +39,8 @@ import { useAuth } from "@/contexts/AuthContext";
 interface StageActionCardProps {
   purchase: Purchase;
   onCompleted: () => void;
+  /** Modo acompanhamento: apenas informações, sem ações de etapa */
+  readOnly?: boolean;
 }
 
 function timeSince(dateStr: string) {
@@ -49,7 +51,7 @@ function timeSince(dateStr: string) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function StageActionCard({ purchase, onCompleted }: StageActionCardProps) {
+export default function StageActionCard({ purchase, onCompleted, readOnly = false }: StageActionCardProps) {
   const { role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [ptPpm, setPtPpm] = useState("");
@@ -355,6 +357,56 @@ export default function StageActionCard({ purchase, onCompleted }: StageActionCa
       </AlertDialogFooter>
     </AlertDialogContent>
   );
+
+  if (readOnly) {
+    return (
+      <Card className="border-border/60">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">{purchase.supplierName}</p>
+              <p className="text-xs text-muted-foreground font-mono">{purchase.purchaseNumber}</p>
+              {purchase.buyer && (
+                <p className="text-[10px] text-muted-foreground">Comprador: {purchase.buyer}</p>
+              )}
+              <p className={`text-[10px] ${purchase.erpNumber ? "text-muted-foreground font-mono" : "text-red-500"}`}>
+                Boleto Syge: {purchase.erpNumber || "Sem Boleto"}
+              </p>
+            </div>
+            <div className="text-right space-y-0.5">
+              <Badge variant="outline" className="text-[10px]">{timeInStage} nesta etapa</Badge>
+              <p className="text-xs text-muted-foreground">{getItemLabel(purchase)}</p>
+              {purchase.materialFlow && (
+                <Badge variant="outline" className={`text-[10px] ${purchase.materialFlow === "ceramico" ? "bg-orange-500/10 text-orange-700 border-orange-300" : "bg-blue-500/10 text-blue-700 border-blue-300"}`}>
+                  {purchase.materialFlow === "ceramico" ? "Cerâmico" : purchase.materialFlow === "sacola" ? "Sacola" : "Peças"}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <QtyCheckBadge purchase={purchase} />
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Valor:</span>
+            <span className="font-semibold">
+              {purchase.totalBrl > 0 ? fmtBrl(purchase.totalBrl) : (
+                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-500/10 text-xs">Pendente análise</Badge>
+              )}
+            </span>
+          </div>
+
+          <div className="pt-1 border-t border-border/40 space-y-1">
+            <p className="text-[10px] text-muted-foreground">Etapa atual</p>
+            <Badge variant="outline" className={`text-[10px] ${getStatusColor(purchase.status)}`}>
+              {purchase.status}
+            </Badge>
+            <p className="text-[10px] text-muted-foreground">Acompanhamento — somente leitura.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
 
   return (
     <Card className={isReanalysis ? "border-reanalysis-border bg-reanalysis/40" : "border-border/60"}>

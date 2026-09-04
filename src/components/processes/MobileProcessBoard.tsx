@@ -84,7 +84,8 @@ export default function MobileProcessBoard() {
   );
 
   const visibleGroups = useMemo(() => {
-    if (!canAdvance) return [];
+    // Perfis sem permissão de avançar etapas acompanham todas as etapas em leitura
+    if (!canAdvance) return PROCESS_GROUPS;
     return PROCESS_GROUPS.filter((g) => canRoleSeeGroup(role, g));
   }, [role, canAdvance]);
 
@@ -241,6 +242,7 @@ export default function MobileProcessBoard() {
         {selected && (
           <StageActionCard
             purchase={selected}
+            readOnly={!canAdvance}
             onCompleted={() => {
               setSelected(null);
               reload();
