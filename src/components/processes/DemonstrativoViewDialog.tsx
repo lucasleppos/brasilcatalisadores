@@ -247,7 +247,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       const cp = it.catalog_part_id ? catalogParts[it.catalog_part_id] : null;
                       const qty = Number(it.quantity) || 1;
                       const tv = Number(it.total_value) || 0;
-                      const lab = labMap[it.id];
+                      const lab = labVisible(it) ? labMap[it.id] : null;
                       return (
                         <tr key={it.id} className="border-t">
                           <td className="p-2 align-top">
