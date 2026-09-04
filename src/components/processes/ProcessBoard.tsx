@@ -6,6 +6,7 @@ import { Activity } from "lucide-react";
 import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_OP_STATUSES } from "@/lib/purchases";
 import { isBranchPreTransfer } from "@/lib/branches";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { usePermissions } from "@/lib/permissions";
 import { subDays, isAfter, parseISO } from "date-fns";
 import { DateRange } from "react-day-picker";

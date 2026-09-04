@@ -9,6 +9,7 @@ import {
   isSacolaFlow,
 } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { usePermissions } from "@/lib/permissions";
 import { fmtNum } from "@/lib/utils";
 import { PROCESS_GROUPS, canRoleSeeGroup, comparePurchaseNumber } from "./ProcessBoard";

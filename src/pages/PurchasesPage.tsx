@@ -14,6 +14,7 @@ import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,7 +30,7 @@ export default function PurchasesPage() {
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
   const hideTotal = isFieldHidden("compras", "total_brl");
-  const isBuyer = role === "comprador";
+  const { isBuyer, scopeByBuyer } = useBuyerScope();
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -47,10 +48,8 @@ export default function PurchasesPage() {
     setLoadError(false);
     try {
       let data = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
-      // Buyer role: filter to only their purchases
-      if (isBuyer && profile) {
-        data = data.filter(p => p.buyer === profile.full_name);
-      }
+      // Perfil comprador: só as compras dos nomes vinculados a ele
+      data = scopeByBuyer(data);
       setPurchases(data);
     } catch (e) {
       console.error("Erro ao carregar compras:", e);

@@ -12,6 +12,7 @@ import { BranchStockList } from "@/components/bags/BranchStockList";
 import { BagAnalysisPanel } from "@/components/bags/BagAnalysisPanel";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBagsList from "@/components/bags/MobileBagsList";
 import { MobileSheet } from "@/components/mobile/MobileSheet";
@@ -21,7 +22,7 @@ export default function BagsPage() {
   const { role, profile } = useAuth();
   const { canDo } = usePermissions();
   const canCreate = canDo("bags", "create");
-  const isBuyer = role === "comprador";
+  const { isBuyer, scopeByBuyer } = useBuyerScope();
 
   const [bags, setBags] = useState<Bag[]>([]);
   const [selectedBag, setSelectedBag] = useState<Bag | null>(null);
@@ -35,9 +36,7 @@ export default function BagsPage() {
 
   const load = async () => {
     let data = await loadBags();
-    if (isBuyer && profile) {
-      data = data.filter(b => b.buyer === profile.full_name);
-    }
+    data = scopeByBuyer(data);
     setBags(data);
     if (selectedBag) {
       const updated = data.find(b => b.id === selectedBag.id);

@@ -11,6 +11,7 @@ import SupplierForm from "@/components/suppliers/SupplierForm";
 import SupplierImport from "@/components/suppliers/SupplierImport";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { fmtPct } from "@/lib/utils";
@@ -25,7 +26,7 @@ export default function SuppliersPage() {
   const hideMargin = isFieldHidden("fornecedores", "margin");
   const hideDocument = isFieldHidden("fornecedores", "document");
   const hideEmail = isFieldHidden("fornecedores", "email");
-  const isBuyer = role === "comprador";
+  const { isBuyer, scopeByBuyer } = useBuyerScope();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
@@ -36,9 +37,7 @@ export default function SuppliersPage() {
 
   const reload = async () => {
     let data = await loadSuppliers();
-    if (isBuyer && profile) {
-      data = data.filter(s => s.buyer === profile.full_name);
-    }
+    data = scopeByBuyer(data);
     setSuppliers(data);
   };
   useEffect(() => { reload(); }, []);
