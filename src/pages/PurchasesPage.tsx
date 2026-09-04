@@ -75,15 +75,17 @@ export default function PurchasesPage() {
 
 
   const buyers = [...new Set(purchases.map(p => p.buyer).filter(Boolean))];
-  const activeStatuses = [...new Set(purchases.map(p => p.status))];
+  const presentStages = new Set(purchases.map(p => stageOfPurchase(p)));
+  const activeStages = STAGE_ORDER.filter(s => presentStages.has(s));
 
   const filtered = purchases.filter((p) => {
     const matchSearch = [p.supplierName, p.purchaseNumber, p.erpNumber, p.buyer]
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
+    const matchStatus = statusFilter === "all" || stageOfPurchase(p) === statusFilter;
     const matchBuyer = buyerFilter === "all" || p.buyer === buyerFilter;
     return matchSearch && matchStatus && matchBuyer;
   });
+
 
   const { sorted, sort, toggleSort } = useSortable(filtered);
 
