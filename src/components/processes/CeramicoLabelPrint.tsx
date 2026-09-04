@@ -197,7 +197,9 @@ export async function printEntryLabel(
   purchase: Parameters<typeof buildEntryLabel>[0] & { supplierId?: string },
 ): Promise<void> {
   const branch = await getSupplierBranch(purchase.supplierId);
-  await printLabelSheet([buildEntryLabel(purchase, branch)]);
+  const label = buildEntryLabel(purchase, branch);
+  const copies = purchase.materialFlow === "ceramico" ? 1 : 3;
+  await printLabelSheet(Array.from({ length: copies }, () => label));
 }
 
 
