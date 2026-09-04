@@ -33,12 +33,19 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey);
 
     // Fetch all data in parallel
-    const [purchaseRes, demoRes, itemsRes, allLabRes] = await Promise.all([
+    const [purchaseRes, demoRes, itemsRes, allLabRes, groupEvRes] = await Promise.all([
       sb.from("purchases").select("*").eq("id", purchaseId).single(),
       sb.from("demonstrativos").select("*").eq("id", demonstrativoId).single(),
       sb.from("purchase_items").select("*").eq("purchase_id", purchaseId),
       sb.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchaseId),
+      sb.from("stage_evidence").select("task_key,value_text").eq("purchase_id", purchaseId).like("task_key", "lote_cat_%"),
     ]);
+
+    // Nome do grupo definido na conferência (rastreabilidade do lote)
+    const groupNames: Record<string, string> = {};
+    ((groupEvRes.data as any[]) || []).forEach((e: any) => {
+      if (e.value_text) groupNames[String(e.task_key).replace("lote_cat_", "")] = e.value_text;
+    });
 
     if (purchaseRes.error || !purchaseRes.data) {
       return new Response(JSON.stringify({ error: "Purchase not found" }), {
