@@ -194,7 +194,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const groupAvgRows = [...matchedGroupRows, ...orphanGroupRows];
   const hasAnyLab = isCeramico && (groupAvgRows.length > 0 || !!generalAvg);
   // Peça em Sacola: lab analysis per piece shown inline in the pieces table
-  const showItemLab = !isCeramico && Object.keys(labMap).length > 0;
+  // Só peças precificadas pela calculadora exibem a análise
+  const labVisible = (it: RawItem) => it.pricing_source === "calculadora" && !!labMap[it.id];
+  const showItemLab = !isCeramico && itemsForTotal.some(labVisible);
 
 
   return (
@@ -245,7 +247,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       const cp = it.catalog_part_id ? catalogParts[it.catalog_part_id] : null;
                       const qty = Number(it.quantity) || 1;
                       const tv = Number(it.total_value) || 0;
-                      const lab = labMap[it.id];
+                      const lab = labVisible(it) ? labMap[it.id] : null;
                       return (
                         <tr key={it.id} className="border-t">
                           <td className="p-2 align-top">
@@ -259,9 +261,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                           </td>
                           {showItemLab && (
                             <>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pt, 0) : "—"}</td>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pd, 0) : "—"}</td>
-                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.rh, 0) : "—"}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pt, 0) : ""}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.pd, 0) : ""}</td>
+                              <td className="p-2 align-top text-right">{lab ? fmtNum(lab.rh, 0) : ""}</td>
                             </>
                           )}
                           <td className="p-2 align-top text-right">{tv > 0 ? fmtBrl(tv / qty) : "—"}</td>
@@ -275,9 +277,9 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         <td className="p-2 align-top text-right">{bonusQty} un</td>
                         {showItemLab && (
                           <>
-                            <td className="p-2 align-top text-right">—</td>
-                            <td className="p-2 align-top text-right">—</td>
-                            <td className="p-2 align-top text-right">—</td>
+                            <td className="p-2 align-top text-right" />
+                            <td className="p-2 align-top text-right" />
+                            <td className="p-2 align-top text-right" />
                           </>
                         )}
                         <td className="p-2 align-top text-right">{fmtBrl(bonusQty > 0 ? bonusValue / bonusQty : 0)}</td>

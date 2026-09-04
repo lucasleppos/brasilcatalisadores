@@ -179,7 +179,9 @@ Deno.serve(async (req) => {
         a.n += 1;
         itemLabAgg[lr.purchase_item_id] = a;
       }
-      const showItemLab = Object.keys(itemLabAgg).length > 0;
+      // Só mostra análise nas peças precificadas pela calculadora
+      const labVisible = (it: any) => it?.pricing_source === 'calculadora' && !!itemLabAgg[it.id];
+      const showItemLab = itemsForTotal.some(labVisible);
 
       const pCols = showItemLab
         ? [8, contentWidth - 130, 24, 14, 14, 14, 30, 26]
@@ -222,10 +224,12 @@ Deno.serve(async (req) => {
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         let vi = 3;
         if (showItemLab) {
-          const a = itemLabAgg[item.id];
-          doc.text(a ? fmt(a.pt / a.n, 0) : "—", pX[3] + 2, y + 4);
-          doc.text(a ? fmt(a.pd / a.n, 0) : "—", pX[4] + 2, y + 4);
-          doc.text(a ? fmt(a.rh / a.n, 0) : "—", pX[5] + 2, y + 4);
+          const a = labVisible(item) ? itemLabAgg[item.id] : null;
+          if (a) {
+            doc.text(fmt(a.pt / a.n, 0), pX[3] + 2, y + 4);
+            doc.text(fmt(a.pd / a.n, 0), pX[4] + 2, y + 4);
+            doc.text(fmt(a.rh / a.n, 0), pX[5] + 2, y + 4);
+          }
           vi = 6;
         }
         doc.text(tv > 0 ? fmtBrl(tv / qty) : "—", pX[vi] + 2, y + 4);
@@ -239,11 +243,6 @@ Deno.serve(async (req) => {
         doc.text("—", pX[0] + 2, y + 4);
         doc.text("Bônus", pX[1] + 2, y + 4);
         doc.text(`${bonusQty} un`, pX[2] + 2, y + 4);
-        if (showItemLab) {
-          doc.text("—", pX[3] + 2, y + 4);
-          doc.text("—", pX[4] + 2, y + 4);
-          doc.text("—", pX[5] + 2, y + 4);
-        }
         doc.text(fmtBrl(bonusValue / bonusQty), pX[vi] + 2, y + 4);
         doc.text(fmtBrl(bonusValue), pX[vi + 1] + 2, y + 4);
         y += rowH;
