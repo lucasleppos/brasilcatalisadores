@@ -15,6 +15,8 @@ import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
+import { STAGE_ORDER, stageOfPurchase, flowLabel } from "@/lib/status-stages";
+
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useIsMobile } from "@/hooks/use-mobile";
