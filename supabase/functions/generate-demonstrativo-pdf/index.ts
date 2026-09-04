@@ -119,6 +119,29 @@ Deno.serve(async (req) => {
 
     const isCeramico = purchase.material_flow === "ceramico";
 
+    const itemTypeLabels: Record<string, string> = {
+      peca: "Peça",
+      peca_sacola: "Peça em Sacola",
+      ceramico: "Cerâmico",
+    };
+    const groupOrder: Record<string, number> = {};
+    itemsForTotal.forEach((i: any, idx: number) => { groupOrder[i.id] = idx + 1; });
+
+    /** Rótulo do material: grupo salvo na conferência → catálogo → fallback */
+    const materialLabel = (item: any, idx?: number): string => {
+      const saved = (groupNames[item.id] || "").trim();
+      if (saved) return saved;
+      const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+      if (cp && (cp.code || cp.reference)) return cp.code || cp.reference;
+      if (item.part_code) return item.part_code;
+      if (item.part_reference) return item.part_reference;
+      if (isCeramico) {
+        const n = groupOrder[item.id] ?? (idx ?? 0) + 1;
+        return `Grupo ${String(n).padStart(2, "0")}`;
+      }
+      return itemTypeLabels[item.item_type] || item.item_type;
+    };
+
     // ===== Build PDF =====
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
