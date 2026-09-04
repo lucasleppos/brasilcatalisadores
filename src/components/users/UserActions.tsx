@@ -21,6 +21,7 @@ import { PermissionProfile } from "@/lib/permissions";
 
 export interface UserRow {
   id: string;
+  buyer_names?: string[];
   full_name: string;
   branch: string;
   job_title: string;
@@ -64,6 +65,25 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
     job_title: user.job_title,
     role: user.role || "",
   });
+  const [buyerNames, setBuyerNames] = useState<string[]>(user.buyer_names || []);
+  const [buyerOptions, setBuyerOptions] = useState<string[]>([]);
+  const [buyerSearch, setBuyerSearch] = useState("");
+
+  const loadBuyerOptions = async () => {
+    const [pRes, sRes] = await Promise.all([
+      supabase.from("purchases").select("buyer"),
+      supabase.from("suppliers").select("buyer"),
+    ]);
+    const names = new Set<string>();
+    [...(pRes.data || []), ...(sRes.data || [])].forEach((r: any) => {
+      const n = (r.buyer || "").trim();
+      if (n) names.add(n);
+    });
+    setBuyerOptions([...names].sort((a, b) => a.localeCompare(b, "pt-BR")));
+  };
+
+  const toggleBuyerName = (name: string) =>
+    setBuyerNames((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
 
   const isSelf = currentUserId === user.id;
 
@@ -83,6 +103,7 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
         branch: editForm.branch,
         job_title: editForm.job_title,
         role: editForm.role,
+        buyer_names: buyerNames,
       },
     });
     setEditLoading(false);
@@ -141,6 +162,9 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
         {isSuperAdmin && (
           <Button variant="ghost" size="icon" onClick={() => {
             setEditForm({ full_name: user.full_name, branch: user.branch, job_title: user.job_title, role: user.role || "" });
+            setBuyerNames(user.buyer_names || []);
+            setBuyerSearch("");
+            loadBuyerOptions();
             setEditOpen(true);
           }} title="Editar">
             <Pencil className="h-4 w-4" />
@@ -170,6 +194,14 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
             <div><Label className="text-muted-foreground">Filial</Label><p className="font-medium">{user.branch || "—"}</p></div>
             <div><Label className="text-muted-foreground">Cargo</Label><p className="font-medium">{user.job_title || "—"}</p></div>
             <div><Label className="text-muted-foreground">Perfil</Label><p>{user.role ? <Badge variant="secondary">{getRoleLabel(user.role)}</Badge> : <span className="text-muted-foreground text-xs">Sem perfil</span>}</p></div>
+            {(user.buyer_names || []).length > 0 && (
+              <div>
+                <Label className="text-muted-foreground">Nomes de comprador vinculados</Label>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {(user.buyer_names || []).map((n) => <Badge key={n} variant="outline">{n}</Badge>)}
+                </div>
+              </div>
+            )}
             <div><Label className="text-muted-foreground">Status</Label><p className="font-medium">{user.last_sign_in_at ? "Ativo" : "Nunca acessou"}</p></div>
           </div>
           <DialogFooter>
@@ -208,6 +240,42 @@ export function UserActions({ user, currentUserId, onSuccess, roleProfiles = [] 
               <div className="space-y-2">
                 <Label>Cargo</Label>
                 <Input value={editForm.job_title} onChange={(e) => setEditForm((f) => ({ ...f, job_title: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nomes de comprador vinculados</Label>
+              <p className="text-xs text-muted-foreground">
+                Selecione os nomes que aparecem nas compras e fornecedores deste usuário. Usado para limitar o que um comprador vê.
+              </p>
+              {buyerNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {buyerNames.map((n) => (
+                    <Badge key={n} variant="secondary" className="cursor-pointer" onClick={() => toggleBuyerName(n)}>
+                      {n} x
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <Input placeholder="Buscar nome..." value={buyerSearch} onChange={(e) => setBuyerSearch(e.target.value)} />
+              <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
+                {buyerOptions
+                  .filter((n) => n.toLowerCase().includes(buyerSearch.toLowerCase()))
+                  .slice(0, 100)
+                  .map((n) => (
+                    <button
+                      type="button"
+                      key={n}
+                      onClick={() => toggleBuyerName(n)}
+                      className={`flex w-full items-center justify-between px-2 py-1.5 text-left text-sm hover:bg-muted ${buyerNames.includes(n) ? "bg-muted font-medium" : ""}`}
+                    >
+                      <span className="truncate">{n}</span>
+                      {buyerNames.includes(n) && <span className="text-xs text-primary">selecionado</span>}
+                    </button>
+                  ))}
+                {buyerOptions.length === 0 && (
+                  <p className="px-2 py-2 text-xs text-muted-foreground">Nenhum nome de comprador encontrado.</p>
+                )}
               </div>
             </div>
           </div>
