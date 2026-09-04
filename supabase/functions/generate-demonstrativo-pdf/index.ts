@@ -243,11 +243,6 @@ Deno.serve(async (req) => {
         doc.text("—", pX[0] + 2, y + 4);
         doc.text("Bônus", pX[1] + 2, y + 4);
         doc.text(`${bonusQty} un`, pX[2] + 2, y + 4);
-        if (showItemLab) {
-          doc.text("—", pX[3] + 2, y + 4);
-          doc.text("—", pX[4] + 2, y + 4);
-          doc.text("—", pX[5] + 2, y + 4);
-        }
         doc.text(fmtBrl(bonusValue / bonusQty), pX[vi] + 2, y + 4);
         doc.text(fmtBrl(bonusValue), pX[vi + 1] + 2, y + 4);
         y += rowH;
