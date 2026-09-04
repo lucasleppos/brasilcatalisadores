@@ -21,6 +21,8 @@ import { UserActions, UserRow } from "@/components/users/UserActions";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { loadPermissionProfiles, PermissionProfile } from "@/lib/permissions";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isBuyerRole } from "@/lib/buyers";
 
 function generatePassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -40,6 +42,7 @@ export default function UsersPage() {
   const [roleProfiles, setRoleProfiles] = useState<PermissionProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"buyers" | "others">("others");
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createdInfo, setCreatedInfo] = useState<{ email: string; password: string } | null>(null);
@@ -92,7 +95,11 @@ export default function UsersPage() {
       .some((f) => (f || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  const { sorted, sort, toggleSort } = useSortable(filtered);
+  const buyerRows = filtered.filter((u) => isBuyerRole(u.role));
+  const otherRows = filtered.filter((u) => !isBuyerRole(u.role));
+  const visible = tab === "buyers" ? buyerRows : otherRows;
+
+  const { sorted, sort, toggleSort } = useSortable(visible);
 
   const handleCreate = async () => {
     if (createLoading) return;
