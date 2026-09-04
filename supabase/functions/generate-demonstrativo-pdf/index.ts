@@ -179,7 +179,9 @@ Deno.serve(async (req) => {
         a.n += 1;
         itemLabAgg[lr.purchase_item_id] = a;
       }
-      const showItemLab = Object.keys(itemLabAgg).length > 0;
+      // Só mostra análise nas peças precificadas pela calculadora
+      const labVisible = (it: any) => it?.pricing_source === 'calculadora' && !!itemLabAgg[it.id];
+      const showItemLab = itemsForTotal.some(labVisible);
 
       const pCols = showItemLab
         ? [8, contentWidth - 130, 24, 14, 14, 14, 30, 26]
