@@ -39,6 +39,8 @@ import { useAuth } from "@/contexts/AuthContext";
 interface StageActionCardProps {
   purchase: Purchase;
   onCompleted: () => void;
+  /** Modo acompanhamento: apenas informações, sem ações de etapa */
+  readOnly?: boolean;
 }
 
 function timeSince(dateStr: string) {
