@@ -224,10 +224,12 @@ Deno.serve(async (req) => {
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         let vi = 3;
         if (showItemLab) {
-          const a = itemLabAgg[item.id];
-          doc.text(a ? fmt(a.pt / a.n, 0) : "—", pX[3] + 2, y + 4);
-          doc.text(a ? fmt(a.pd / a.n, 0) : "—", pX[4] + 2, y + 4);
-          doc.text(a ? fmt(a.rh / a.n, 0) : "—", pX[5] + 2, y + 4);
+          const a = labVisible(item) ? itemLabAgg[item.id] : null;
+          if (a) {
+            doc.text(fmt(a.pt / a.n, 0), pX[3] + 2, y + 4);
+            doc.text(fmt(a.pd / a.n, 0), pX[4] + 2, y + 4);
+            doc.text(fmt(a.rh / a.n, 0), pX[5] + 2, y + 4);
+          }
           vi = 6;
         }
         doc.text(tv > 0 ? fmtBrl(tv / qty) : "—", pX[vi] + 2, y + 4);
