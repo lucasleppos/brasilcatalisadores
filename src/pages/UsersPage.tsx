@@ -196,14 +196,14 @@ export default function UsersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={tab === "buyers" ? 8 : 7} className="text-center py-8 text-muted-foreground">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário encontrado
+                  <TableCell colSpan={tab === "buyers" ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                    {tab === "buyers" ? "Nenhum comprador cadastrado" : "Nenhum usuário encontrado"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -211,6 +211,19 @@ export default function UsersPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                     <TableCell className="text-sm">{u.email || "—"}</TableCell>
+                    {tab === "buyers" && (
+                      <TableCell>
+                        {(u.buyer_names || []).length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {(u.buyer_names || []).map((n) => (
+                              <Badge key={n} variant="outline" className="text-[10px]">{n}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Sem vínculo</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>{u.branch || "—"}</TableCell>
                     <TableCell>{u.job_title || "—"}</TableCell>
                     <TableCell>
