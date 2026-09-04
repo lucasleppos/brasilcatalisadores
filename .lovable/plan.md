@@ -9,24 +9,24 @@ No cadastro do fornecedor o campo **Comprador** é digitado livremente. Isso cri
 1. **Fonte única de compradores: o módulo de Usuários.**
    A lista oficial passa a ser formada pelos usuários com perfil de comprador, usando os nomes de comprador já vinculados a cada usuário (o campo que o Super Admin preenche na tela de Usuários) e, quando não houver nenhum vinculado, o nome completo do usuário.
 
-2. **Cadastro do fornecedor com seleção, não digitação.**
-   O campo Comprador vira um campo de busca com a lista de compradores cadastrados (mesmo estilo do campo de Fornecedor na Nova Compra). Só é possível escolher um nome da lista.
-   - Se o fornecedor já tiver um comprador gravado que não esteja na lista (dados antigos), o valor atual continua visível e marcado como "fora da lista", para o Super Admin corrigir.
-   - Se ainda não houver nenhum comprador cadastrado, o campo mostra um aviso indicando que os compradores são cadastrados no módulo de Usuários.
+2. **No cadastro do fornecedor, escolher da lista fica disponível — sem obrigar.**
+   O campo Comprador passa a oferecer a lista de compradores já cadastrados como usuários, e continua aceitando texto digitado. Nada é alterado automaticamente.
+   - Fornecedores já cadastrados mantêm exatamente o comprador que está gravado hoje; o valor aparece normalmente, mesmo que ainda não exista um usuário correspondente.
+   - Enquanto não houver compradores cadastrados como usuários, o campo funciona como hoje, com uma nota discreta indicando onde cadastrá-los.
 
 3. **Tela de Usuários separada em duas listas.**
    Duas abas: **Compradores** e **Usuários** (os demais perfis). Na aba Compradores aparece também a coluna com os nomes de comprador vinculados, para deixar claro qual nome será usado nas compras e fornecedores.
 
-4. **Importação de fornecedores por Excel**: continua aceitando o nome escrito na planilha, mas passa a avisar quantas linhas trazem um comprador que não está na lista oficial, para revisão.
+## Fora do escopo (não será tocado)
 
-## Fora do escopo
-
-- Não vamos renomear em massa os compradores já gravados nas compras e nos fornecedores. Se você quiser, faço isso depois como um ajuste separado (indicando quantos registros mudam antes de aplicar).
+- Nenhuma alteração nos fornecedores, compras ou qualquer registro já vinculado a um comprador.
+- Nenhuma renomeação em massa e nenhum aviso/bloqueio na importação de fornecedores por Excel — ela segue igual.
+- Nenhum campo passa a ser obrigatório. Você cadastra os compradores como usuários no seu ritmo e, quando quiser, faz o vínculo.
 
 ## Detalhes técnicos
 
 - Novo helper `src/lib/buyers.ts`: `loadBuyerOptions()` — chama a Edge Function `manage-user` (action `list`, já retorna `buyer_names` e `role`), filtra usuários cujo perfil é de comprador e devolve nomes únicos ordenados (`buyer_names` ou fallback `full_name`), usando `normalizeName` de `src/lib/buyer-scope.ts` para deduplicar.
-- `src/components/suppliers/SupplierForm.tsx`: trocar o `Input` de Comprador pelo `SearchableSelect` (`src/components/ui/searchable-select.tsx`), alimentado por `loadBuyerOptions()`; incluir a opção legada quando `initial.buyer` não estiver na lista.
+- `src/components/suppliers/SupplierForm.tsx`: campo Comprador com sugestões da lista (combobox permitindo valor livre), preservando `initial.buyer` como valor válido; nenhuma normalização ou reescrita do valor salvo.
 - `src/pages/UsersPage.tsx`: `Tabs` (Compradores / Usuários) sobre a mesma lista `users`, particionada pelo `role` de comprador; coluna "Nomes de comprador" apenas na aba Compradores.
-- `src/components/suppliers/SupplierImport.tsx`: comparar `buyer` de cada linha com as opções normalizadas e exibir contagem de divergências no resumo da pré-visualização.
-- Sem mudanças de banco de dados.
+- `SupplierImport.tsx`, `NewPurchaseDialog.tsx`, `purchases` e `suppliers` permanecem intocados.
+- Sem mudanças de banco de dados e sem scripts de atualização de dados.
