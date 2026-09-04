@@ -236,9 +236,13 @@ export default function PurchasesPage() {
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`}>
-                        {p.status}
+                      <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`} title={p.status}>
+                        {stageOfPurchase(p)}
+                        {flowLabel(p.materialFlow) && (
+                          <span className="ml-1 opacity-60">· {flowLabel(p.materialFlow)}</span>
+                        )}
                       </Badge>
+
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 items-center">
