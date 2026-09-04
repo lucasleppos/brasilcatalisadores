@@ -46,6 +46,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const [items, setItems] = useState<RawItem[]>([]);
   const [labRows, setLabRows] = useState<LabRow[]>([]);
   const [catalogParts, setCatalogParts] = useState<Record<string, { code: string; reference: string }>>({});
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -61,10 +62,16 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         }
         const latest = demos[demos.length - 1] || null;
 
-        const [itemsRes, labRes] = await Promise.all([
+        const [itemsRes, labRes, catRes] = await Promise.all([
           supabase.from("purchase_items").select("*").eq("purchase_id", purchase.id),
           supabase.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchase.id),
+          supabase.from("stage_evidence").select("task_key,value_text").eq("purchase_id", purchase.id).like("task_key", "lote_cat_%"),
         ]);
+
+        const groupMap: Record<string, string> = {};
+        ((catRes.data as any[]) || []).forEach(e => {
+          if (e.value_text) groupMap[String(e.task_key).replace("lote_cat_", "")] = e.value_text;
+        });
 
         const rawItemsAll: RawItem[] = (itemsRes.data as any[]) || [];
         const isPlaceholder = (i: RawItem) =>
@@ -86,6 +93,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         setItems(rawItems);
         setLabRows(rawLab);
         setCatalogParts(partsMap);
+        setGroupNames(groupMap);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -144,15 +152,32 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
     rh: generalLab.reduce((s, l) => s + Number(l.rh_ppm), 0) / generalLab.length,
   } : null;
 
-  function partLabel(catalogPartId: string | null) {
-    if (!catalogPartId) return "Manual";
-    const cp = catalogParts[catalogPartId];
-    return cp ? (cp.code || cp.reference) : "Manual";
+  // Ordem dos lotes para o rótulo de fallback "Grupo NN"
+  const groupOrder: Record<string, number> = {};
+  itemsForTotal.forEach((i, idx) => { groupOrder[i.id] = idx + 1; });
+
+  /** Rótulo do material: grupo salvo na conferência → catálogo → fallback */
+  function materialLabel(item: RawItem, idx?: number) {
+    const saved = (groupNames[item.id] || "").trim();
+    if (saved) return saved;
+    const cp = item.catalog_part_id ? catalogParts[item.catalog_part_id] : null;
+    if (cp && (cp.code || cp.reference)) return cp.code || cp.reference;
+    const pc = (item as { part_code?: string | null; part_reference?: string | null });
+    if (pc.part_code) return pc.part_code;
+    if (pc.part_reference) return pc.part_reference;
+    if (isCeramico) {
+      const n = groupOrder[item.id] ?? (idx ?? 0) + 1;
+      return `Grupo ${String(n).padStart(2, "0")}`;
+    }
+    return typeLabels[item.item_type] || item.item_type;
   }
 
-  function typeLabel(item: RawItem) {
-    const cp = item.catalog_part_id ? catalogParts[item.catalog_part_id] : null;
-    return cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
+  function partLabel(item: RawItem, idx?: number) {
+    return materialLabel(item, idx);
+  }
+
+  function typeLabel(item: RawItem, idx?: number) {
+    return materialLabel(item, idx);
   }
 
   function weights(item: RawItem) {
@@ -313,7 +338,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
                           <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
-                          <td className="p-1">{partLabel(it.catalog_part_id)}</td>
+                          <td className="p-1">{partLabel(it, i)}</td>
                           <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
                           <td className="p-1">{tv > 0 && w > 0 ? fmtBrl(tv / w) : "—"}</td>
                           <td className="p-1">{tv > 0 ? fmtBrl(tv) : "—"}</td>
@@ -349,7 +374,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
                           <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
-                          <td className="p-1">{partLabel(it.catalog_part_id)}</td>
+                          <td className="p-1">{partLabel(it, i)}</td>
                           <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
                           <td className="p-1">{fmtNum(lab.pt, 0)}</td>
                           <td className="p-1">{fmtNum(lab.pd, 0)}</td>
@@ -421,7 +446,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                       return (
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
                           <td className="p-1 align-top">{(it as { seq?: number | null }).seq ?? i + 1}</td>
-                          <td className="p-1 align-top">{typeLabel(it)}</td>
+                          <td className="p-1 align-top">{typeLabel(it, i)}</td>
                           <td className="p-1 align-top">{qtyWeight}</td>
                           <td className="p-1 align-top">{unitVal}</td>
                           <td className="p-1 align-top">{totalVal}</td>

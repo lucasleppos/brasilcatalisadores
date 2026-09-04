@@ -33,12 +33,19 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey);
 
     // Fetch all data in parallel
-    const [purchaseRes, demoRes, itemsRes, allLabRes] = await Promise.all([
+    const [purchaseRes, demoRes, itemsRes, allLabRes, groupEvRes] = await Promise.all([
       sb.from("purchases").select("*").eq("id", purchaseId).single(),
       sb.from("demonstrativos").select("*").eq("id", demonstrativoId).single(),
       sb.from("purchase_items").select("*").eq("purchase_id", purchaseId),
       sb.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchaseId),
+      sb.from("stage_evidence").select("task_key,value_text").eq("purchase_id", purchaseId).like("task_key", "lote_cat_%"),
     ]);
+
+    // Nome do grupo definido na conferência (rastreabilidade do lote)
+    const groupNames: Record<string, string> = {};
+    ((groupEvRes.data as any[]) || []).forEach((e: any) => {
+      if (e.value_text) groupNames[String(e.task_key).replace("lote_cat_", "")] = e.value_text;
+    });
 
     if (purchaseRes.error || !purchaseRes.data) {
       return new Response(JSON.stringify({ error: "Purchase not found" }), {
@@ -111,6 +118,29 @@ Deno.serve(async (req) => {
     }
 
     const isCeramico = purchase.material_flow === "ceramico";
+
+    const itemTypeLabels: Record<string, string> = {
+      peca: "Peça",
+      peca_sacola: "Peça em Sacola",
+      ceramico: "Cerâmico",
+    };
+    const groupOrder: Record<string, number> = {};
+    itemsForTotal.forEach((i: any, idx: number) => { groupOrder[i.id] = idx + 1; });
+
+    /** Rótulo do material: grupo salvo na conferência → catálogo → fallback */
+    const materialLabel = (item: any, idx?: number): string => {
+      const saved = (groupNames[item.id] || "").trim();
+      if (saved) return saved;
+      const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
+      if (cp && (cp.code || cp.reference)) return cp.code || cp.reference;
+      if (item.part_code) return item.part_code;
+      if (item.part_reference) return item.part_reference;
+      if (isCeramico) {
+        const n = groupOrder[item.id] ?? (idx ?? 0) + 1;
+        return `Grupo ${String(n).padStart(2, "0")}`;
+      }
+      return itemTypeLabels[item.item_type] || item.item_type;
+    };
 
     // ===== Build PDF =====
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -219,7 +249,7 @@ Deno.serve(async (req) => {
           doc.rect(margin, y, contentWidth, rowH, "F");
         }
         doc.text(`${item.seq ?? i + 1}`, pX[0] + 2, y + 4);
-        doc.text(clip(`Código: ${cp?.code || item.part_code || "Manual"}`, 1), pX[1] + 2, y + 4);
+        doc.text(clip(`Código: ${materialLabel(item, i)}`, 1), pX[1] + 2, y + 4);
         if (cp?.reference) doc.text(clip(`Referência: ${cp.reference}`, 1), pX[1] + 2, y + 8);
         doc.text(`${qty} un`, pX[2] + 2, y + 4);
         let vi = 3;
@@ -288,7 +318,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
+          const label = materialLabel(item, i);
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const tv = Number(item.total_value) || 0;
           const liquido = Math.max(0, Number(item.weight) - Number(item.weight_loss || 0));
@@ -359,7 +389,7 @@ Deno.serve(async (req) => {
             doc.rect(margin, y, contentWidth, 6, "F");
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (item.part_code || item.part_reference || "Manual");
+          const label = materialLabel(item, i);
           const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
           const tv = Number(item.total_value) || 0;
@@ -513,7 +543,7 @@ Deno.serve(async (req) => {
         .map((it: any) => {
           const a = labAgg[it.id];
           const cp = it.catalog_part_id ? catalogPartsMap[it.catalog_part_id] : null;
-          const label = cp ? (cp.code || cp.reference) : (it.part_code || it.part_reference || typeLabels[it.item_type] || it.item_type);
+          const label = materialLabel(it);
           return { label: label || "—", pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
         });
       const orphanIds = Object.keys(labAgg).filter(id => !currentIds.has(id)).sort();
