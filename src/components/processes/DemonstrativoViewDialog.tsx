@@ -93,6 +93,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         setItems(rawItems);
         setLabRows(rawLab);
         setCatalogParts(partsMap);
+        setGroupNames(groupMap);
       } finally {
         if (!cancelled) setLoading(false);
       }
