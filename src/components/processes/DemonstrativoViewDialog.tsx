@@ -46,6 +46,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
   const [items, setItems] = useState<RawItem[]>([]);
   const [labRows, setLabRows] = useState<LabRow[]>([]);
   const [catalogParts, setCatalogParts] = useState<Record<string, { code: string; reference: string }>>({});
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -144,15 +145,32 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
     rh: generalLab.reduce((s, l) => s + Number(l.rh_ppm), 0) / generalLab.length,
   } : null;
 
-  function partLabel(catalogPartId: string | null) {
-    if (!catalogPartId) return "Manual";
-    const cp = catalogParts[catalogPartId];
-    return cp ? (cp.code || cp.reference) : "Manual";
+  // Ordem dos lotes para o rótulo de fallback "Grupo NN"
+  const groupOrder: Record<string, number> = {};
+  itemsForTotal.forEach((i, idx) => { groupOrder[i.id] = idx + 1; });
+
+  /** Rótulo do material: grupo salvo na conferência → catálogo → fallback */
+  function materialLabel(item: RawItem, idx?: number) {
+    const saved = (groupNames[item.id] || "").trim();
+    if (saved) return saved;
+    const cp = item.catalog_part_id ? catalogParts[item.catalog_part_id] : null;
+    if (cp && (cp.code || cp.reference)) return cp.code || cp.reference;
+    const pc = (item as { part_code?: string | null; part_reference?: string | null });
+    if (pc.part_code) return pc.part_code;
+    if (pc.part_reference) return pc.part_reference;
+    if (isCeramico) {
+      const n = groupOrder[item.id] ?? (idx ?? 0) + 1;
+      return `Grupo ${String(n).padStart(2, "0")}`;
+    }
+    return typeLabels[item.item_type] || item.item_type;
   }
 
-  function typeLabel(item: RawItem) {
-    const cp = item.catalog_part_id ? catalogParts[item.catalog_part_id] : null;
-    return cp ? (cp.code || cp.reference || typeLabels[item.item_type] || item.item_type) : (typeLabels[item.item_type] || item.item_type);
+  function partLabel(item: RawItem, idx?: number) {
+    return materialLabel(item, idx);
+  }
+
+  function typeLabel(item: RawItem, idx?: number) {
+    return materialLabel(item, idx);
   }
 
   function weights(item: RawItem) {
