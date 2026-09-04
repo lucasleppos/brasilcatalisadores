@@ -242,6 +242,7 @@ export default function MobileProcessBoard() {
         {selected && (
           <StageActionCard
             purchase={selected}
+            readOnly={!canAdvance}
             onCompleted={() => {
               setSelected(null);
               reload();
