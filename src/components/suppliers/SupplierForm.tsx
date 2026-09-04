@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Supplier } from "@/lib/suppliers";
 import { parseNum, fmtNum } from "@/lib/utils";
+import { loadBuyerOptions } from "@/lib/buyers";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,]/g, "");
 
@@ -28,6 +29,7 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
   const [buyer, setBuyer] = useState(initial?.buyer ?? "");
   const [marginPecasStr, setMarginPecasStr] = useState(marginToStr(initial?.marginPecas));
   const [marginCeramicoStr, setMarginCeramicoStr] = useState(marginToStr(initial?.marginCeramico));
+  const [buyerOptions, setBuyerOptions] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -38,8 +40,10 @@ export default function SupplierForm({ open, onOpenChange, onSave, initial }: Su
       setBuyer(initial?.buyer ?? "");
       setMarginPecasStr(marginToStr(initial?.marginPecas));
       setMarginCeramicoStr(marginToStr(initial?.marginCeramico));
+      loadBuyerOptions().then(setBuyerOptions).catch(() => setBuyerOptions([]));
     }
   }, [open, initial]);
+
 
   const handleSave = () => {
     if (!name.trim()) return;
