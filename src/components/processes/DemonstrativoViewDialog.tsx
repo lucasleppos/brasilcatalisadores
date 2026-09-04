@@ -62,10 +62,16 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
         }
         const latest = demos[demos.length - 1] || null;
 
-        const [itemsRes, labRes] = await Promise.all([
+        const [itemsRes, labRes, catRes] = await Promise.all([
           supabase.from("purchase_items").select("*").eq("purchase_id", purchase.id),
           supabase.from("lab_results").select("purchase_item_id,versao,pt_ppm,pd_ppm,rh_ppm").eq("purchase_id", purchase.id),
+          supabase.from("stage_evidence").select("task_key,value_text").eq("purchase_id", purchase.id).like("task_key", "lote_cat_%"),
         ]);
+
+        const groupMap: Record<string, string> = {};
+        ((catRes.data as any[]) || []).forEach(e => {
+          if (e.value_text) groupMap[String(e.task_key).replace("lote_cat_", "")] = e.value_text;
+        });
 
         const rawItemsAll: RawItem[] = (itemsRes.data as any[]) || [];
         const isPlaceholder = (i: RawItem) =>
