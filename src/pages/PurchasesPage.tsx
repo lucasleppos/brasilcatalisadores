@@ -144,10 +144,11 @@ export default function PurchasesPage() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {activeStatuses.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
+            <SelectItem value="all">Todas as etapas</SelectItem>
+            {activeStages.map((s) => (
+              <SelectItem key={s} value={s}>{s === "Concluído" ? "Concluídos" : s}</SelectItem>
             ))}
+
           </SelectContent>
         </Select>
         {!isBuyer && (
