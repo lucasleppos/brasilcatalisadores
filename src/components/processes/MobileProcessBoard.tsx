@@ -9,6 +9,7 @@ import {
   isSacolaFlow,
 } from "@/lib/purchases";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { usePermissions } from "@/lib/permissions";
 import { fmtNum } from "@/lib/utils";
 import { PROCESS_GROUPS, canRoleSeeGroup, comparePurchaseNumber } from "./ProcessBoard";
@@ -49,6 +50,7 @@ function lastChangeDate(p: Purchase): string {
 export default function MobileProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
+  const { scopeByBuyer } = useBuyerScope();
   const { setOwnsHeader, stageTabsInBar, activeStage: navStage, setActiveStage: setNavStage, setStageCounts } = useMobileNav();
   const canAdvance = canDo("processos", "advance_stage");
 
@@ -67,7 +69,7 @@ export default function MobileProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases(await loadPurchases());
+      setPurchases(scopeByBuyer(await loadPurchases()));
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }

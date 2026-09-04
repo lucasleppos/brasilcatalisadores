@@ -13,6 +13,7 @@ import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import CompletedDetailRow from "@/components/purchases/CompletedDetailRow";
 import { fmtBrl } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileCompletedList from "@/components/purchases/MobileCompletedList";
 
@@ -24,6 +25,7 @@ interface BagAllocation {
 
 export default function CompletedPage() {
   const { session, loading: authLoading } = useAuth();
+  const { scopeByBuyer } = useBuyerScope();
   const isMobile = useIsMobile();
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -50,7 +52,7 @@ export default function CompletedPage() {
     if (authLoading || !session) return;
     let all: Purchase[];
     try {
-      all = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
+      all = scopeByBuyer((await loadPurchases()).filter(p => !isBranchPreTransfer(p)));
     } catch (e) {
       console.error("Erro ao carregar concluídos:", e);
       return;

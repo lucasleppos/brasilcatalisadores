@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
           full_name: p.full_name || "",
           branch: p.branch || "",
           job_title: p.job_title || "",
+          buyer_names: p.buyer_names || [],
           role: roles?.find((r: any) => r.user_id === p.id)?.role || null,
           email: au?.email || "",
           last_sign_in_at: au?.last_sign_in_at || null,
@@ -196,9 +197,21 @@ Deno.serve(async (req) => {
       const sanitizedBranch = sanitizeText(branch, 100);
       const sanitizedJobTitle = sanitizeText(job_title, 100);
 
+      const rawBuyerNames = (body as any).buyer_names;
+      const sanitizedBuyerNames = Array.isArray(rawBuyerNames)
+        ? [...new Set(rawBuyerNames.map((n: unknown) => sanitizeText(n, 150)).filter(Boolean))].slice(0, 50)
+        : undefined;
+
+      const profileUpdate: Record<string, unknown> = {
+        full_name: sanitizedName,
+        branch: sanitizedBranch,
+        job_title: sanitizedJobTitle,
+      };
+      if (sanitizedBuyerNames !== undefined) profileUpdate.buyer_names = sanitizedBuyerNames;
+
       const { error: profileError } = await adminClient
         .from("profiles")
-        .update({ full_name: sanitizedName, branch: sanitizedBranch, job_title: sanitizedJobTitle })
+        .update(profileUpdate)
         .eq("id", user_id);
       if (profileError) return json({ error: profileError.message }, 400);
 

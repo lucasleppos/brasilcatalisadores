@@ -6,6 +6,7 @@ import { Activity } from "lucide-react";
 import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_OP_STATUSES } from "@/lib/purchases";
 import { isBranchPreTransfer } from "@/lib/branches";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBuyerScope } from "@/lib/buyer-scope";
 import { usePermissions } from "@/lib/permissions";
 import { subDays, isAfter, parseISO } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -87,6 +88,7 @@ export function canRoleSeeGroup(role: string | null, group: ProcessGroup): boole
 export default function ProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
   const { canDo } = usePermissions();
+  const { scopeByBuyer } = useBuyerScope();
   const canAdvance = canDo("processos", "advance_stage");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
@@ -97,7 +99,7 @@ export default function ProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases((await loadPurchases()).filter(p => !isBranchPreTransfer(p)));
+      setPurchases(scopeByBuyer((await loadPurchases()).filter(p => !isBranchPreTransfer(p))));
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }
