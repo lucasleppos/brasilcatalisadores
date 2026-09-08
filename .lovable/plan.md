@@ -13,7 +13,7 @@ Nº | Código | Referência | Valor da peça | Grupo
   - Grupo 1 — até R$ 350,00
   - Grupo 2 — acima de R$ 350,00 até R$ 650,00
   - Grupo 3 — acima de R$ 650,00
-- Peça sem dados de catálogo suficientes: valor em branco e grupo "—".
+- Peça sem dados de catálogo suficientes: valor em branco e Grupo 1.
 - No rodapé, além do total de peças, um resumo por grupo (quantidade e soma de valores por grupo).
 
 O botão continua o mesmo, na conferência de Peça em Sacola e nas etapas seguintes.
