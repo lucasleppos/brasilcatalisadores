@@ -93,8 +93,7 @@ function reportHtml(d: SeparatedPiecesReportData): string {
     .map(g => {
       const list = enriched.filter(p => p.group === g);
       if (list.length === 0) return null;
-      const sum = list.reduce((s, p) => s + (p.unitValue && p.unitValue > 0 ? p.unitValue : 0), 0);
-      return `Grupo ${g}: ${list.length} un — ${fmtBrlLocal(sum)}`;
+      return `Grupo ${g}: ${list.length} peça(s)`;
     })
     .filter(Boolean)
     .join(" &nbsp;·&nbsp; ");
