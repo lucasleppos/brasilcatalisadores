@@ -50,7 +50,9 @@ const STYLES = `
   table.list { width: 100%; border-collapse: collapse; font-size: 10pt; }
   table.list th, table.list td { border: 1px solid #000; padding: 1.8mm 2mm; text-align: left; }
   table.list th { background: #eee; font-size: 9.5pt; text-transform: uppercase; letter-spacing: .3px; }
-  table.list td.num { width: 16mm; text-align: center; }
+  table.list td.num { width: 12mm; text-align: center; }
+  table.list td.val, table.list th.val { width: 28mm; text-align: right; }
+  table.list td.grp, table.list th.grp { width: 20mm; text-align: center; }
   .mono { font-family: "Courier New", monospace; }
   .total { margin-top: 4mm; font-size: 10.5pt; font-weight: bold; }
   .note { margin-top: 4mm; font-size: 9pt; color: #333; line-height: 1.45; }
