@@ -60,16 +60,44 @@ const STYLES = `
   .sign .line { border-top: 1px solid #000; width: 80mm; padding-top: 1.5mm; }
 `;
 
+const fmtBrlLocal = (n: number) =>
+  `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Grupo pelo valor unitário: até 350 → 1, até 650 → 2, acima → 3. Sem valor → 1 */
+export function groupForValue(v: number | null | undefined): 1 | 2 | 3 {
+  if (v == null || !Number.isFinite(v) || v <= 0) return 1;
+  if (v <= 350) return 1;
+  if (v <= 650) return 2;
+  return 3;
+}
+
 function reportHtml(d: SeparatedPiecesReportData): string {
-  const rows = d.pieces
+  const enriched = d.pieces.map(p => ({
+    ...p,
+    group: p.group ?? groupForValue(p.unitValue),
+  }));
+
+  const rows = enriched
     .map(
       (p, i) => `<tr>
         <td class="num">${esc(p.seq ?? i + 1)}</td>
         <td class="mono">${esc(p.code || "—")}</td>
         <td class="mono">${esc(p.reference || "—")}</td>
+        <td class="val">${p.unitValue != null && p.unitValue > 0 ? esc(fmtBrlLocal(p.unitValue)) : ""}</td>
+        <td class="grp">${esc(p.group)}</td>
       </tr>`,
     )
     .join("");
+
+  const groupSummary = ([1, 2, 3] as const)
+    .map(g => {
+      const list = enriched.filter(p => p.group === g);
+      if (list.length === 0) return null;
+      const sum = list.reduce((s, p) => s + (p.unitValue && p.unitValue > 0 ? p.unitValue : 0), 0);
+      return `Grupo ${g}: ${list.length} un — ${fmtBrlLocal(sum)}`;
+    })
+    .filter(Boolean)
+    .join(" &nbsp;·&nbsp; ");
 
   const info = [
     ["OP", esc(d.purchaseNumber)],
