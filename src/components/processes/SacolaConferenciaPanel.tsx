@@ -380,6 +380,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
     const branch = await getSupplierBranch(purchase.supplierId);
     try {
+      const values = await computeSeparatedPieceValues(
+        purchase.supplierId,
+        excludedPieces.map(p => ({
+          catalogPartId: p.catalogPartId,
+          quantity: p.quantity,
+          weight: p.unitWeight * (p.quantity || 1),
+        })),
+      );
       await printSeparatedPiecesReport({
         purchaseNumber: purchase.purchaseNumber,
         date: purchase.date,
@@ -391,6 +399,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           seq: p.seq ?? i + 1,
           code: p.code,
           reference: p.reference,
+          unitValue: values[i]?.unitValue ?? null,
         })),
       });
     } catch {
