@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity } from "lucide-react";
-import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, CER_OP_STATUSES } from "@/lib/purchases";
+import { Purchase, STAGE_ROLES, canUserActOnStage, loadPurchases, isPurchaseClosed, isInParallelPhase, isSacolaFlow, CER_OP_STATUSES } from "@/lib/purchases";
 import { isBranchPreTransfer } from "@/lib/branches";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
@@ -93,6 +93,7 @@ export default function ProcessBoard() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [buyerFilter, setBuyerFilter] = useState("all");
+  const [materialFilter, setMaterialFilter] = useState<"all" | "ceramico" | "pecas" | "sacola">("all");
   const [datePreset, setDatePreset] = useState<DateFilterPreset>("month");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
@@ -114,6 +115,12 @@ export default function ProcessBoard() {
     let result = purchases;
     if (supplierFilter !== "all") result = result.filter((p) => p.supplierName === supplierFilter);
     if (buyerFilter !== "all") result = result.filter((p) => p.buyer === buyerFilter);
+    if (materialFilter !== "all") {
+      result = result.filter((p) => {
+        if (materialFilter === "sacola") return isSacolaFlow(p);
+        return p.materialFlow === materialFilter;
+      });
+    }
 
     // Date filter
     if (customRange?.from) {
@@ -133,7 +140,7 @@ export default function ProcessBoard() {
     // "all" = no date filter
 
     return result;
-  }, [purchases, supplierFilter, buyerFilter, datePreset, customRange]);
+  }, [purchases, supplierFilter, buyerFilter, materialFilter, datePreset, customRange]);
 
   const isAdmin = role === "super_admin" || role === "admin";
 
@@ -205,8 +212,10 @@ export default function ProcessBoard() {
         buyers={buyers}
         supplierFilter={supplierFilter}
         buyerFilter={buyerFilter}
+        materialFilter={materialFilter}
         onSupplierChange={setSupplierFilter}
         onBuyerChange={setBuyerFilter}
+        onMaterialChange={setMaterialFilter}
         pendingCount={pendingCount}
         datePreset={datePreset}
         onDatePresetChange={setDatePreset}

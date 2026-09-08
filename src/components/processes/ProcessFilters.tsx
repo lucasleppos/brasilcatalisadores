@@ -74,6 +74,13 @@ export default function ProcessFilters({
         </SelectContent>
       </Select>
 
+      <Select value={materialFilter} onValueChange={(v) => onMaterialChange(v as MaterialFilter)}>
+        <SelectTrigger className="h-8 text-sm w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {MATERIAL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+
       <ToggleGroup type="single" value={isCustom ? "" : datePreset} onValueChange={handlePreset} className="h-8">
         <ToggleGroupItem value="week" className="text-xs h-8 px-3">Semana</ToggleGroupItem>
         <ToggleGroupItem value="month" className="text-xs h-8 px-3">Mês</ToggleGroupItem>
