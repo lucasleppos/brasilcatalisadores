@@ -83,10 +83,12 @@ Deno.serve(async (req) => {
     const itemsForTotal = conferenceItems.length > 0 ? conferenceItems : items;
     const calculatedTotal =
       itemsForTotal.reduce((acc: number, i: any) => acc + (Number(i.total_value) || 0), 0) + bonusValue;
-    const effectiveTotal = Math.max(calculatedTotal, Number(demo.valor_total) || 0);
+    // The printed total is ALWAYS the real sum of the listed items (+ bonus).
+    const storedTotal = Number(demo.valor_total) || 0;
+    const effectiveTotal = calculatedTotal > 0 ? calculatedTotal : storedTotal;
 
-    // Sync demonstrativo if stored value is 0 but items have values
-    if ((Number(demo.valor_total) || 0) === 0 && calculatedTotal > 0) {
+    // Keep the stored value in sync with the real sum
+    if (calculatedTotal > 0 && Math.abs(calculatedTotal - storedTotal) > 0.01) {
       await sb.from("demonstrativos").update({ valor_total: calculatedTotal }).eq("id", demonstrativoId);
     }
 
