@@ -10,6 +10,10 @@ export interface SeparatedPieceRow {
   seq?: number;
   code: string;
   reference?: string | null;
+  /** Valor unitário calculado pelo catálogo (BRL); null = sem dados suficientes */
+  unitValue?: number | null;
+  /** Grupo 1/2/3 pelo valor; quando omitido é derivado do valor */
+  group?: 1 | 2 | 3 | null;
 }
 
 export interface SeparatedPiecesReportData {
@@ -46,7 +50,9 @@ const STYLES = `
   table.list { width: 100%; border-collapse: collapse; font-size: 10pt; }
   table.list th, table.list td { border: 1px solid #000; padding: 1.8mm 2mm; text-align: left; }
   table.list th { background: #eee; font-size: 9.5pt; text-transform: uppercase; letter-spacing: .3px; }
-  table.list td.num { width: 16mm; text-align: center; }
+  table.list td.num { width: 12mm; text-align: center; }
+  table.list td.val, table.list th.val { width: 28mm; text-align: right; }
+  table.list td.grp, table.list th.grp { width: 20mm; text-align: center; }
   .mono { font-family: "Courier New", monospace; }
   .total { margin-top: 4mm; font-size: 10.5pt; font-weight: bold; }
   .note { margin-top: 4mm; font-size: 9pt; color: #333; line-height: 1.45; }
@@ -54,16 +60,44 @@ const STYLES = `
   .sign .line { border-top: 1px solid #000; width: 80mm; padding-top: 1.5mm; }
 `;
 
+const fmtBrlLocal = (n: number) =>
+  `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Grupo pelo valor unitário: até 350 → 1, até 650 → 2, acima → 3. Sem valor → 1 */
+export function groupForValue(v: number | null | undefined): 1 | 2 | 3 {
+  if (v == null || !Number.isFinite(v) || v <= 0) return 1;
+  if (v <= 350) return 1;
+  if (v <= 650) return 2;
+  return 3;
+}
+
 function reportHtml(d: SeparatedPiecesReportData): string {
-  const rows = d.pieces
+  const enriched = d.pieces.map(p => ({
+    ...p,
+    group: p.group ?? groupForValue(p.unitValue),
+  }));
+
+  const rows = enriched
     .map(
       (p, i) => `<tr>
         <td class="num">${esc(p.seq ?? i + 1)}</td>
         <td class="mono">${esc(p.code || "—")}</td>
         <td class="mono">${esc(p.reference || "—")}</td>
+        <td class="val">${p.unitValue != null && p.unitValue > 0 ? esc(fmtBrlLocal(p.unitValue)) : ""}</td>
+        <td class="grp">${esc(p.group)}</td>
       </tr>`,
     )
     .join("");
+
+  const groupSummary = ([1, 2, 3] as const)
+    .map(g => {
+      const list = enriched.filter(p => p.group === g);
+      if (list.length === 0) return null;
+      const sum = list.reduce((s, p) => s + (p.unitValue && p.unitValue > 0 ? p.unitValue : 0), 0);
+      return `Grupo ${g}: ${list.length} un — ${fmtBrlLocal(sum)}`;
+    })
+    .filter(Boolean)
+    .join(" &nbsp;·&nbsp; ");
 
   const info = [
     ["OP", esc(d.purchaseNumber)],
@@ -84,10 +118,11 @@ function reportHtml(d: SeparatedPiecesReportData): string {
     <p class="sub">Relação das peças que não seguem o fluxo de sacola nesta ordem de produção.</p>
     <table class="info">${info}</table>
     <table class="list">
-      <thead><tr><th>Nº</th><th>Código</th><th>Referência</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="3">Nenhuma peça separada.</td></tr>`}</tbody>
+      <thead><tr><th>Nº</th><th>Código</th><th>Referência</th><th class="val">Valor da peça</th><th class="grp">Grupo</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="5">Nenhuma peça separada.</td></tr>`}</tbody>
     </table>
     <p class="total">Total de peças separadas: ${d.pieces.length}</p>
+    ${groupSummary ? `<p class="note"><strong>Resumo por grupo:</strong> ${groupSummary}</p>` : ""}
     <p class="note">
       As peças acima estão registradas nesta compra apenas para histórico e rastreabilidade, aguardando decisão
       do fornecedor (retorno das peças ou compra como material cerâmico). Não integram a valorização desta OP.

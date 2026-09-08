@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow, getExcludedItems } from "@/lib/purchases";
 import { getSupplierBranch } from "@/lib/suppliers";
 import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
+import { computeSeparatedPieceValues } from "@/lib/separated-pieces-value";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";
@@ -160,6 +161,14 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
   const handleSeparatedReport = async () => {
     const branch = await getSupplierBranch(purchase.supplierId);
     try {
+      const values = await computeSeparatedPieceValues(
+        purchase.supplierId,
+        separatedItems.map(i => ({
+          catalogPartId: i.catalogPartId,
+          quantity: i.quantity,
+          weight: i.weight,
+        })),
+      );
       await printSeparatedPiecesReport({
         purchaseNumber: purchase.purchaseNumber,
         date: purchase.date,
@@ -171,6 +180,7 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
           seq: i.seq ?? idx + 1,
           code: i.catalogPartCode || i.partCode || "—",
           reference: i.catalogPartRef || i.partReference || null,
+          unitValue: values[idx]?.unitValue ?? null,
         })),
       });
     } catch {
