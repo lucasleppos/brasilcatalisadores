@@ -118,10 +118,11 @@ function reportHtml(d: SeparatedPiecesReportData): string {
     <p class="sub">Relação das peças que não seguem o fluxo de sacola nesta ordem de produção.</p>
     <table class="info">${info}</table>
     <table class="list">
-      <thead><tr><th>Nº</th><th>Código</th><th>Referência</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="3">Nenhuma peça separada.</td></tr>`}</tbody>
+      <thead><tr><th>Nº</th><th>Código</th><th>Referência</th><th class="val">Valor da peça</th><th class="grp">Grupo</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="5">Nenhuma peça separada.</td></tr>`}</tbody>
     </table>
     <p class="total">Total de peças separadas: ${d.pieces.length}</p>
+    ${groupSummary ? `<p class="note"><strong>Resumo por grupo:</strong> ${groupSummary}</p>` : ""}
     <p class="note">
       As peças acima estão registradas nesta compra apenas para histórico e rastreabilidade, aguardando decisão
       do fornecedor (retorno das peças ou compra como material cerâmico). Não integram a valorização desta OP.
