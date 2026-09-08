@@ -160,6 +160,14 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
   const handleSeparatedReport = async () => {
     const branch = await getSupplierBranch(purchase.supplierId);
     try {
+      const values = await computeSeparatedPieceValues(
+        purchase.supplierId,
+        separatedItems.map(i => ({
+          catalogPartId: i.catalogPartId,
+          quantity: i.quantity,
+          weight: i.weight,
+        })),
+      );
       await printSeparatedPiecesReport({
         purchaseNumber: purchase.purchaseNumber,
         date: purchase.date,
@@ -171,6 +179,7 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
           seq: i.seq ?? idx + 1,
           code: i.catalogPartCode || i.partCode || "—",
           reference: i.catalogPartRef || i.partReference || null,
+          unitValue: values[idx]?.unitValue ?? null,
         })),
       });
     } catch {
