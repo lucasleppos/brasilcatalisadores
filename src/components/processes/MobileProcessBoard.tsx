@@ -56,10 +56,17 @@ export default function MobileProcessBoard() {
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [search, setSearch] = useState("");
+  const [materialFilter, setMaterialFilter] = useState<"all" | "ceramico" | "pecas" | "sacola">("all");
   const [localGroup, setLocalGroup] = useState<string>("");
   const activeGroup = stageTabsInBar ? navStage : localGroup;
   const setActiveGroup = stageTabsInBar ? setNavStage : setLocalGroup;
   const [selected, setSelected] = useState<Purchase | null>(null);
+
+  const matchesMaterialFilter = (p: Purchase) => {
+    if (materialFilter === "all") return true;
+    if (materialFilter === "sacola") return isSacolaFlow(p);
+    return p.materialFlow === materialFilter;
+  };
 
   useEffect(() => {
     setOwnsHeader(true);
@@ -79,8 +86,8 @@ export default function MobileProcessBoard() {
   }, [authLoading, session?.user?.id]);
 
   const boardPurchases = useMemo(
-    () => purchases.filter((p) => !isInParallelPhase(p)),
-    [purchases]
+    () => purchases.filter((p) => !isInParallelPhase(p) && matchesMaterialFilter(p)),
+    [purchases, materialFilter]
   );
 
   const visibleGroups = useMemo(() => {
@@ -173,6 +180,31 @@ export default function MobileProcessBoard() {
             placeholder="Buscar OP ou fornecedor…"
             className="pl-9 h-10 rounded-full bg-muted/60 border-0"
           />
+        </div>
+        <div className="flex gap-2 overflow-x-auto mt-3 -mx-1 px-1 pb-0.5">
+          {[
+            { value: "all" as const, label: "Todas" },
+            { value: "ceramico" as const, label: "Cerâmico" },
+            { value: "pecas" as const, label: "Peças" },
+            { value: "sacola" as const, label: "Peça em Sacola" },
+          ].map((opt) => {
+            const isActive = materialFilter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMaterialFilter(opt.value)}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-xs border transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border"
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
         {!singleGroup && !stageTabsInBar && (
           <div className="flex gap-2 overflow-x-auto mt-3 -mx-1 px-1 pb-0.5">
