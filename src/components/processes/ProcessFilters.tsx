@@ -11,14 +11,24 @@ import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 
 export type DateFilterPreset = "week" | "month" | "all";
+export type MaterialFilter = "all" | "ceramico" | "pecas" | "sacola";
+
+const MATERIAL_OPTIONS: { value: MaterialFilter; label: string }[] = [
+  { value: "all", label: "Todos os tipos" },
+  { value: "ceramico", label: "Cerâmico" },
+  { value: "pecas", label: "Peças" },
+  { value: "sacola", label: "Peça em Sacola" },
+];
 
 interface ProcessFiltersProps {
   suppliers: string[];
   buyers: string[];
   supplierFilter: string;
   buyerFilter: string;
+  materialFilter: MaterialFilter;
   onSupplierChange: (v: string) => void;
   onBuyerChange: (v: string) => void;
+  onMaterialChange: (v: MaterialFilter) => void;
   pendingCount: number;
   datePreset: DateFilterPreset;
   onDatePresetChange: (v: DateFilterPreset) => void;
@@ -27,8 +37,8 @@ interface ProcessFiltersProps {
 }
 
 export default function ProcessFilters({
-  suppliers, buyers, supplierFilter, buyerFilter,
-  onSupplierChange, onBuyerChange, pendingCount,
+  suppliers, buyers, supplierFilter, buyerFilter, materialFilter,
+  onSupplierChange, onBuyerChange, onMaterialChange, pendingCount,
   datePreset, onDatePresetChange, customRange, onCustomRangeChange,
 }: ProcessFiltersProps) {
   const isCustom = datePreset === "all" && customRange?.from;
