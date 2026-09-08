@@ -10,6 +10,10 @@ export interface SeparatedPieceRow {
   seq?: number;
   code: string;
   reference?: string | null;
+  /** Valor unitário calculado pelo catálogo (BRL); null = sem dados suficientes */
+  unitValue?: number | null;
+  /** Grupo 1/2/3 pelo valor; quando omitido é derivado do valor */
+  group?: 1 | 2 | 3 | null;
 }
 
 export interface SeparatedPiecesReportData {
