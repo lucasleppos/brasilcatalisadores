@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow, getExcludedItems } from "@/lib/purchases";
 import { getSupplierBranch } from "@/lib/suppliers";
 import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
+import { computeSeparatedPieceValues } from "@/lib/separated-pieces-value";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
 import { toast } from "sonner";

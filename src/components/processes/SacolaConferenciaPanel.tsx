@@ -19,6 +19,7 @@ import { printLabelSheet, LabelData } from "./CeramicoLabelPrint";
 import { getSupplierBranch } from "@/lib/suppliers";
 import { buildLabelCodeDisplay } from "@/lib/labels";
 import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
+import { computeSeparatedPieceValues } from "@/lib/separated-pieces-value";
 
 const LABEL_COPIES = 3;
 
