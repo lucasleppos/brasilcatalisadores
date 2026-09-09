@@ -395,10 +395,10 @@ Deno.serve(async (req) => {
           }
           const cp = item.catalog_part_id ? catalogPartsMap[item.catalog_part_id] : null;
           const label = materialLabel(item, i);
-          const weight = item.weight ? `${fmt(Number(item.weight))} kg` : "—";
           const lab = labMap[item.id] || { pt: 0, pd: 0, rh: 0 };
           const tv = Number(item.total_value) || 0;
-          const liquido = Math.max(0, Number(item.weight) - Number(item.weight_loss || 0));
+          const liquido = itemWeights(item).liquido;
+          const weight = liquido > 0 ? `${fmt(liquido)} kg` : "—";
           const valKg = tv > 0 && liquido > 0 ? fmtBrl(tv / liquido) : "—";
           const val = tv > 0 ? fmtBrl(tv) : "—";
 
