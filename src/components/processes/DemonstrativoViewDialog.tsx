@@ -340,7 +340,7 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
                         <tr key={it.id} className={i % 2 === 0 ? "bg-muted/30" : ""}>
                           <td className="p-1">{(it as { seq?: number | null }).seq ?? i + 1}</td>
                           <td className="p-1">{partLabel(it, i)}</td>
-                          <td className="p-1">{it.weight ? `${fmtNum(Number(it.weight), 4)} kg` : "—"}</td>
+                          <td className="p-1">{w > 0 ? `${fmtNum(w, 4)} kg` : "—"}</td>
                           <td className="p-1">{tv > 0 && w > 0 ? fmtBrl(tv / w) : "—"}</td>
                           <td className="p-1">{tv > 0 ? fmtBrl(tv) : "—"}</td>
                         </tr>
