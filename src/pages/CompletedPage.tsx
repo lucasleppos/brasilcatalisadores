@@ -31,6 +31,7 @@ export default function CompletedPage() {
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [bagAllocations, setBagAllocations] = useState<Record<string, BagAllocation[]>>({});
+  const [branchBySupplier, setBranchBySupplier] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
@@ -104,7 +105,21 @@ export default function CompletedPage() {
       });
       setBagAllocations(map);
     }
+
+    // Filial de cada fornecedor (conforme cadastro)
+    const supplierIds = [...new Set(completed.map(p => p.supplierId).filter(Boolean))] as string[];
+    if (supplierIds.length > 0) {
+      const { data: sups } = await supabase
+        .from("suppliers")
+        .select("id, branch")
+        .in("id", supplierIds);
+      const bmap: Record<string, string> = {};
+      (sups || []).forEach((s: any) => { bmap[s.id] = s.branch || ""; });
+      setBranchBySupplier(bmap);
+    }
   };
+
+  const branchOf = (p: Purchase) => branchBySupplier[p.supplierId || ""] || "—";
 
   const suppliers = useMemo(() => [...new Set(purchases.map(p => p.supplierName))], [purchases]);
 
@@ -124,6 +139,7 @@ export default function CompletedPage() {
           search={search}
           onSearch={setSearch}
           onSelect={setSelectedPurchase}
+          branchOf={branchOf}
         />
         <PurchaseDetail purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} />
       </>
@@ -166,6 +182,7 @@ export default function CompletedPage() {
                 <TableHead>Nº Pedido</TableHead>
                 <TableHead>Boleto Syge</TableHead>
                 <TableHead>Fornecedor</TableHead>
+                <TableHead>Filial</TableHead>
                 <TableHead>Comprador</TableHead>
                 <TableHead>Peso/Qtd</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -177,7 +194,7 @@ export default function CompletedPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-sm text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhum material concluído encontrado.
                   </TableCell>
                 </TableRow>
@@ -202,6 +219,7 @@ export default function CompletedPage() {
                         <TableCell className="text-sm font-mono">{p.purchaseNumber}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{p.erpNumber || "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{p.supplierName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{branchOf(p)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{p.buyer || "—"}</TableCell>
                         <TableCell className="text-sm">{getItemLabel(p)}</TableCell>
                         <TableCell className="text-sm text-right font-semibold">{fmtBrl(p.totalBrl)}</TableCell>
@@ -232,7 +250,7 @@ export default function CompletedPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={10} className="p-3 pt-0">
+                          <TableCell colSpan={11} className="p-3 pt-0">
                             <CompletedDetailRow purchase={p} />
                           </TableCell>
                         </TableRow>

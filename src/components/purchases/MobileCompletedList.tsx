@@ -12,9 +12,10 @@ interface Props {
   search: string;
   onSearch: (v: string) => void;
   onSelect: (p: Purchase) => void;
+  branchOf?: (p: Purchase) => string;
 }
 
-export default function MobileCompletedList({ purchases, bagsByPurchase, search, onSearch, onSelect }: Props) {
+export default function MobileCompletedList({ purchases, bagsByPurchase, search, onSearch, onSelect, branchOf }: Props) {
   return (
     <div className="pb-20">
       <MobileSearchBar value={search} onChange={onSearch} placeholder="Fornecedor, nº pedido, boleto…" />
@@ -35,7 +36,9 @@ export default function MobileCompletedList({ purchases, bagsByPurchase, search,
                 badge={flow.label}
                 badgeClassName={flow.className}
                 title={p.supplierName}
-                subtitle={`${p.purchaseNumber} · ${stageOfPurchase(p)}`}
+                subtitle={`${p.purchaseNumber} · ${stageOfPurchase(p)}${
+                  branchOf && branchOf(p) !== "—" ? ` · ${branchOf(p)}` : ""
+                }`}
                 detail={`${getItemLabel(p)} · ${fmtBrl(p.totalBrl)}${
                   bags.length ? ` · Bag ${bags.map((b) => b.bagNumber).join(", ")}` : " · Aguardando bag"
                 }`}
