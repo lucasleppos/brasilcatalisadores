@@ -8,6 +8,7 @@ import {
   isInParallelPhase,
   isSacolaFlow,
 } from "@/lib/purchases";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
 import { usePermissions } from "@/lib/permissions";
@@ -55,6 +56,7 @@ export default function MobileProcessBoard() {
   const canAdvance = canDo("processos", "advance_stage");
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [branchBySupplier, setBranchBySupplier] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [materialFilter, setMaterialFilter] = useState<"all" | "ceramico" | "pecas" | "sacola">("all");
   const [localGroup, setLocalGroup] = useState<string>("");
@@ -76,7 +78,15 @@ export default function MobileProcessBoard() {
   const reload = async () => {
     if (authLoading || !session) return;
     try {
-      setPurchases(scopeByBuyer(await loadPurchases()));
+      const list = scopeByBuyer(await loadPurchases());
+      setPurchases(list);
+      const supplierIds = [...new Set(list.map((p) => p.supplierId).filter(Boolean))] as string[];
+      if (supplierIds.length > 0) {
+        const { data: sups } = await supabase.from("suppliers").select("id, branch").in("id", supplierIds);
+        const map: Record<string, string> = {};
+        (sups || []).forEach((s: any) => { map[s.id] = s.branch || ""; });
+        setBranchBySupplier(map);
+      }
     } catch (e) {
       console.error("Erro ao carregar processos:", e);
     }
@@ -249,7 +259,9 @@ export default function MobileProcessBoard() {
                   badge={flow.label}
                   badgeClassName={flow.className}
                   title={p.supplierName}
-                  subtitle={`${p.purchaseNumber} · ${flow.name}`}
+                  subtitle={`${p.purchaseNumber} · ${flow.name}${
+                    branchBySupplier[p.supplierId || ""] ? ` · ${branchBySupplier[p.supplierId || ""]}` : ""
+                  }`}
                   detail={`${fmtNum(purchaseWeight(p), 4)} kg${
                     p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""
                   }`}
