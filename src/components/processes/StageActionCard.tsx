@@ -30,6 +30,7 @@ import SacolaPricingPanel from "./SacolaPricingPanel";
 import CeramicoConferenciaPanel from "./CeramicoConferenciaPanel";
 import CeramicoTrituracaoPanel from "./CeramicoTrituracaoPanel";
 import PecasLossSummary from "./PecasLossSummary";
+import StageNoteField from "./StageNoteField";
 
 import CeramicoLabPanel from "./CeramicoLabPanel";
 import CeramicoPricingPanel from "./CeramicoPricingPanel";
@@ -404,6 +405,10 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
               )}
             </span>
           </div>
+
+          {isDemonstrative && (
+            <StageNoteField purchaseId={purchase.id} stage={purchase.status} disabled />
+          )}
 
           <div className="pt-1 border-t border-border/40 space-y-1">
             <p className="text-[10px] text-muted-foreground">Etapa atual</p>
