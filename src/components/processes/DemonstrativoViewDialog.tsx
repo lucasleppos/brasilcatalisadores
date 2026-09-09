@@ -217,7 +217,8 @@ export default function DemonstrativoViewDialog({ open, onOpenChange, purchase }
       })
     : [];
   const groupAvgRows = [...matchedGroupRows, ...orphanGroupRows];
-  const hasAnyLab = isCeramico && (groupAvgRows.length > 0 || !!generalAvg);
+  // Skip the extra table when Pt/Pd/Rh already appear per group in the calculated-price block
+  const hasAnyLab = isCeramico && calcItems.length === 0 && (groupAvgRows.length > 0 || !!generalAvg);
   // Peça em Sacola: lab analysis per piece shown inline in the pieces table
   // Só peças precificadas pela calculadora exibem a análise
   const labVisible = (it: RawItem) => it.pricing_source === "calculadora" && !!labMap[it.id];
