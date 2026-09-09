@@ -352,18 +352,21 @@ Deno.serve(async (req) => {
 
         // Fetch lab results for these items
         const calcItemIds = calcItems.map(c => c.id);
-        let labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
-        if (calcItemIds.length > 0) {
-          const { data: labRes } = await sb
-            .from("lab_results")
-            .select("purchase_item_id, pt_ppm, pd_ppm, rh_ppm")
-            .eq("purchase_id", purchaseId)
-            .in("purchase_item_id", calcItemIds);
-          (labRes || []).forEach((lr: any) => {
-            if (lr.purchase_item_id) {
-              labMap[lr.purchase_item_id] = { pt: Number(lr.pt_ppm), pd: Number(lr.pd_ppm), rh: Number(lr.rh_ppm) };
-            }
-          });
+        // Average across ALL versions per item (same rule as the on-screen preview)
+        const calcIdSet = new Set(calcItemIds);
+        const calcAgg: Record<string, { pt: number; pd: number; rh: number; n: number }> = {};
+        for (const lr of allLabRows) {
+          if (!lr.purchase_item_id || !calcIdSet.has(lr.purchase_item_id)) continue;
+          const a = calcAgg[lr.purchase_item_id] || { pt: 0, pd: 0, rh: 0, n: 0 };
+          a.pt += Number(lr.pt_ppm) || 0;
+          a.pd += Number(lr.pd_ppm) || 0;
+          a.rh += Number(lr.rh_ppm) || 0;
+          a.n += 1;
+          calcAgg[lr.purchase_item_id] = a;
+        }
+        const labMap: Record<string, { pt: number; pd: number; rh: number }> = {};
+        for (const [id, a] of Object.entries(calcAgg)) {
+          if (a.n > 0) labMap[id] = { pt: a.pt / a.n, pd: a.pd / a.n, rh: a.rh / a.n };
         }
 
         // Table header
