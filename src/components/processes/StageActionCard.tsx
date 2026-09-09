@@ -539,6 +539,7 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
         ) : isDemonstrative ? (
           /* Demonstrative: approve, contest, or generate PDF */
           <div className="space-y-2 pt-1 border-t border-border/40">
+            <StageNoteField purchaseId={purchase.id} stage={purchase.status} />
             {missingErp && ErpInlineInput}
             {purchase.materialFlow === "ceramico" && (
               <>
