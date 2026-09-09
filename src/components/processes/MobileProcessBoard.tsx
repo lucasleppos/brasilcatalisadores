@@ -259,7 +259,9 @@ export default function MobileProcessBoard() {
                   badge={flow.label}
                   badgeClassName={flow.className}
                   title={p.supplierName}
-                  subtitle={`${p.purchaseNumber} · ${flow.name}`}
+                  subtitle={`${p.purchaseNumber} · ${flow.name}${
+                    branchBySupplier[p.supplierId || ""] ? ` · ${branchBySupplier[p.supplierId || ""]}` : ""
+                  }`}
                   detail={`${fmtNum(purchaseWeight(p), 4)} kg${
                     p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""
                   }`}
