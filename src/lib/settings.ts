@@ -44,6 +44,7 @@ export const defaultSettings: Settings = {
   recoveryPd: 97.5,
   recoveryRh: 92.5,
   moistureDiscount: 1,
+  allocationThresholdPct: 143,
 };
 
 function rowToSettings(r: any): Settings {
@@ -67,6 +68,7 @@ function rowToSettings(r: any): Settings {
     recoveryPd: Number(r.recovery_pd),
     recoveryRh: Number(r.recovery_rh),
     moistureDiscount: Number(r.moisture_discount),
+    allocationThresholdPct: r.allocation_threshold_pct != null ? Number(r.allocation_threshold_pct) : 143,
   };
 }
 
