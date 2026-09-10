@@ -51,6 +51,11 @@ export const defaultSettings: Settings = {
   recoveryRh: 92.5,
   moistureDiscount: 1,
   allocationThresholdPct: 143,
+  referenceWeightKg: 1,
+  referencePtPpm: 200,
+  referencePdPpm: 1180,
+  referenceRhPpm: 180,
+  referenceMarginPct: 15,
 };
 
 function rowToSettings(r: any): Settings {
