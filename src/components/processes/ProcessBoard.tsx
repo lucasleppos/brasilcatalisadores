@@ -264,6 +264,13 @@ export default function ProcessBoard() {
                     <p className="text-muted-foreground text-sm">Nenhum pedido neste processo.</p>
                   </CardContent>
                 </Card>
+              ) : viewMode === "list" ? (
+                <ProcessListView
+                  purchases={tasksByGroup[group.label] || []}
+                  stageLabel={group.label}
+                  readOnly={!canAdvance}
+                  onCompleted={reload}
+                />
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {(tasksByGroup[group.label] || []).map((purchase) => (
