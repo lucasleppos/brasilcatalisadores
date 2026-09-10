@@ -878,6 +878,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <span className="text-muted-foreground text-xs">Peso</span>
                     <br />
                     <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                    <span className="text-xs text-muted-foreground ml-2">· {pctOf(m)}</span>
                   </span>
                   <Badge className="bg-emerald-100 text-emerald-800 shrink-0">
                     {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
@@ -964,6 +965,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <span className="text-muted-foreground text-xs">Peso</span>
                     <br />
                     <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                    <span className="text-xs text-muted-foreground ml-2">· {pctOf(m)}</span>
                   </span>
                   <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
                     {m.status}
