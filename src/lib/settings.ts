@@ -125,6 +125,11 @@ export async function saveSettings(settings: Settings): Promise<void> {
       recovery_rh: settings.recoveryRh,
       moisture_discount: settings.moistureDiscount,
       allocation_threshold_pct: settings.allocationThresholdPct,
+      reference_weight_kg: settings.referenceWeightKg,
+      reference_pt_ppm: settings.referencePtPpm,
+      reference_pd_ppm: settings.referencePdPpm,
+      reference_rh_ppm: settings.referenceRhPpm,
+      reference_margin_pct: settings.referenceMarginPct,
     });
     return;
   }
