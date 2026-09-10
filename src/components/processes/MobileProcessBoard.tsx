@@ -232,6 +232,9 @@ export default function MobileProcessBoard() {
         ) : (
           currentList.map((p, idx) => {
             const flow = flowBadge(p);
+            const qty = p.items.reduce((s, i) => s + (i.quantity || 1), 0);
+            const days = daysSince(lastChangeDate(p));
+            const noErp = !p.erpNumber?.trim();
             return (
               <div key={p.id}>
                 {idx > 0 && <MobileListDivider />}
@@ -239,14 +242,28 @@ export default function MobileProcessBoard() {
                   badge={flow.label}
                   badgeClassName={flow.className}
                   title={p.supplierName}
-                  subtitle={`${p.purchaseNumber} · ${flow.name}${
-                    branchBySupplier[p.supplierId || ""] ? ` · ${branchBySupplier[p.supplierId || ""]}` : ""
-                  }`}
-                  detail={`${fmtNum(purchaseWeight(p), 4)} kg${
-                    p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""
-                  }`}
-                  alert={!p.erpNumber?.trim()}
+                  subtitle={[
+                    p.purchaseNumber,
+                    flow.name,
+                    branchBySupplier[p.supplierId || ""],
+                    p.buyer,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  detail={
+                    <>
+                      {p.materialFlow !== "ceramico" && qty > 0 && <>{qty} pç · </>}
+                      {fmtNum(purchaseWeight(p), 4)} kg ·{" "}
+                      {noErp ? (
+                        <span className="text-destructive font-medium">Sem boleto</span>
+                      ) : (
+                        <>Boleto {p.erpNumber}</>
+                      )}
+                    </>
+                  }
+                  alert={noErp}
                   stamp={timeSince(lastChangeDate(p))}
+                  stampClassName={days > 7 ? "text-destructive font-semibold" : undefined}
                   onClick={() => setSelected(p)}
                 />
               </div>
