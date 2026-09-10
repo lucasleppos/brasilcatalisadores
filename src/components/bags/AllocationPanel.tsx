@@ -112,6 +112,23 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    loadSettings().then(setSettings);
+  }, []);
+
+  const referencePerKg = useMemo(
+    () => (settings ? referenceValuePerKg(settings) : null),
+    [settings]
+  );
+
+  /** Índice (%) do material em relação à referência — só informativo */
+  const pctOf = (m: { ptPpm: number; pdPpm: number; rhPpm: number }): string => {
+    if (!settings || !referencePerKg) return "—";
+    const pct = allocationPercent(m.ptPpm, m.pdPpm, m.rhPpm, settings, referencePerKg);
+    return pct == null ? "—" : `${fmtNum(pct, 0)}%`;
+  };
 
   // Filter state
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
