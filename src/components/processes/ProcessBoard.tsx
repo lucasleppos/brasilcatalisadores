@@ -13,6 +13,9 @@ import { DateRange } from "react-day-picker";
 import ProcessKPIs from "./ProcessKPIs";
 import ProcessFilters, { DateFilterPreset } from "./ProcessFilters";
 import StageActionCard from "./StageActionCard";
+import ProcessListView from "./ProcessListView";
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -96,6 +99,13 @@ export default function ProcessBoard() {
   const [materialFilter, setMaterialFilter] = useState<"all" | "ceramico" | "pecas" | "sacola">("all");
   const [datePreset, setDatePreset] = useState<DateFilterPreset>("month");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<"cards" | "list">(
+    () => (localStorage.getItem("processos_view_mode") as "cards" | "list") || "cards"
+  );
+  const changeViewMode = (mode: "cards" | "list") => {
+    setViewMode(mode);
+    localStorage.setItem("processos_view_mode", mode);
+  };
 
   const reload = async () => {
     if (authLoading || !session) return;
