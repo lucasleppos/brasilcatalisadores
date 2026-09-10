@@ -108,6 +108,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
       recovery_pd: settings.recoveryPd,
       recovery_rh: settings.recoveryRh,
       moisture_discount: settings.moistureDiscount,
+      allocation_threshold_pct: settings.allocationThresholdPct,
     });
     return;
   }
@@ -134,6 +135,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
       recovery_pd: settings.recoveryPd,
       recovery_rh: settings.recoveryRh,
       moisture_discount: settings.moistureDiscount,
+      allocation_threshold_pct: settings.allocationThresholdPct,
       updated_at: new Date().toISOString(),
     })
     .eq("id", existing.id);
