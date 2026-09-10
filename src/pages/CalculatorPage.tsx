@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { loadSettings } from "@/lib/settings";
+import { referenceValuePerKg } from "@/lib/allocation-index";
 import {
   calculate,
   CalculatorInput,
@@ -191,6 +192,23 @@ export default function CalculatorPage() {
           </Button>
         </div>
       </div>
+
+      {/* Reference value (informativo) */}
+      {settings && (
+        <Card className="border-primary/20 bg-muted/40">
+          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium">Valor de referência (100%)</p>
+              <p className="text-xs text-muted-foreground">
+                1 kg — Pt 200 / Pd 1.180 / Rh 180 ppm — 15% · atualiza com as cotações
+              </p>
+            </div>
+            <p className="text-2xl font-display font-bold text-primary">
+              {fmtBrl(referenceValuePerKg(settings))}<span className="text-sm font-normal text-muted-foreground">/kg</span>
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* History panel */}
       {showHistory && (

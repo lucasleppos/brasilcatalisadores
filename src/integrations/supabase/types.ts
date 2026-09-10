@@ -882,6 +882,7 @@ export type Database = {
       }
       settings: {
         Row: {
+          allocation_threshold_pct: number
           id: string
           lease_base: number
           lease_days: number
@@ -905,6 +906,7 @@ export type Database = {
           usd_to_brl: number
         }
         Insert: {
+          allocation_threshold_pct?: number
           id?: string
           lease_base?: number
           lease_days?: number
@@ -928,6 +930,7 @@ export type Database = {
           usd_to_brl?: number
         }
         Update: {
+          allocation_threshold_pct?: number
           id?: string
           lease_base?: number
           lease_days?: number

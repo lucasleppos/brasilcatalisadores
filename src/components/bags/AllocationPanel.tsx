@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,8 @@ import { syncCeramicoAllocation, getRealWeightFractionsByPurchase } from "@/lib/
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Settings, loadSettings } from "@/lib/settings";
+import { allocationPercent, referenceValuePerKg } from "@/lib/allocation-index";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -43,6 +45,9 @@ interface InProcessMaterial {
   weight: number;
   value: number;
   status: string;
+  ptPpm: number;
+  pdPpm: number;
+  rhPpm: number;
 }
 
 interface AllocatedMaterial {
@@ -54,6 +59,9 @@ interface AllocatedMaterial {
   weight: number;
   paidValue: number;
   itemType: string;
+  ptPpm: number;
+  pdPpm: number;
+  rhPpm: number;
   bagId: string;
   bagNumber: string;
   bagLabel: string;
@@ -104,6 +112,23 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   const [allocatedMaterials, setAllocatedMaterials] = useState<AllocatedMaterial[]>([]);
   const [inProcessMaterials, setInProcessMaterials] = useState<InProcessMaterial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    loadSettings().then(setSettings);
+  }, []);
+
+  const referencePerKg = useMemo(
+    () => (settings ? referenceValuePerKg(settings) : null),
+    [settings]
+  );
+
+  /** Índice (%) do material em relação à referência — só informativo */
+  const pctOf = (m: { ptPpm: number; pdPpm: number; rhPpm: number }): string => {
+    if (!settings || !referencePerKg) return "—";
+    const pct = allocationPercent(m.ptPpm, m.pdPpm, m.rhPpm, settings, referencePerKg);
+    return pct == null ? "—" : `${fmtNum(pct, 0)}%`;
+  };
 
   // Filter state
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
@@ -144,7 +169,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const { data: bagItems } = await supabase
       .from("bag_items")
-      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name")
+      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
       .in("purchase_id", purchaseIds);
 
     if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
@@ -173,6 +198,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         weight: Number(bi.weight) || 0,
         paidValue: Number(bi.paid_value) || 0,
         itemType: item?.item_type || "—",
+        ptPpm: Number(bi.estimated_pt_ppm) || 0,
+        pdPpm: Number(bi.estimated_pd_ppm) || 0,
+        rhPpm: Number(bi.estimated_rh_ppm) || 0,
         bagId: bi.bag_id,
         bagNumber: bag?.bagNumber || "—",
         bagLabel: bag?.bagLabel || "",
@@ -426,7 +454,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const purchase = purchases.find(p => p.id === item.purchase_id) as any;
       if (!purchase) return;
       const calcResult = item.calc_result as any;
+      const calcInput = item.calc_input as any;
       result.push({
+        ptPpm: Number(calcInput?.ptPpm) || 0,
+        pdPpm: Number(calcInput?.pdPpm) || 0,
+        rhPpm: Number(calcInput?.rhPpm) || 0,
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
@@ -699,6 +731,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           <br />
                           <span className="font-medium">{fmtNum(m.rhPpm, 0)}</span>
                         </span>
+                        <span>
+                          <span className="text-muted-foreground text-xs">%</span>
+                          <br />
+                          <span className="font-medium">{pctOf(m)}</span>
+                        </span>
                       </div>
                       {m.fraction ? (
                         <Badge variant="secondary" className="shrink-0">{m.fraction === "flex" ? "Flex" : "Carbono"}</Badge>
@@ -741,6 +778,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <TableHead className="text-right">Pt</TableHead>
                       <TableHead className="text-right">Pd</TableHead>
                       <TableHead className="text-right">Rh</TableHead>
+                      <TableHead className="text-right">%</TableHead>
                       <TableHead className="text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -790,6 +828,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
                         <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
                         <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
+                        <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" onClick={() => handleAllocateClick([m])}>
                             <ArrowRight className="h-4 w-4 mr-1" /> Alocar
@@ -839,6 +878,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <span className="text-muted-foreground text-xs">Peso</span>
                     <br />
                     <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                    <span className="text-xs text-muted-foreground ml-2">· {pctOf(m)}</span>
                   </span>
                   <Badge className="bg-emerald-100 text-emerald-800 shrink-0">
                     {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
@@ -858,6 +898,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
+                  <TableHead className="text-right">%</TableHead>
                   <TableHead>Bag</TableHead>
                 </TableRow>
               </TableHeader>
@@ -876,6 +917,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.paidValue, 2)}
                     </TableCell>
+                    <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                     <TableCell>
                       <Badge className="bg-emerald-100 text-emerald-800">
                         {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
@@ -923,6 +965,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <span className="text-muted-foreground text-xs">Peso</span>
                     <br />
                     <span className="font-medium">{fmtNum(m.weight, 1)} kg</span>
+                    <span className="text-xs text-muted-foreground ml-2">· {pctOf(m)}</span>
                   </span>
                   <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
                     {m.status}
@@ -942,6 +985,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
+                  <TableHead className="text-right">%</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -962,6 +1006,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.value, 2)}
                     </TableCell>
+                    <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
                         {m.status}

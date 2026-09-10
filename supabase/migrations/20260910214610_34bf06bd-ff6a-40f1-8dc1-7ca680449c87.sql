@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS allocation_threshold_pct numeric NOT NULL DEFAULT 143;

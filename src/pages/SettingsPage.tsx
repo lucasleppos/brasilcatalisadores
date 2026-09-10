@@ -124,6 +124,18 @@ export default function SettingsPage() {
             <Field label="Desconto de Umidade" value={s.moistureDiscount} onChange={(v) => update("moistureDiscount", v)} suffix="%" />
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Alocação de Bags</CardTitle></CardHeader>
+          <CardContent>
+            <Field
+              label="Limite de Referência"
+              value={s.allocationThresholdPct}
+              onChange={(v) => update("allocationThresholdPct", v)}
+              suffix="%"
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
