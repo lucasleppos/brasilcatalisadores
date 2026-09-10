@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect, SearchableOption } from "@/components/ui/searchable-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { useMemo } from "react";
 
 export type DateFilterPreset = "week" | "month" | "all";
 export type MaterialFilter = "all" | "ceramico" | "pecas" | "sacola";
@@ -43,6 +45,14 @@ export default function ProcessFilters({
 }: ProcessFiltersProps) {
   const isCustom = datePreset === "all" && customRange?.from;
 
+  const supplierOptions: SearchableOption[] = useMemo(
+    () => [
+      { value: "all", label: "Todos os fornecedores" },
+      ...suppliers.map((s) => ({ value: s, label: s })),
+    ],
+    [suppliers]
+  );
+
   const handlePreset = (v: string) => {
     if (v) {
       onDatePresetChange(v as DateFilterPreset);
@@ -59,13 +69,15 @@ export default function ProcessFilters({
 
   return (
     <div className="flex gap-3 flex-wrap items-center">
-      <Select value={supplierFilter} onValueChange={onSupplierChange}>
-        <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos os fornecedores</SelectItem>
-          {suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={supplierFilter}
+        onValueChange={onSupplierChange}
+        options={supplierOptions}
+        placeholder="Fornecedor"
+        searchPlaceholder="Buscar fornecedor..."
+        emptyText="Nenhum fornecedor encontrado"
+        className="w-48 h-8"
+      />
       <Select value={buyerFilter} onValueChange={onBuyerChange}>
         <SelectTrigger className="h-8 text-sm w-48"><SelectValue /></SelectTrigger>
         <SelectContent>
