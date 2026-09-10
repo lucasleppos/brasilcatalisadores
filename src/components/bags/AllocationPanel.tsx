@@ -152,7 +152,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const { data: bagItems } = await supabase
       .from("bag_items")
-      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name")
+      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
       .in("purchase_id", purchaseIds);
 
     if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
@@ -181,6 +181,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         weight: Number(bi.weight) || 0,
         paidValue: Number(bi.paid_value) || 0,
         itemType: item?.item_type || "—",
+        ptPpm: Number(bi.estimated_pt_ppm) || 0,
+        pdPpm: Number(bi.estimated_pd_ppm) || 0,
+        rhPpm: Number(bi.estimated_rh_ppm) || 0,
         bagId: bi.bag_id,
         bagNumber: bag?.bagNumber || "—",
         bagLabel: bag?.bagLabel || "",
