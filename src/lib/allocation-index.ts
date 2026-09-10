@@ -1,34 +1,52 @@
 import { calculate, CalculatorInput } from "./calculator";
 import { Settings } from "./settings";
 
-/** PPMs do material de referência usado como base 100% */
+/** Valores padrão do material de referência (usados quando não configurados) */
+export const REFERENCE_WEIGHT_KG = 1;
 export const REFERENCE_PT_PPM = 200;
 export const REFERENCE_PD_PPM = 1180;
 export const REFERENCE_RH_PPM = 180;
-/** Desconto aplicado na referência e no material comparado */
+/** Margem aplicada na referência e no material comparado */
 export const REFERENCE_DISCOUNT_PCT = 15;
 
+function refWeight(settings: Settings): number {
+  const w = Number(settings.referenceWeightKg);
+  return Number.isFinite(w) && w > 0 ? w : REFERENCE_WEIGHT_KG;
+}
+
+function refMargin(settings: Settings): number {
+  const m = Number(settings.referenceMarginPct);
+  return Number.isFinite(m) ? m : REFERENCE_DISCOUNT_PCT;
+}
+
 function valuePerKg(ptPpm: number, pdPpm: number, rhPpm: number, settings: Settings): number {
+  const weight = refWeight(settings);
   const input: CalculatorInput = {
-    grossWeight: 1,
+    grossWeight: weight,
     tare: 0,
     materialType: "comum",
     ptPpm,
     pdPpm,
     rhPpm,
-    clientDiscount: REFERENCE_DISCOUNT_PCT,
+    clientDiscount: refMargin(settings),
     entryType: "grupo",
     manualPrice: null,
     customPt: null,
     customPd: null,
     customRh: null,
   };
-  return calculate(input, settings).finalValueBrl;
+  const total = calculate(input, settings).finalValueBrl;
+  return total / weight;
 }
 
-/** Valor de 1 kg do material de referência (R$/kg), com as cotações vigentes */
+/** Valor por kg do material de referência (R$/kg), com as cotações vigentes */
 export function referenceValuePerKg(settings: Settings): number {
-  return valuePerKg(REFERENCE_PT_PPM, REFERENCE_PD_PPM, REFERENCE_RH_PPM, settings);
+  return valuePerKg(
+    Number(settings.referencePtPpm) || 0,
+    Number(settings.referencePdPpm) || 0,
+    Number(settings.referenceRhPpm) || 0,
+    settings
+  );
 }
 
 /** Valor de 1 kg do material analisado (R$/kg) */

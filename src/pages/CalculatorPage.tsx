@@ -200,7 +200,9 @@ export default function CalculatorPage() {
             <div>
               <p className="text-sm font-medium">Valor de referência (100%)</p>
               <p className="text-xs text-muted-foreground">
-                1 kg — Pt 200 / Pd 1.180 / Rh 180 ppm — 15% · atualiza com as cotações
+                {fmtNum(settings.referenceWeightKg, 0)} kg — Pt {fmtNum(settings.referencePtPpm, 0)} / Pd{" "}
+                {fmtNum(settings.referencePdPpm, 0)} / Rh {fmtNum(settings.referenceRhPpm, 0)} ppm —{" "}
+                {fmtNum(settings.referenceMarginPct, 0)}% · atualiza com as cotações
               </p>
             </div>
             <p className="text-2xl font-display font-bold text-primary">

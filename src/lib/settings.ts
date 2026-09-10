@@ -22,6 +22,12 @@ export interface Settings {
   moistureDiscount: number;
   /** Limite de referência (%) usado na tela de alocação de materiais */
   allocationThresholdPct: number;
+  /** Parâmetros do material de referência da alocação */
+  referenceWeightKg: number;
+  referencePtPpm: number;
+  referencePdPpm: number;
+  referenceRhPpm: number;
+  referenceMarginPct: number;
 }
 
 export const defaultSettings: Settings = {
@@ -45,6 +51,11 @@ export const defaultSettings: Settings = {
   recoveryRh: 92.5,
   moistureDiscount: 1,
   allocationThresholdPct: 143,
+  referenceWeightKg: 1,
+  referencePtPpm: 200,
+  referencePdPpm: 1180,
+  referenceRhPpm: 180,
+  referenceMarginPct: 15,
 };
 
 function rowToSettings(r: any): Settings {
@@ -69,6 +80,11 @@ function rowToSettings(r: any): Settings {
     recoveryRh: Number(r.recovery_rh),
     moistureDiscount: Number(r.moisture_discount),
     allocationThresholdPct: r.allocation_threshold_pct != null ? Number(r.allocation_threshold_pct) : 143,
+    referenceWeightKg: r.reference_weight_kg != null ? Number(r.reference_weight_kg) : 1,
+    referencePtPpm: r.reference_pt_ppm != null ? Number(r.reference_pt_ppm) : 200,
+    referencePdPpm: r.reference_pd_ppm != null ? Number(r.reference_pd_ppm) : 1180,
+    referenceRhPpm: r.reference_rh_ppm != null ? Number(r.reference_rh_ppm) : 180,
+    referenceMarginPct: r.reference_margin_pct != null ? Number(r.reference_margin_pct) : 15,
   };
 }
 
@@ -109,6 +125,11 @@ export async function saveSettings(settings: Settings): Promise<void> {
       recovery_rh: settings.recoveryRh,
       moisture_discount: settings.moistureDiscount,
       allocation_threshold_pct: settings.allocationThresholdPct,
+      reference_weight_kg: settings.referenceWeightKg,
+      reference_pt_ppm: settings.referencePtPpm,
+      reference_pd_ppm: settings.referencePdPpm,
+      reference_rh_ppm: settings.referenceRhPpm,
+      reference_margin_pct: settings.referenceMarginPct,
     });
     return;
   }
@@ -136,6 +157,11 @@ export async function saveSettings(settings: Settings): Promise<void> {
       recovery_rh: settings.recoveryRh,
       moisture_discount: settings.moistureDiscount,
       allocation_threshold_pct: settings.allocationThresholdPct,
+      reference_weight_kg: settings.referenceWeightKg,
+      reference_pt_ppm: settings.referencePtPpm,
+      reference_pd_ppm: settings.referencePdPpm,
+      reference_rh_ppm: settings.referenceRhPpm,
+      reference_margin_pct: settings.referenceMarginPct,
       updated_at: new Date().toISOString(),
     })
     .eq("id", existing.id);
