@@ -731,6 +731,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           <br />
                           <span className="font-medium">{fmtNum(m.rhPpm, 0)}</span>
                         </span>
+                        <span>
+                          <span className="text-muted-foreground text-xs">%</span>
+                          <br />
+                          <span className="font-medium">{pctOf(m)}</span>
+                        </span>
                       </div>
                       {m.fraction ? (
                         <Badge variant="secondary" className="shrink-0">{m.fraction === "flex" ? "Flex" : "Carbono"}</Badge>
@@ -773,6 +778,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                       <TableHead className="text-right">Pt</TableHead>
                       <TableHead className="text-right">Pd</TableHead>
                       <TableHead className="text-right">Rh</TableHead>
+                      <TableHead className="text-right">%</TableHead>
                       <TableHead className="text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -822,6 +828,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                         <TableCell className="text-right">{fmtNum(m.ptPpm, 0)}</TableCell>
                         <TableCell className="text-right">{fmtNum(m.pdPpm, 0)}</TableCell>
                         <TableCell className="text-right">{fmtNum(m.rhPpm, 0)}</TableCell>
+                        <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" onClick={() => handleAllocateClick([m])}>
                             <ArrowRight className="h-4 w-4 mr-1" /> Alocar
@@ -890,6 +897,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
+                  <TableHead className="text-right">%</TableHead>
                   <TableHead>Bag</TableHead>
                 </TableRow>
               </TableHeader>
@@ -908,6 +916,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.paidValue, 2)}
                     </TableCell>
+                    <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                     <TableCell>
                       <Badge className="bg-emerald-100 text-emerald-800">
                         {m.bagNumber}{m.bagLabel ? ` — ${m.bagLabel}` : ""}
@@ -974,6 +983,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Peso (kg)</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Valor (R$)</TableHead>
+                  <TableHead className="text-right">%</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -994,6 +1004,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                     <TableCell className="text-right hidden md:table-cell">
                       {fmtNum(m.value, 2)}
                     </TableCell>
+                    <TableCell className="text-right font-medium">{pctOf(m)}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[m.status] || "bg-muted text-muted-foreground"}>
                         {m.status}
