@@ -10,6 +10,7 @@ interface MobileListRowProps {
   detail?: React.ReactNode;
   /** Carimbo à direita (ex.: tempo na etapa) */
   stamp?: string;
+  stampClassName?: string;
   alert?: boolean;
   onClick?: () => void;
 }
@@ -21,6 +22,7 @@ export function MobileListRow({
   subtitle,
   detail,
   stamp,
+  stampClassName,
   alert,
   onClick,
 }: MobileListRowProps) {
@@ -43,7 +45,9 @@ export function MobileListRow({
       <span className="flex-1 min-w-0">
         <span className="flex items-baseline gap-2">
           <span className="flex-1 truncate font-medium text-[15px] leading-tight">{title}</span>
-          {stamp && <span className="shrink-0 text-xs text-muted-foreground">{stamp}</span>}
+          {stamp && (
+            <span className={cn("shrink-0 text-xs text-muted-foreground", stampClassName)}>{stamp}</span>
+          )}
         </span>
         {subtitle && (
           <span className="mt-0.5 flex items-center gap-1 text-[13px] text-muted-foreground truncate">
