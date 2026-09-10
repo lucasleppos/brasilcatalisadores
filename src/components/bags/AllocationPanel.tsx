@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,8 @@ import { syncCeramicoAllocation, getRealWeightFractionsByPurchase } from "@/lib/
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Settings, loadSettings } from "@/lib/settings";
+import { allocationPercent, referenceValuePerKg } from "@/lib/allocation-index";
 
 interface AvailableMaterial {
   purchaseId: string;
@@ -43,6 +45,9 @@ interface InProcessMaterial {
   weight: number;
   value: number;
   status: string;
+  ptPpm: number;
+  pdPpm: number;
+  rhPpm: number;
 }
 
 interface AllocatedMaterial {
