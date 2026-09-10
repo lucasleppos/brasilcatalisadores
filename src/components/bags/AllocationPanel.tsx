@@ -437,7 +437,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
       const purchase = purchases.find(p => p.id === item.purchase_id) as any;
       if (!purchase) return;
       const calcResult = item.calc_result as any;
+      const calcInput = item.calc_input as any;
       result.push({
+        ptPpm: Number(calcInput?.ptPpm) || 0,
+        pdPpm: Number(calcInput?.pdPpm) || 0,
+        rhPpm: Number(calcInput?.rhPpm) || 0,
         purchaseId: item.purchase_id,
         purchaseNumber: purchase.purchase_number || "—",
         supplierName: purchase.supplier_name,
