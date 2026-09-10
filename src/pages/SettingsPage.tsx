@@ -127,13 +127,18 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Alocação de Bags</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-3">
             <Field
               label="Limite de Referência"
               value={s.allocationThresholdPct}
               onChange={(v) => update("allocationThresholdPct", v)}
               suffix="%"
             />
+            <Field label="Peso de Referência" value={s.referenceWeightKg} onChange={(v) => update("referenceWeightKg", v)} suffix="kg" />
+            <Field label="Pt de Referência" value={s.referencePtPpm} onChange={(v) => update("referencePtPpm", v)} suffix="ppm" />
+            <Field label="Pd de Referência" value={s.referencePdPpm} onChange={(v) => update("referencePdPpm", v)} suffix="ppm" />
+            <Field label="Rh de Referência" value={s.referenceRhPpm} onChange={(v) => update("referenceRhPpm", v)} suffix="ppm" />
+            <Field label="Margem de Referência" value={s.referenceMarginPct} onChange={(v) => update("referenceMarginPct", v)} suffix="%" />
           </CardContent>
         </Card>
       </div>
