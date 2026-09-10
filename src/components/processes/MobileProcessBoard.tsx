@@ -20,33 +20,13 @@ import { MobileSheet } from "@/components/mobile/MobileSheet";
 import { useMobileNav } from "@/components/mobile/MobileLayout";
 import { cn } from "@/lib/utils";
 
-function timeSince(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return "agora";
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
-function flowBadge(p: Purchase): { label: string; className: string; name: string } {
-  if (p.materialFlow === "ceramico")
-    return { label: "CE", className: "bg-amber-100 text-amber-800", name: "Cerâmico" };
-  if (isSacolaFlow(p))
-    return { label: "SA", className: "bg-emerald-100 text-emerald-800", name: "Sacola" };
-  return { label: "PC", className: "bg-sky-100 text-sky-800", name: "Peças" };
-}
-
-function purchaseWeight(p: Purchase): number {
-  if (p.weightReal) return p.weightReal;
-  if (p.bulkWeight) return p.bulkWeight;
-  if (p.weightDeclared) return p.weightDeclared;
-  return p.items.reduce((s, i) => s + (i.weight || 0) * (i.quantity || 1), 0);
-}
-
-function lastChangeDate(p: Purchase): string {
-  const last = p.statusHistory[p.statusHistory.length - 1];
-  return last?.date || p.date;
-}
+import {
+  flowBadge,
+  purchaseWeight,
+  timeSince,
+  daysSince,
+  lastChangeDate,
+} from "./process-list-utils";
 
 export default function MobileProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
