@@ -22,6 +22,12 @@ export interface Settings {
   moistureDiscount: number;
   /** Limite de referência (%) usado na tela de alocação de materiais */
   allocationThresholdPct: number;
+  /** Parâmetros do material de referência da alocação */
+  referenceWeightKg: number;
+  referencePtPpm: number;
+  referencePdPpm: number;
+  referenceRhPpm: number;
+  referenceMarginPct: number;
 }
 
 export const defaultSettings: Settings = {
