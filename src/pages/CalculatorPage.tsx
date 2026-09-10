@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { loadSettings } from "@/lib/settings";
+import { referenceValuePerKg } from "@/lib/allocation-index";
 import {
   calculate,
   CalculatorInput,
