@@ -20,6 +20,8 @@ export interface Settings {
   recoveryPd: number;
   recoveryRh: number;
   moistureDiscount: number;
+  /** Limite de referência (%) usado na tela de alocação de materiais */
+  allocationThresholdPct: number;
 }
 
 export const defaultSettings: Settings = {
