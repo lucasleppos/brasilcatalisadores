@@ -1,38 +1,37 @@
-# Processos: visão em lista detalhada (opcional)
+# Processos: visão em lista (padrão do celular no computador)
 
 ## Objetivo
-Ter uma segunda forma de ver o módulo Processos: uma lista densa, em linhas, que mostra rapidamente tudo o que está em aberto em cada etapa — para acompanhar e cobrar. Os cards atuais continuam como visão padrão.
+Ter uma segunda forma de ver o módulo Processos: a mesma lista enxuta que já existe no celular, agora também no computador. Clicando em um item, abre um card lateral com todos os detalhes e as ações da etapa. Os cards atuais continuam disponíveis.
 
 ## Como funciona
-- No topo da tela, ao lado dos filtros, um seletor com duas opções: **Cards** (padrão) e **Lista**.
-- A escolha fica lembrada no navegador do usuário, então ele volta na visão que preferir.
-- As abas de etapa (Conferência, Moagem, Laboratório, Demonstrativo, Aprovação, Corte) e todos os filtros existentes continuam iguais e valem para as duas visões.
-- Na Lista, além da aba de uma etapa, existe a opção **Todas as etapas**: mostra tudo o que está em aberto agrupado por etapa, com o total de cada etapa no cabeçalho do grupo, que pode ser recolhido.
+- No topo, ao lado dos filtros, um seletor com duas opções: **Cards** e **Lista**. A escolha fica lembrada para o próximo acesso.
+- As abas de etapa (Conferência, Moagem, Laboratório, Demonstrativo, Aprovação, Corte) e todos os filtros continuam iguais e valem para as duas visões.
+- Na Lista, cada OP ocupa uma linha só, o que permite ver muita coisa em aberto de uma vez.
 
-## A lista
-Uma linha por OP, ordenada da mais antiga para a mais nova (como hoje), com as colunas:
-
+## A linha da lista (igual ao celular)
 ```text
-OP        Fornecedor              Filial   Tipo    Comprador   Qtd/Peso     Boleto Syge   Tempo    Etapa
-020926-05 MURIELE GUIMARAES...    Betim    Sacola  MARCOS R.   103 pç       Sem boleto    8d       Conferência
-040926-07 IGOR ANTONIO DA...      Contagem Sacola  HIAGO       13 pç/11,2kg 123456        6d       Conferência
+[SA]  MURIELE GUIMARAES CALCA                                        8d  >
+      020926-05 · Sacola · Betim · MARCOS ROBERTO TEIXEIRA
+      103 pç · 11,175 kg · Sem boleto  ⚠
 ```
+- Selo redondo à esquerda com o tipo (PC = Peças, SA = Sacola, CE = Cerâmico), nas mesmas cores de hoje.
+- Nome do fornecedor em destaque; abaixo, OP, tipo, filial e comprador.
+- Terceira linha com quantidade/peso e o Boleto Syge; sem boleto aparece em vermelho com o aviso.
+- À direita, o tempo na etapa; linhas paradas há mais tempo (acima de 7 dias) ficam destacadas para facilitar a cobrança.
+- No computador a lista aproveita a largura: aparece em uma ou duas colunas de linhas, conforme o espaço.
 
-- **Sem boleto** aparece em destaque vermelho, como hoje nos cards.
-- Divergência de conferência e outros alertas viram um ícone de aviso na linha, com o detalhe ao passar o mouse.
-- Linhas paradas há muito tempo ganham destaque leve no tempo (por exemplo, acima de 7 dias), para facilitar a cobrança.
-- Clicar na linha abre o painel da etapa (o mesmo conteúdo do card de hoje) em uma janela lateral, com as mesmas ações e respeitando permissões e o modo somente leitura.
-- Cabeçalhos clicáveis para ordenar por OP, fornecedor, tempo na etapa e valor.
+## Card de detalhes
+Clicar na linha abre, pelo lado direito, um painel com exatamente o conteúdo do card de hoje: dados da compra, valor, alertas, impressão de etiqueta e os botões da etapa. Permissões e modo somente leitura continuam valendo. Ao concluir uma ação, o painel fecha e a lista se atualiza.
 
 ## No celular
-A visão em Lista usa linhas compactas de duas informações por linha (fornecedor + OP/tipo/filial, tempo à direita), aproveitando o padrão de lista já usado no app. O seletor Cards/Lista fica no cabeçalho da tela.
+Permanece como está hoje (já é essa lista), apenas ganhando a filial e o comprador na mesma linha de informações, para ficar idêntico ao computador.
 
 ## Fora do escopo
-Nenhuma mudança em etapas, cálculos, permissões ou dados. É apenas uma nova forma de visualizar.
+Nenhuma mudança em etapas, cálculos, permissões ou dados — apenas uma nova forma de visualizar.
 
 ## Detalhes técnicos
-- `ProcessBoard.tsx`: novo estado `viewMode: "cards" | "list"` persistido em `localStorage`; dentro de cada `TabsContent`, renderiza o grid atual de `StageActionCard` ou o novo `ProcessListView`.
-- Novo `src/components/processes/ProcessListView.tsx`: tabela (shadcn `Table`) alimentada pelo mesmo `tasksByGroup`, sem refazer carregamento nem filtros; ordenação via `use-sortable`; clique abre `Dialog`/`Sheet` com `StageActionCard` (`readOnly={!canAdvance}`, `onCompleted={reload}`).
-- Filial: reaproveitar a busca de `suppliers.branch` já usada em `MobileProcessBoard.tsx`, extraída para um hook simples e usada nas duas telas.
-- Modo "Todas as etapas": iterar `visibleGroups` e renderizar seções com `Collapsible`.
-- `MobileProcessBoard.tsx`: mesmo seletor, alternando entre `MobileListRow` atual (já é lista) e uma variante mais densa com colunas resumidas.
+- `ProcessBoard.tsx`: novo estado `viewMode: "cards" | "list"` persistido em `localStorage`; dentro de cada `TabsContent`, renderiza o grid de `StageActionCard` atual ou o novo `ProcessListView`.
+- Novo `src/components/processes/ProcessListView.tsx`: reutiliza `MobileListRow`/`MobileListDivider` alimentados pelo mesmo `tasksByGroup` (sem novo carregamento nem filtros próprios); grid `md:grid-cols-2` para aproveitar telas largas.
+- Detalhe: `Sheet` (lado direito) com `StageActionCard` (`readOnly={!canAdvance}`, `onCompleted={() => { close(); reload(); }}`).
+- Filial: extrair a busca de `suppliers.branch` já feita em `MobileProcessBoard.tsx` para um hook compartilhado usado nas duas telas.
+- Subtítulo/detalhe das linhas: helpers `flowBadge`, `purchaseWeight`, `timeSince` movidos de `MobileProcessBoard.tsx` para um módulo compartilhado.
