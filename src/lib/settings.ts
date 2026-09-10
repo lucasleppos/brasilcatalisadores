@@ -80,6 +80,11 @@ function rowToSettings(r: any): Settings {
     recoveryRh: Number(r.recovery_rh),
     moistureDiscount: Number(r.moisture_discount),
     allocationThresholdPct: r.allocation_threshold_pct != null ? Number(r.allocation_threshold_pct) : 143,
+    referenceWeightKg: r.reference_weight_kg != null ? Number(r.reference_weight_kg) : 1,
+    referencePtPpm: r.reference_pt_ppm != null ? Number(r.reference_pt_ppm) : 200,
+    referencePdPpm: r.reference_pd_ppm != null ? Number(r.reference_pd_ppm) : 1180,
+    referenceRhPpm: r.reference_rh_ppm != null ? Number(r.reference_rh_ppm) : 180,
+    referenceMarginPct: r.reference_margin_pct != null ? Number(r.reference_margin_pct) : 15,
   };
 }
 
