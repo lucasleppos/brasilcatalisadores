@@ -59,6 +59,9 @@ interface AllocatedMaterial {
   weight: number;
   paidValue: number;
   itemType: string;
+  ptPpm: number;
+  pdPpm: number;
+  rhPpm: number;
   bagId: string;
   bagNumber: string;
   bagLabel: string;
