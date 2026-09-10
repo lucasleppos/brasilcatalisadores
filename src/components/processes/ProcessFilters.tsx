@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect, SearchableOption } from "@/components/ui/searchable-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { useMemo } from "react";
 
 export type DateFilterPreset = "week" | "month" | "all";
 export type MaterialFilter = "all" | "ceramico" | "pecas" | "sacola";
