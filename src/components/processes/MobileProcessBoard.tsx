@@ -20,33 +20,13 @@ import { MobileSheet } from "@/components/mobile/MobileSheet";
 import { useMobileNav } from "@/components/mobile/MobileLayout";
 import { cn } from "@/lib/utils";
 
-function timeSince(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return "agora";
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
-function flowBadge(p: Purchase): { label: string; className: string; name: string } {
-  if (p.materialFlow === "ceramico")
-    return { label: "CE", className: "bg-amber-100 text-amber-800", name: "Cerâmico" };
-  if (isSacolaFlow(p))
-    return { label: "SA", className: "bg-emerald-100 text-emerald-800", name: "Sacola" };
-  return { label: "PC", className: "bg-sky-100 text-sky-800", name: "Peças" };
-}
-
-function purchaseWeight(p: Purchase): number {
-  if (p.weightReal) return p.weightReal;
-  if (p.bulkWeight) return p.bulkWeight;
-  if (p.weightDeclared) return p.weightDeclared;
-  return p.items.reduce((s, i) => s + (i.weight || 0) * (i.quantity || 1), 0);
-}
-
-function lastChangeDate(p: Purchase): string {
-  const last = p.statusHistory[p.statusHistory.length - 1];
-  return last?.date || p.date;
-}
+import {
+  flowBadge,
+  purchaseWeight,
+  timeSince,
+  daysSince,
+  lastChangeDate,
+} from "./process-list-utils";
 
 export default function MobileProcessBoard() {
   const { role, session, loading: authLoading } = useAuth();
@@ -252,6 +232,9 @@ export default function MobileProcessBoard() {
         ) : (
           currentList.map((p, idx) => {
             const flow = flowBadge(p);
+            const qty = p.items.reduce((s, i) => s + (i.quantity || 1), 0);
+            const days = daysSince(lastChangeDate(p));
+            const noErp = !p.erpNumber?.trim();
             return (
               <div key={p.id}>
                 {idx > 0 && <MobileListDivider />}
@@ -259,14 +242,28 @@ export default function MobileProcessBoard() {
                   badge={flow.label}
                   badgeClassName={flow.className}
                   title={p.supplierName}
-                  subtitle={`${p.purchaseNumber} · ${flow.name}${
-                    branchBySupplier[p.supplierId || ""] ? ` · ${branchBySupplier[p.supplierId || ""]}` : ""
-                  }`}
-                  detail={`${fmtNum(purchaseWeight(p), 4)} kg${
-                    p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""
-                  }`}
-                  alert={!p.erpNumber?.trim()}
+                  subtitle={[
+                    p.purchaseNumber,
+                    flow.name,
+                    branchBySupplier[p.supplierId || ""],
+                    p.buyer,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  detail={
+                    <>
+                      {p.materialFlow !== "ceramico" && qty > 0 && <>{qty} pç · </>}
+                      {fmtNum(purchaseWeight(p), 4)} kg ·{" "}
+                      {noErp ? (
+                        <span className="text-destructive font-medium">Sem boleto</span>
+                      ) : (
+                        <>Boleto {p.erpNumber}</>
+                      )}
+                    </>
+                  }
+                  alert={noErp}
                   stamp={timeSince(lastChangeDate(p))}
+                  stampClassName={days > 7 ? "text-destructive font-semibold" : undefined}
                   onClick={() => setSelected(p)}
                 />
               </div>

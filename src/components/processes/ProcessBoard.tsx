@@ -13,6 +13,9 @@ import { DateRange } from "react-day-picker";
 import ProcessKPIs from "./ProcessKPIs";
 import ProcessFilters, { DateFilterPreset } from "./ProcessFilters";
 import StageActionCard from "./StageActionCard";
+import ProcessListView from "./ProcessListView";
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -96,6 +99,13 @@ export default function ProcessBoard() {
   const [materialFilter, setMaterialFilter] = useState<"all" | "ceramico" | "pecas" | "sacola">("all");
   const [datePreset, setDatePreset] = useState<DateFilterPreset>("month");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<"cards" | "list">(
+    () => (localStorage.getItem("processos_view_mode") as "cards" | "list") || "cards"
+  );
+  const changeViewMode = (mode: "cards" | "list") => {
+    setViewMode(mode);
+    localStorage.setItem("processos_view_mode", mode);
+  };
 
   const reload = async () => {
     if (authLoading || !session) return;
@@ -207,6 +217,29 @@ export default function ProcessBoard() {
         totalValue={totalValue}
       />
 
+      <div className="flex justify-end">
+        <div className="inline-flex rounded-md border border-border overflow-hidden">
+          <Button
+            type="button"
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none gap-1.5"
+            onClick={() => changeViewMode("cards")}
+          >
+            <LayoutGrid className="h-4 w-4" /> Cards
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none gap-1.5"
+            onClick={() => changeViewMode("list")}
+          >
+            <List className="h-4 w-4" /> Lista
+          </Button>
+        </div>
+      </div>
+
       <ProcessFilters
         suppliers={suppliers}
         buyers={buyers}
@@ -254,6 +287,13 @@ export default function ProcessBoard() {
                     <p className="text-muted-foreground text-sm">Nenhum pedido neste processo.</p>
                   </CardContent>
                 </Card>
+              ) : viewMode === "list" ? (
+                <ProcessListView
+                  purchases={tasksByGroup[group.label] || []}
+                  stageLabel={group.label}
+                  readOnly={!canAdvance}
+                  onCompleted={reload}
+                />
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {(tasksByGroup[group.label] || []).map((purchase) => (
