@@ -217,6 +217,29 @@ export default function ProcessBoard() {
         totalValue={totalValue}
       />
 
+      <div className="flex justify-end">
+        <div className="inline-flex rounded-md border border-border overflow-hidden">
+          <Button
+            type="button"
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none gap-1.5"
+            onClick={() => changeViewMode("cards")}
+          >
+            <LayoutGrid className="h-4 w-4" /> Cards
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none gap-1.5"
+            onClick={() => changeViewMode("list")}
+          >
+            <List className="h-4 w-4" /> Lista
+          </Button>
+        </div>
+      </div>
+
       <ProcessFilters
         suppliers={suppliers}
         buyers={buyers}
