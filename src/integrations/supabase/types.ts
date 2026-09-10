@@ -897,6 +897,11 @@ export type Database = {
           recovery_pd: number
           recovery_pt: number
           recovery_rh: number
+          reference_margin_pct: number
+          reference_pd_ppm: number
+          reference_pt_ppm: number
+          reference_rh_ppm: number
+          reference_weight_kg: number
           refining_pd: number
           refining_pt: number
           refining_rh: number
@@ -921,6 +926,11 @@ export type Database = {
           recovery_pd?: number
           recovery_pt?: number
           recovery_rh?: number
+          reference_margin_pct?: number
+          reference_pd_ppm?: number
+          reference_pt_ppm?: number
+          reference_rh_ppm?: number
+          reference_weight_kg?: number
           refining_pd?: number
           refining_pt?: number
           refining_rh?: number
@@ -945,6 +955,11 @@ export type Database = {
           recovery_pd?: number
           recovery_pt?: number
           recovery_rh?: number
+          reference_margin_pct?: number
+          reference_pd_ppm?: number
+          reference_pt_ppm?: number
+          reference_rh_ppm?: number
+          reference_weight_kg?: number
           refining_pd?: number
           refining_pt?: number
           refining_rh?: number
