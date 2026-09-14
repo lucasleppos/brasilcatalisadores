@@ -151,17 +151,24 @@ export async function updatePart(id: string, part: Partial<Omit<CatalogPart, "id
 }
 
 export async function deleteAllParts(): Promise<{ ok: boolean; count: number; inUse?: boolean }> {
-  const { data, error } = await supabase
-    .from("catalog_parts")
-    .delete()
-    .not("id", "is", null)
-    .select("id");
+  let total = 0;
+  // Repete até não sobrar nenhuma peça (a resposta é limitada a 1000 linhas)
+  for (let guard = 0; guard < 100; guard++) {
+    const { data, error } = await supabase
+      .from("catalog_parts")
+      .delete()
+      .not("id", "is", null)
+      .select("id");
 
-  if (error) {
-    const inUse = /foreign key|violates/i.test(error.message);
-    return { ok: false, count: 0, inUse };
+    if (error) {
+      const inUse = /foreign key|violates/i.test(error.message);
+      return { ok: false, count: total, inUse };
+    }
+    const removed = data?.length ?? 0;
+    total += removed;
+    if (removed === 0) break;
   }
-  return { ok: true, count: data?.length ?? 0 };
+  return { ok: true, count: total };
 }
 
 export async function deletePart(id: string): Promise<boolean> {
@@ -185,7 +192,12 @@ export async function bulkImportParts(
     group_id: p.groupId,
   }));
 
-  const { data, error } = await supabase.from("catalog_parts").insert(rows).select("id");
-  if (error) return 0;
-  return data?.length ?? 0;
+  // Grava em blocos para suportar planilhas grandes
+  let total = 0;
+  for (const batch of chunk(rows, 500)) {
+    const { data, error } = await supabase.from("catalog_parts").insert(batch).select("id");
+    if (error) return total;
+    total += data?.length ?? 0;
+  }
+  return total;
 }
