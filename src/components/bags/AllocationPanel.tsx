@@ -444,11 +444,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
 
   const loadInProcessMaterials = async () => {
-    const { data: purchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
-      .eq("location", "matriz")
-      .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
+    const purchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
+        .eq("location", "matriz")
+        .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]) as any
+    );
 
     if (!purchases) { setInProcessMaterials([]); return; }
 
@@ -457,10 +459,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const branchMap = await loadSupplierBranches(purchases.map((p: any) => p.supplier_id));
 
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("*")
-      .in("purchase_id", purchaseIds);
+    const items = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase.from("purchase_items").select("*").in("purchase_id", chunkIds) as any
+    );
 
     const result: InProcessMaterial[] = [];
     (items || []).forEach((item: any) => {
