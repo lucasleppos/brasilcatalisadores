@@ -20,6 +20,7 @@ import { STAGE_ORDER, stageOfPurchase, flowLabel } from "@/lib/status-stages";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import MobilePurchaseList from "@/components/purchases/MobilePurchaseList";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -28,6 +29,7 @@ export default function PurchasesPage() {
   const { role, profile, session, loading: authLoading } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const canCreate = canDo("compras", "create");
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
@@ -97,7 +99,11 @@ export default function PurchasesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await deletePurchase(id);
+    const err = await deletePurchase(id);
+    if (err) {
+      toast({ title: "Não foi possível excluir", description: err, variant: "destructive" });
+      return;
+    }
     reload();
   };
 

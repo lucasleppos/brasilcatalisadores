@@ -1061,8 +1061,23 @@ export async function updatePurchase(id: string, data: { items: PurchaseQuoteIte
   await supabase.from("purchases").update(updateData).eq("id", id);
 }
 
-export async function deletePurchase(id: string) {
-  await supabase.from("purchases").delete().eq("id", id);
+/**
+ * Exclui a compra. Bloqueia quando já existe material dela alocado em algum bag
+ * para não perder o rastro do material. Retorna a mensagem de erro, ou null.
+ */
+export async function deletePurchase(id: string): Promise<string | null> {
+  const { data: allocated } = await supabase
+    .from("bag_items")
+    .select("id")
+    .eq("purchase_id", id)
+    .limit(1);
+
+  if (allocated && allocated.length > 0) {
+    return "Esta compra tem material alocado em um bag. Retire o material do bag antes de excluir a compra.";
+  }
+
+  const { error } = await supabase.from("purchases").delete().eq("id", id);
+  return error ? error.message : null;
 }
 
 /** Add a single item to an existing purchase and recalculate total */

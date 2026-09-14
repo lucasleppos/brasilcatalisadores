@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      bag_item_history: {
+        Row: {
+          action: string
+          bag_id: string | null
+          bag_number: string
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_value: number
+          purchase_id: string | null
+          purchase_item_id: string
+          purchase_number: string
+          supplier_name: string
+          weight: number
+        }
+        Insert: {
+          action?: string
+          bag_id?: string | null
+          bag_number?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_value?: number
+          purchase_id?: string | null
+          purchase_item_id?: string
+          purchase_number?: string
+          supplier_name?: string
+          weight?: number
+        }
+        Update: {
+          action?: string
+          bag_id?: string | null
+          bag_number?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_value?: number
+          purchase_id?: string | null
+          purchase_item_id?: string
+          purchase_number?: string
+          supplier_name?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       bag_items: {
         Row: {
           allocated_at: string

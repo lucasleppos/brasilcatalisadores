@@ -161,12 +161,16 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   };
 
   const loadAllocatedMaterials = async () => {
-    // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
+    // Alocados: cerâmico, peça e peça em sacola com bag_items vinculados
     const ceramicPurchases = await fetchAllRows<any>(() =>
       supabase
         .from("purchases")
         .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
-        .eq("status", "Cerâmico: Aprovado") as any
+        .in("status", [
+          "Cerâmico: Aprovado",
+          "Peças: Alocado ao Bag",
+          "Peças: Encerrado",
+        ]) as any
     );
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);

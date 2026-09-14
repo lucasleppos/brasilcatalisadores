@@ -176,8 +176,29 @@ export async function updateBagAnalysis(id: string, data: {
   }).eq("id", id);
 }
 
-export async function deleteBag(id: string) {
+/**
+ * Exclui um bag devolvendo os itens para a alocação.
+ * Bags fechados ou exportados não podem ser excluídos.
+ */
+export async function deleteBag(id: string): Promise<string | null> {
+  const { data: bag } = await supabase
+    .from("bags")
+    .select("id, bag_number, status")
+    .eq("id", id)
+    .single();
+  if (!bag) return "Bag não encontrado.";
+  if (bag.status !== "Aberto") {
+    return "Somente bags com status Aberto podem ser excluídos.";
+  }
+
+  const items = await loadBagItems(id);
+  for (const item of items) {
+    await logBagItemMovement(item, bag.bag_number || "", "bag_deleted");
+    await reopenForAllocation(item.purchaseId);
+  }
+
   await supabase.from("bags").delete().eq("id", id);
+  return null;
 }
 
 // ===== Allocation =====
@@ -217,9 +238,28 @@ export async function allocateItem(input: {
   return mapItemRow(data);
 }
 
+/**
+ * Remove um item do bag: registra o histórico, apaga a alocação, recalcula os
+ * totais e devolve a compra para a fase de alocação.
+ */
 export async function removeAllocation(itemId: string, bagId: string) {
+  const { data: row } = await supabase
+    .from("bag_items")
+    .select("*")
+    .eq("id", itemId)
+    .single();
+
+  let bagNumber = "";
+  if (row) {
+    const { data: bag } = await supabase.from("bags").select("bag_number").eq("id", bagId).single();
+    bagNumber = bag?.bag_number || "";
+    await logBagItemMovement(mapItemRow(row), bagNumber, "removed");
+  }
+
   await supabase.from("bag_items").delete().eq("id", itemId);
   await recalcBagTotals(bagId);
+
+  if (row) await reopenForAllocation(row.purchase_id);
 }
 
 async function recalcBagTotals(bagId: string) {
@@ -235,6 +275,105 @@ async function recalcBagTotals(bagId: string) {
     total_weight: totalWeight,
     total_paid_brl: totalPaid,
   }).eq("id", bagId);
+}
+
+// ===== Histórico de movimentações =====
+
+export type BagMovementAction = "removed" | "bag_deleted";
+
+export interface BagItemMovement {
+  id: string;
+  bagId: string | null;
+  bagNumber: string;
+  purchaseId: string | null;
+  purchaseNumber: string;
+  purchaseItemId: string;
+  weight: number;
+  paidValue: number;
+  supplierName: string;
+  action: BagMovementAction;
+  createdAt: string;
+}
+
+/** Grava no histórico a saída de um item do bag. */
+async function logBagItemMovement(item: BagItem, bagNumber: string, action: BagMovementAction) {
+  const { data: purchase } = await supabase
+    .from("purchases")
+    .select("purchase_number")
+    .eq("id", item.purchaseId)
+    .single();
+
+  const { data: auth } = await supabase.auth.getUser();
+
+  await supabase.from("bag_item_history").insert({
+    bag_id: item.bagId,
+    bag_number: bagNumber,
+    purchase_id: item.purchaseId,
+    purchase_number: purchase?.purchase_number || "",
+    purchase_item_id: item.purchaseItemId,
+    weight: item.weight,
+    paid_value: item.paidValue,
+    supplier_name: item.supplierName,
+    action,
+    created_by: auth?.user?.id || null,
+  });
+}
+
+export async function loadBagItemHistory(bagId?: string): Promise<BagItemMovement[]> {
+  const data = await fetchAllRows<any>(() => {
+    let q = supabase.from("bag_item_history").select("*").order("created_at", { ascending: false });
+    if (bagId) q = q.eq("bag_id", bagId);
+    return q as any;
+  }).catch(() => [] as any[]);
+
+  return data.map((r: any) => ({
+    id: r.id,
+    bagId: r.bag_id,
+    bagNumber: r.bag_number || "",
+    purchaseId: r.purchase_id,
+    purchaseNumber: r.purchase_number || "",
+    purchaseItemId: r.purchase_item_id || "",
+    weight: Number(r.weight) || 0,
+    paidValue: Number(r.paid_value) || 0,
+    supplierName: r.supplier_name || "",
+    action: (r.action as BagMovementAction) || "removed",
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * Devolve a compra para a fase de alocação quando ela já havia sido encerrada,
+ * registrando a reabertura no histórico de status.
+ */
+export async function reopenForAllocation(purchaseId: string): Promise<boolean> {
+  const { data: purchase } = await supabase
+    .from("purchases")
+    .select("id, status, op_status, material_flow, status_history")
+    .eq("id", purchaseId)
+    .single();
+  if (!purchase) return false;
+
+  const flow = purchase.material_flow;
+  const isCeramico = flow === "ceramico";
+  const isPecas = flow === "pecas" || flow === "sacola";
+  if (!isCeramico && !isPecas) return false;
+
+  const targetStatus = isCeramico ? "Cerâmico: Aprovado" : "Peças: Alocado ao Bag";
+  const alreadyOpen = isCeramico
+    ? purchase.status === targetStatus && purchase.op_status === "Alocando Bag"
+    : purchase.status === targetStatus;
+  if (alreadyOpen) return false;
+
+  const history = [
+    ...((purchase.status_history as any[]) || []),
+    { status: `${targetStatus} (reaberto: material retirado do bag)`, date: new Date().toISOString() },
+  ];
+
+  const update: any = { status: targetStatus, status_history: history };
+  if (isCeramico) update.op_status = "Alocando Bag";
+
+  const { error } = await supabase.from("purchases").update(update).eq("id", purchaseId);
+  return !error;
 }
 
 // ===== Transfer =====
