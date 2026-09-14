@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 
 export interface LabResult {
   id: string;
