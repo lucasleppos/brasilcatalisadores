@@ -1347,12 +1347,14 @@ export async function getRealWeightFractionsByItem(
     weight_pos_trituracao: "legacy",
   };
 
-  const { data: evidence } = await supabase
-    .from("stage_evidence")
-    .select("purchase_id, task_key, value_numeric, created_at")
-    .in("task_key", Object.keys(KEYS))
-    .in("purchase_id", purchaseIds)
-    .order("created_at", { ascending: true });
+  const evidence = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+    supabase
+      .from("stage_evidence")
+      .select("purchase_id, task_key, value_numeric, created_at")
+      .in("task_key", Object.keys(KEYS))
+      .in("purchase_id", chunkIds)
+      .order("created_at", { ascending: true }) as any
+  );
 
   const byPurchase = new Map<string, RealWeightFractions>();
   (evidence || []).forEach((e: any) => {
@@ -1366,11 +1368,13 @@ export async function getRealWeightFractionsByItem(
   if (byPurchase.size === 0) return map;
 
   const ids = [...byPurchase.keys()];
-  const { data: items } = await supabase
-    .from("purchase_items")
-    .select("id, purchase_id, weight")
-    .eq("category", "conferencia")
-    .in("purchase_id", ids);
+  const items = await fetchAllByIds<any>(ids, (chunkIds) =>
+    supabase
+      .from("purchase_items")
+      .select("id, purchase_id, weight")
+      .eq("category", "conferencia")
+      .in("purchase_id", chunkIds) as any
+  );
 
   const grouped = new Map<string, { id: string; weight: number }[]>();
   (items || []).forEach((i: any) => {
