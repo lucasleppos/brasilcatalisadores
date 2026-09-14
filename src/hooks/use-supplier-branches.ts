@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase } from "@/lib/purchases";
+import { fetchAllByIds } from "@/lib/db";
 
 /** Mapa id do fornecedor → filial cadastrada. */
 export function useSupplierBranches(purchases: Purchase[]) {
@@ -12,7 +13,9 @@ export function useSupplierBranches(purchases: Purchase[]) {
     if (ids.length === 0) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("suppliers").select("id, branch").in("id", ids);
+      const data = await fetchAllByIds<any>(ids, (chunkIds) =>
+        supabase.from("suppliers").select("id, branch").in("id", chunkIds) as any
+      );
       if (cancelled) return;
       const map: Record<string, string> = {};
       (data || []).forEach((s: any) => { map[s.id] = s.branch || ""; });
