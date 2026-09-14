@@ -440,36 +440,23 @@ function calcTotal(items: PurchaseQuoteItem[]): number {
 // ===== CRUD =====
 
 /** PostgREST limita cada resposta a 1000 linhas — busca em blocos até trazer tudo */
-const PAGE_SIZE = 1000;
 async function fetchAllIn<T = any>(
-  table: "purchase_items" | "catalog_parts",
+  table: string,
   columns: string,
   column: string,
   values: string[]
 ): Promise<T[]> {
-  if (values.length === 0) return [];
-  const out: T[] = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await (supabase.from(table) as any)
-      .select(columns)
-      .in(column, values)
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    const batch = (data || []) as T[];
-    out.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
-  }
-  return out;
+  return fetchAllByIds<T>(values, (chunkIds) =>
+    (supabase.from(table as any) as any).select(columns).in(column, chunkIds)
+  );
 }
 
 export async function loadPurchases(): Promise<Purchase[]> {
-  const { data: rows, error } = await supabase
-    .from("purchases")
-    .select("*")
-    .order("date", { ascending: false });
+  const rows = await fetchAllRows<any>(() =>
+    supabase.from("purchases").select("*").order("date", { ascending: false }) as any
+  );
 
-  if (error) throw error;
-  if (!rows) return [];
+  if (!rows.length) return [];
 
   const ids = rows.map((r: any) => r.id);
   const itemRows = await fetchAllIn<any>("purchase_items", "*", "purchase_id", ids);
