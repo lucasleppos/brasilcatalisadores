@@ -29,12 +29,13 @@ function mapRow(r: any): LabResult {
 }
 
 export async function loadLabResults(purchaseId: string): Promise<LabResult[]> {
-  const { data, error } = await supabase
-    .from("lab_results")
-    .select("*")
-    .eq("purchase_id", purchaseId)
-    .order("versao", { ascending: true });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("lab_results")
+      .select("*")
+      .eq("purchase_id", purchaseId)
+      .order("versao", { ascending: true }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapRow);
 }
 

@@ -103,21 +103,20 @@ function mapItemRow(r: any): BagItem {
 }
 
 export async function loadBags(): Promise<Bag[]> {
-  const { data, error } = await supabase
-    .from("bags")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("bags").select("*").order("created_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapRow);
 }
 
 export async function loadBagItems(bagId: string): Promise<BagItem[]> {
-  const { data, error } = await supabase
-    .from("bag_items")
-    .select("*")
-    .eq("bag_id", bagId)
-    .order("allocated_at", { ascending: true });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("bag_items")
+      .select("*")
+      .eq("bag_id", bagId)
+      .order("allocated_at", { ascending: true }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapItemRow);
 }
 

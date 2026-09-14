@@ -30,12 +30,10 @@ const mapRow = (r: any): Supplier => ({
 });
 
 export async function loadSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("suppliers").select("*").order("created_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map(mapRow);
 }
 
