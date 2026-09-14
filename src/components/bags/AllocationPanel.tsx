@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
