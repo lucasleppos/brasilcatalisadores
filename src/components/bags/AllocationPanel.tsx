@@ -82,7 +82,9 @@ function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]):
 async function loadSupplierBranches(supplierIds: (string | null | undefined)[]): Promise<Map<string, string>> {
   const ids = [...new Set(supplierIds.filter(Boolean) as string[])];
   if (ids.length === 0) return new Map();
-  const { data } = await supabase.from("suppliers").select("id, branch").in("id", ids);
+  const data = await fetchAllByIds<any>(ids, (chunkIds) =>
+    supabase.from("suppliers").select("id, branch").in("id", chunkIds) as any
+  );
   return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
 }
 
