@@ -303,7 +303,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-auto sm:max-w-6xl sm:h-[95vh] sm:rounded-lg flex flex-col overflow-hidden p-0 gap-0">
+      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-[min(72rem,95vw)] sm:max-w-none sm:h-[95vh] sm:rounded-lg flex flex-col overflow-hidden p-0 gap-0">
         <DialogHeader className="px-3 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 text-left shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Scale className="h-5 w-5" />

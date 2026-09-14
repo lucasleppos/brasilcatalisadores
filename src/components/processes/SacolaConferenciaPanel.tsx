@@ -455,7 +455,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
 
-      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none overflow-y-auto sm:w-auto sm:max-w-lg sm:h-auto sm:max-h-[90vh] sm:rounded-lg">
+      <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none overflow-y-auto sm:w-[min(32rem,95vw)] sm:max-w-none sm:h-auto sm:max-h-[90vh] sm:rounded-lg">
         <DialogHeader>
           <DialogTitle>{isSacola ? "Conferência — Peça em Sacola" : "Conferência — Peças"}</DialogTitle>
         </DialogHeader>
