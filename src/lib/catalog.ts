@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows, chunk } from "@/lib/db";
 
 // ===== Types =====
 
@@ -28,12 +29,10 @@ export interface CatalogPart {
 // ===== Groups CRUD =====
 
 export async function loadGroups(): Promise<CatalogGroup[]> {
-  const { data, error } = await supabase
-    .from("catalog_groups")
-    .select("*")
-    .order("name");
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("catalog_groups").select("*").order("name") as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map((r: any) => ({
     id: r.id,
     name: r.name,
@@ -69,12 +68,14 @@ export async function deleteGroup(id: string): Promise<boolean> {
 // ===== Parts CRUD =====
 
 export async function loadParts(): Promise<CatalogPart[]> {
-  const { data, error } = await supabase
-    .from("catalog_parts")
-    .select("*, catalog_groups(name, margin)")
-    .order("brand");
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("catalog_parts")
+      .select("*, catalog_groups(name, margin)")
+      .order("brand")
+      .order("code") as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map((r: any) => ({
     id: r.id,
     code: r.code,
@@ -98,7 +99,7 @@ export async function searchParts(query: string): Promise<CatalogPart[]> {
     .from("catalog_parts")
     .select("*, catalog_groups(name, margin)")
     .or(`code.ilike.${q},reference.ilike.${q},brand.ilike.${q},vehicle.ilike.${q}`)
-    .limit(20);
+    .limit(50);
 
   if (error || !data) return [];
   return data.map((r: any) => ({
@@ -150,17 +151,24 @@ export async function updatePart(id: string, part: Partial<Omit<CatalogPart, "id
 }
 
 export async function deleteAllParts(): Promise<{ ok: boolean; count: number; inUse?: boolean }> {
-  const { data, error } = await supabase
-    .from("catalog_parts")
-    .delete()
-    .not("id", "is", null)
-    .select("id");
+  let total = 0;
+  // Repete até não sobrar nenhuma peça (a resposta é limitada a 1000 linhas)
+  for (let guard = 0; guard < 100; guard++) {
+    const { data, error } = await supabase
+      .from("catalog_parts")
+      .delete()
+      .not("id", "is", null)
+      .select("id");
 
-  if (error) {
-    const inUse = /foreign key|violates/i.test(error.message);
-    return { ok: false, count: 0, inUse };
+    if (error) {
+      const inUse = /foreign key|violates/i.test(error.message);
+      return { ok: false, count: total, inUse };
+    }
+    const removed = data?.length ?? 0;
+    total += removed;
+    if (removed === 0) break;
   }
-  return { ok: true, count: data?.length ?? 0 };
+  return { ok: true, count: total };
 }
 
 export async function deletePart(id: string): Promise<boolean> {
@@ -184,7 +192,12 @@ export async function bulkImportParts(
     group_id: p.groupId,
   }));
 
-  const { data, error } = await supabase.from("catalog_parts").insert(rows).select("id");
-  if (error) return 0;
-  return data?.length ?? 0;
+  // Grava em blocos para suportar planilhas grandes
+  let total = 0;
+  for (const batch of chunk(rows, 500)) {
+    const { data, error } = await supabase.from("catalog_parts").insert(batch).select("id");
+    if (error) return total;
+    total += data?.length ?? 0;
+  }
+  return total;
 }

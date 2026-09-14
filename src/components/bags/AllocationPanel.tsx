@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { supabase } from "@/integrations/supabase/client";
 import { Bag, allocateItem, isNearLimit, isOverWeight } from "@/lib/bags";
 import { useToast } from "@/hooks/use-toast";
@@ -82,7 +83,9 @@ function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]):
 async function loadSupplierBranches(supplierIds: (string | null | undefined)[]): Promise<Map<string, string>> {
   const ids = [...new Set(supplierIds.filter(Boolean) as string[])];
   if (ids.length === 0) return new Map();
-  const { data } = await supabase.from("suppliers").select("id, branch").in("id", ids);
+  const data = await fetchAllByIds<any>(ids, (chunkIds) =>
+    supabase.from("suppliers").select("id, branch").in("id", chunkIds) as any
+  );
   return new Map((data || []).map((s: any) => [s.id, (s.branch || "").trim()]));
 }
 
@@ -159,26 +162,29 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadAllocatedMaterials = async () => {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
-    const { data: ceramicPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
-      .eq("status", "Cerâmico: Aprovado");
+    const ceramicPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
+        .eq("status", "Cerâmico: Aprovado") as any
+    );
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
     if (purchaseIds.length === 0) { setAllocatedMaterials([]); return; }
 
-    const { data: bagItems } = await supabase
-      .from("bag_items")
-      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
-      .in("purchase_id", purchaseIds);
+    const bagItems = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("bag_items")
+        .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
+        .in("purchase_id", chunkIds) as any
+    );
 
     if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
 
     const itemIds = bagItems.map((b: any) => String(b.purchase_item_id).split("::")[0]);
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("id, item_type")
-      .in("id", itemIds);
+    const items = await fetchAllByIds<any>(itemIds, (chunkIds) =>
+      supabase.from("purchase_items").select("id, item_type").in("id", chunkIds) as any
+    );
 
     const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
     const branchMap = await loadSupplierBranches((ceramicPurchases || []).map((p: any) => p.supplier_id));
@@ -212,19 +218,23 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadAvailableMaterials = async () => {
     // Query 1: purchases by direct status
-    const { data: directPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
+    const directPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]) as any
+    );
 
     // Query 2: ceramic purchases in parallel phase
-    const { data: ceramicPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .eq("status", "Cerâmico: Aprovado")
-      .eq("op_status", "Alocando Bag");
+    const ceramicPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .eq("status", "Cerâmico: Aprovado")
+        .eq("op_status", "Alocando Bag") as any
+    );
 
     const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])] as any[];
     if (purchases.length === 0) { setAvailableMaterials([]); return; }
@@ -233,16 +243,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const branchMap = await loadSupplierBranches(purchases.map(p => p.supplier_id));
 
 
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("*")
-      .eq("category", "conferencia")
-      .in("purchase_id", purchaseIds);
+    const items = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("purchase_items")
+        .select("*")
+        .eq("category", "conferencia")
+        .in("purchase_id", chunkIds) as any
+    );
 
-    const { data: allocated } = await supabase
-      .from("bag_items")
-      .select("purchase_item_id")
-      .in("purchase_id", purchaseIds);
+    const allocated = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase.from("bag_items").select("purchase_item_id").in("purchase_id", chunkIds) as any
+    );
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
@@ -250,11 +261,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const fractions = await getRealWeightFractionsByPurchase(purchaseIds);
 
     // Zr(%) / Ce(%) do laboratório — apenas informativo (selo "Carbono")
-    const { data: labRows } = await supabase
-      .from("lab_results")
-      .select("purchase_item_id, zr_pct, ce_pct")
-      .in("purchase_id", purchaseIds)
-      .not("purchase_item_id", "is", null);
+    const labRows = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("lab_results")
+        .select("purchase_item_id, zr_pct, ce_pct")
+        .in("purchase_id", chunkIds)
+        .not("purchase_item_id", "is", null) as any
+    );
 
     const carbonoIds = new Set<string>();
     const acc: Record<string, { zr: number[]; ce: number[] }> = {};
@@ -431,11 +444,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
 
   const loadInProcessMaterials = async () => {
-    const { data: purchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
-      .eq("location", "matriz")
-      .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]);
+    const purchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, status, total_brl")
+        .eq("location", "matriz")
+        .in("status", ["Amostragem", "Análise", "Aprovação do Fornecedor", "Pagamento"]) as any
+    );
 
     if (!purchases) { setInProcessMaterials([]); return; }
 
@@ -444,10 +459,9 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
     const branchMap = await loadSupplierBranches(purchases.map((p: any) => p.supplier_id));
 
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("*")
-      .in("purchase_id", purchaseIds);
+    const items = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase.from("purchase_items").select("*").in("purchase_id", chunkIds) as any
+    );
 
     const result: InProcessMaterial[] = [];
     (items || []).forEach((item: any) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { Search, Inbox } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,9 @@ export default function MobileProcessBoard() {
       setPurchases(list);
       const supplierIds = [...new Set(list.map((p) => p.supplierId).filter(Boolean))] as string[];
       if (supplierIds.length > 0) {
-        const { data: sups } = await supabase.from("suppliers").select("id, branch").in("id", supplierIds);
+        const sups = await fetchAllByIds<any>(supplierIds, (chunkIds) =>
+          supabase.from("suppliers").select("id, branch").in("id", chunkIds) as any
+        );
         const map: Record<string, string> = {};
         (sups || []).forEach((s: any) => { map[s.id] = s.branch || ""; });
         setBranchBySupplier(map);

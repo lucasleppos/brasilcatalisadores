@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 
 // ===== Task Definitions per Stage =====
 
@@ -101,12 +102,13 @@ function mapEvidence(r: any): StageEvidence {
 }
 
 export async function loadEvidences(purchaseId: string): Promise<StageEvidence[]> {
-  const { data, error } = await supabase
-    .from("stage_evidence")
-    .select("*")
-    .eq("purchase_id", purchaseId)
-    .order("created_at", { ascending: true });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("stage_evidence")
+      .select("*")
+      .eq("purchase_id", purchaseId)
+      .order("created_at", { ascending: true }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapEvidence);
 }
 

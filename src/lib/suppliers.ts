@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows, chunk } from "@/lib/db";
 
 export interface Supplier {
   id: string;
@@ -30,12 +31,10 @@ const mapRow = (r: any): Supplier => ({
 });
 
 export async function loadSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("suppliers").select("*").order("created_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map(mapRow);
 }
 
@@ -105,22 +104,23 @@ export async function deleteSupplier(id: string) {
 }
 
 export async function importSuppliers(rows: Omit<Supplier, "id" | "createdAt">[]): Promise<number> {
-  const { data, error } = await supabase
-    .from("suppliers")
-    .insert(
-      rows.map((r) => ({
-        name: r.name,
-        document: r.document,
-        email: r.email,
-        branch: r.branch,
-        buyer: r.buyer,
-        margin: r.marginPecas ?? r.margin,
-        margin_pecas: r.marginPecas ?? r.margin,
-        margin_ceramico: r.marginCeramico ?? r.margin,
-      }))
-    )
-    .select();
+  const payload = rows.map((r) => ({
+    name: r.name,
+    document: r.document,
+    email: r.email,
+    branch: r.branch,
+    buyer: r.buyer,
+    margin: r.marginPecas ?? r.margin,
+    margin_pecas: r.marginPecas ?? r.margin,
+    margin_ceramico: r.marginCeramico ?? r.margin,
+  }));
 
-  if (error || !data) return 0;
-  return data.length;
+  // Grava em blocos para suportar planilhas grandes
+  let total = 0;
+  for (const batch of chunk(payload, 500)) {
+    const { data, error } = await supabase.from("suppliers").insert(batch).select("id");
+    if (error) return total;
+    total += data?.length ?? 0;
+  }
+  return total;
 }

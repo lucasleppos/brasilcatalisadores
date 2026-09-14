@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 
 // ===== Types =====
 
@@ -132,11 +133,9 @@ function mapSettlement(r: any): BranchSettlement {
 // ===== Branches CRUD =====
 
 export async function loadBranches(): Promise<Branch[]> {
-  const { data, error } = await supabase
-    .from("branches")
-    .select("*")
-    .order("name", { ascending: true });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("branches").select("*").order("name", { ascending: true }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapBranch);
 }
 
@@ -191,10 +190,11 @@ export async function deleteBranch(id: string): Promise<boolean> {
 // ===== Transfers =====
 
 export async function loadTransfers(branchId?: string): Promise<BranchTransfer[]> {
-  let query = supabase.from("branch_transfers").select("*").order("created_at", { ascending: false });
-  if (branchId) query = query.eq("branch_id", branchId);
-  const { data, error } = await query;
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() => {
+    let query = supabase.from("branch_transfers").select("*").order("created_at", { ascending: false });
+    if (branchId) query = query.eq("branch_id", branchId);
+    return query as any;
+  }).catch(() => [] as any[]);
   return data.map(mapTransfer);
 }
 
@@ -291,12 +291,13 @@ export async function removePurchaseFromTransfer(purchaseId: string): Promise<bo
 // ===== Ledger =====
 
 export async function loadLedgerEntries(branchId: string): Promise<BranchLedgerEntry[]> {
-  const { data, error } = await supabase
-    .from("branch_ledger_entries")
-    .select("*")
-    .eq("branch_id", branchId)
-    .order("created_at", { ascending: false });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("branch_ledger_entries")
+      .select("*")
+      .eq("branch_id", branchId)
+      .order("created_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapLedger);
 }
 
@@ -345,12 +346,13 @@ export async function loadBranchBalance(branchId: string): Promise<{ balanceBrl:
 }
 
 export async function loadSettlements(branchId: string): Promise<BranchSettlement[]> {
-  const { data, error } = await supabase
-    .from("branch_settlements")
-    .select("*")
-    .eq("branch_id", branchId)
-    .order("closed_at", { ascending: false });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("branch_settlements")
+      .select("*")
+      .eq("branch_id", branchId)
+      .order("closed_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapSettlement);
 }
 

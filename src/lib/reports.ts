@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 import * as XLSX from "xlsx";
 
 export interface DateRange {
@@ -49,25 +50,26 @@ export async function loadPurchasesSummary(
   supplierFilter?: string,
   locationFilter?: string
 ) {
-  let query = supabase
-    .from("purchases")
-    .select("id, date, total_brl, supplier_name, location");
+  const data = await fetchAllRows<any>(() => {
+    let query = supabase
+      .from("purchases")
+      .select("id, date, total_brl, supplier_name, location")
+      .order("date", { ascending: true });
 
-  if (dateRange?.from) {
-    query = query.gte("date", dateRange.from.toISOString());
-  }
-  if (dateRange?.to) {
-    query = query.lte("date", dateRange.to.toISOString());
-  }
-  if (supplierFilter) {
-    query = query.eq("supplier_name", supplierFilter);
-  }
-  if (locationFilter) {
-    query = query.eq("location", locationFilter);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
+    if (dateRange?.from) {
+      query = query.gte("date", dateRange.from.toISOString());
+    }
+    if (dateRange?.to) {
+      query = query.lte("date", dateRange.to.toISOString());
+    }
+    if (supplierFilter) {
+      query = query.eq("supplier_name", supplierFilter);
+    }
+    if (locationFilter) {
+      query = query.eq("location", locationFilter);
+    }
+    return query as any;
+  });
 
   // Group by month
   const monthMap = new Map<string, { total_brl: number; count: number }>();
@@ -106,12 +108,12 @@ export async function loadPurchasesSummary(
 // ─── Bags Analysis ───
 
 export async function loadBagsAnalysis() {
-  const { data, error } = await supabase
-    .from("bags")
-    .select("bag_number, status, total_weight, total_paid_brl, refiner_total_value, closed_at")
-    .order("bag_number");
-
-  if (error) throw error;
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("bags")
+      .select("bag_number, status, total_weight, total_paid_brl, refiner_total_value, closed_at")
+      .order("bag_number") as any
+  );
 
   const rows: BagAnalysisRow[] = (data || []).map((b) => {
     const paid = Number(b.total_paid_brl) || 0;
@@ -146,11 +148,9 @@ const STATUS_ORDER = [
 ];
 
 export async function loadPipelineData() {
-  const { data, error } = await supabase
-    .from("purchases")
-    .select("status, status_history");
-
-  if (error) throw error;
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("purchases").select("status, status_history").order("date", { ascending: true }) as any
+  );
 
   const statusCount = new Map<string, number>();
   const stageDurations = new Map<string, number[]>();
@@ -189,16 +189,15 @@ export async function loadPipelineData() {
 // ─── Dashboard KPIs ───
 
 export async function loadDashboardKPIs(): Promise<DashboardKPIs> {
-  const [purchasesRes, bagsRes, settingsRes] = await Promise.all([
-    supabase.from("purchases").select("date, total_brl"),
-    supabase.from("bags").select("refiner_total_value, total_paid_brl"),
+  const [purchases, bags, settingsRes] = await Promise.all([
+    fetchAllRows<any>(() =>
+      supabase.from("purchases").select("date, total_brl").order("date", { ascending: true }) as any
+    ),
+    fetchAllRows<any>(() =>
+      supabase.from("bags").select("refiner_total_value, total_paid_brl").order("bag_number") as any
+    ),
     supabase.from("settings").select("usd_to_brl").limit(1).single(),
   ]);
-
-  if (purchasesRes.error) throw purchasesRes.error;
-
-  const purchases = purchasesRes.data || [];
-  const bags = bagsRes.data || [];
   const usd_to_brl = Number(settingsRes.data?.usd_to_brl) || 5;
 
   const total_invested = purchases.reduce((s, p) => s + (Number(p.total_brl) || 0), 0);

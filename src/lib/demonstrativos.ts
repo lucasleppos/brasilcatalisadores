@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 
 export interface Demonstrativo {
   id: string;
@@ -27,12 +28,13 @@ function mapRow(r: any): Demonstrativo {
 }
 
 export async function loadDemonstrativos(purchaseId: string): Promise<Demonstrativo[]> {
-  const { data, error } = await supabase
-    .from("demonstrativos")
-    .select("*")
-    .eq("purchase_id", purchaseId)
-    .order("versao", { ascending: true });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("demonstrativos")
+      .select("*")
+      .eq("purchase_id", purchaseId)
+      .order("versao", { ascending: true }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapRow);
 }
 

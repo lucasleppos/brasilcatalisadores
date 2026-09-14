@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,35 +46,40 @@ export function AllocateMaterialDialog({ open, onOpenChange, bags, onAllocated }
 
   const loadAvailableMaterials = async () => {
     // Query 1: purchases by direct status
-    const { data: directPurchases } = await supabase
-      .from("purchases")
-      .select("id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
+    const directPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]) as any
+    );
 
     // Query 2: ceramic purchases in parallel phase
-    const { data: ceramicPurchases } = await supabase
-      .from("purchases")
-      .select("id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .eq("status", "Cerâmico: Aprovado")
-      .eq("op_status", "Alocando Bag");
+    const ceramicPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .eq("status", "Cerâmico: Aprovado")
+        .eq("op_status", "Alocando Bag") as any
+    );
 
     const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])];
     if (purchases.length === 0) { setMaterials([]); return; }
 
     const purchaseIds = purchases.map(p => p.id);
 
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("*")
-      .eq("category", "conferencia")
-      .in("purchase_id", purchaseIds);
+    const items = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("purchase_items")
+        .select("*")
+        .eq("category", "conferencia")
+        .in("purchase_id", chunkIds) as any
+    );
 
-    const { data: allocated } = await supabase
-      .from("bag_items")
-      .select("purchase_item_id")
-      .in("purchase_id", purchaseIds);
+    const allocated = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase.from("bag_items").select("purchase_item_id").in("purchase_id", chunkIds) as any
+    );
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
