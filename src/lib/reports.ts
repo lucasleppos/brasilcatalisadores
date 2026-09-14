@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/db";
 import * as XLSX from "xlsx";
 
 export interface DateRange {
