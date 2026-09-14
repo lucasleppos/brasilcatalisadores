@@ -232,7 +232,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-auto sm:max-w-5xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-full w-screen h-[100dvh] rounded-none sm:w-[min(64rem,95vw)] sm:max-w-none sm:h-auto sm:max-h-[90vh] sm:rounded-lg flex flex-col p-0 gap-0">
           <DialogHeader className="px-3 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 shrink-0 text-left">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="min-w-0">
