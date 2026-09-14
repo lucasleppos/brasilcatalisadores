@@ -218,19 +218,23 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadAvailableMaterials = async () => {
     // Query 1: purchases by direct status
-    const { data: directPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]);
+    const directPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .in("status", ["Enviado ao Bag", "Exportação/Venda", "Peças: Alocado ao Bag"]) as any
+    );
 
     // Query 2: ceramic purchases in parallel phase
-    const { data: ceramicPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
-      .eq("location", "matriz")
-      .eq("status", "Cerâmico: Aprovado")
-      .eq("op_status", "Alocando Bag");
+    const ceramicPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, total_brl, location")
+        .eq("location", "matriz")
+        .eq("status", "Cerâmico: Aprovado")
+        .eq("op_status", "Alocando Bag") as any
+    );
 
     const purchases = [...(directPurchases || []), ...(ceramicPurchases || [])] as any[];
     if (purchases.length === 0) { setAvailableMaterials([]); return; }
@@ -239,16 +243,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const branchMap = await loadSupplierBranches(purchases.map(p => p.supplier_id));
 
 
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("*")
-      .eq("category", "conferencia")
-      .in("purchase_id", purchaseIds);
+    const items = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("purchase_items")
+        .select("*")
+        .eq("category", "conferencia")
+        .in("purchase_id", chunkIds) as any
+    );
 
-    const { data: allocated } = await supabase
-      .from("bag_items")
-      .select("purchase_item_id")
-      .in("purchase_id", purchaseIds);
+    const allocated = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase.from("bag_items").select("purchase_item_id").in("purchase_id", chunkIds) as any
+    );
 
     const allocatedIds = new Set((allocated || []).map((a: any) => a.purchase_item_id));
 
@@ -256,11 +261,13 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     const fractions = await getRealWeightFractionsByPurchase(purchaseIds);
 
     // Zr(%) / Ce(%) do laboratório — apenas informativo (selo "Carbono")
-    const { data: labRows } = await supabase
-      .from("lab_results")
-      .select("purchase_item_id, zr_pct, ce_pct")
-      .in("purchase_id", purchaseIds)
-      .not("purchase_item_id", "is", null);
+    const labRows = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("lab_results")
+        .select("purchase_item_id, zr_pct, ce_pct")
+        .in("purchase_id", chunkIds)
+        .not("purchase_item_id", "is", null) as any
+    );
 
     const carbonoIds = new Set<string>();
     const acc: Record<string, { zr: number[]; ce: number[] }> = {};
