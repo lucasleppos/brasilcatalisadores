@@ -652,35 +652,50 @@ export async function createPurchase(data: {
     ];
   }
 
-  const { data: row, error } = await supabase
-    .from("purchases")
-    .insert({
-      purchase_number: purchaseNumber,
-      erp_number: data.erpNumber || "",
-      supplier_id: data.supplierId,
-      supplier_name: data.supplierName,
-      buyer: data.buyer,
-      status: initialStatus,
-      material_flow: materialFlow,
-      total_brl: totalBrl,
-      notes: data.notes || "",
-      status_history: statusHistory,
-      bulk_weight: data.bulkWeight ?? null,
-      ...(isBranchPurchase
-        ? {
-            branch_id: data.branchId,
-            declared_value_brl: data.declaredValueBrl ?? totalBrl,
-            weight_declared: data.weightDeclared ?? null,
-            source_pedido_number: data.sourcePedidoNumber || null,
-            location: "filial",
-            transfer_status: "pendente",
-          }
-        : {}),
-    })
-    .select()
-    .single();
+  const basePayload = {
+    erp_number: data.erpNumber || "",
+    supplier_id: data.supplierId,
+    supplier_name: data.supplierName,
+    buyer: data.buyer,
+    status: initialStatus,
+    material_flow: materialFlow,
+    total_brl: totalBrl,
+    notes: data.notes || "",
+    status_history: statusHistory,
+    bulk_weight: data.bulkWeight ?? null,
+    ...(isBranchPurchase
+      ? {
+          branch_id: data.branchId,
+          declared_value_brl: data.declaredValueBrl ?? totalBrl,
+          weight_declared: data.weightDeclared ?? null,
+          source_pedido_number: data.sourcePedidoNumber || null,
+          location: "filial",
+          transfer_status: "pendente",
+        }
+      : {}),
+  };
 
-  if (error || !row) return null;
+  let row: any = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await supabase
+      .from("purchases")
+      .insert({ ...basePayload, purchase_number: purchaseNumber })
+      .select()
+      .single();
+    if (res.data) {
+      row = res.data;
+      break;
+    }
+    // 23505 = número duplicado: pega o próximo número e tenta de novo
+    if (res.error?.code === "23505") {
+      purchaseNumber = await nextPurchaseNumber();
+      continue;
+    }
+    return null;
+  }
+
+  if (!row) return null;
+
 
   if (data.items.length > 0) {
     await supabase.from("purchase_items").insert(
