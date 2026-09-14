@@ -1240,12 +1240,14 @@ export async function getRealWeightsByItem(purchaseIds: string[]): Promise<Map<s
   const map = new Map<string, number>();
   if (purchaseIds.length === 0) return map;
 
-  const { data: evidence } = await supabase
-    .from("stage_evidence")
-    .select("purchase_id, value_numeric, created_at")
-    .eq("task_key", "weight_pos_trituracao")
-    .in("purchase_id", purchaseIds)
-    .order("created_at", { ascending: true });
+  const evidence = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+    supabase
+      .from("stage_evidence")
+      .select("purchase_id, value_numeric, created_at")
+      .eq("task_key", "weight_pos_trituracao")
+      .in("purchase_id", chunkIds)
+      .order("created_at", { ascending: true }) as any
+  );
 
   const tritByPurchase = new Map<string, number>();
   (evidence || []).forEach((e: any) => {
@@ -1255,11 +1257,13 @@ export async function getRealWeightsByItem(purchaseIds: string[]): Promise<Map<s
   if (tritByPurchase.size === 0) return map;
 
   const ids = [...tritByPurchase.keys()];
-  const { data: items } = await supabase
-    .from("purchase_items")
-    .select("id, purchase_id, weight")
-    .eq("category", "conferencia")
-    .in("purchase_id", ids);
+  const items = await fetchAllByIds<any>(ids, (chunkIds) =>
+    supabase
+      .from("purchase_items")
+      .select("id, purchase_id, weight")
+      .eq("category", "conferencia")
+      .in("purchase_id", chunkIds) as any
+  );
 
   const grouped = new Map<string, { id: string; weight: number }[]>();
   (items || []).forEach((i: any) => {
@@ -1305,12 +1309,14 @@ export async function getRealWeightFractionsByPurchase(
     weight_pos_trituracao: "legacy",
   };
 
-  const { data: evidence } = await supabase
-    .from("stage_evidence")
-    .select("purchase_id, task_key, value_numeric, created_at")
-    .in("task_key", Object.keys(KEYS))
-    .in("purchase_id", purchaseIds)
-    .order("created_at", { ascending: true });
+  const evidence = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+    supabase
+      .from("stage_evidence")
+      .select("purchase_id, task_key, value_numeric, created_at")
+      .in("task_key", Object.keys(KEYS))
+      .in("purchase_id", chunkIds)
+      .order("created_at", { ascending: true }) as any
+  );
 
   (evidence || []).forEach((e: any) => {
     const v = Number(e.value_numeric) || 0;
