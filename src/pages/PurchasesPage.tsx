@@ -29,6 +29,7 @@ export default function PurchasesPage() {
   const { role, profile, session, loading: authLoading } = useAuth();
   const { canDo, isFieldHidden } = usePermissions();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const canCreate = canDo("compras", "create");
   const canEdit = canDo("compras", "edit");
   const canDelete = canDo("compras", "delete");
