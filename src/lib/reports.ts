@@ -108,12 +108,12 @@ export async function loadPurchasesSummary(
 // ─── Bags Analysis ───
 
 export async function loadBagsAnalysis() {
-  const { data, error } = await supabase
-    .from("bags")
-    .select("bag_number, status, total_weight, total_paid_brl, refiner_total_value, closed_at")
-    .order("bag_number");
-
-  if (error) throw error;
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("bags")
+      .select("bag_number, status, total_weight, total_paid_brl, refiner_total_value, closed_at")
+      .order("bag_number") as any
+  );
 
   const rows: BagAnalysisRow[] = (data || []).map((b) => {
     const paid = Number(b.total_paid_brl) || 0;
@@ -148,11 +148,9 @@ const STATUS_ORDER = [
 ];
 
 export async function loadPipelineData() {
-  const { data, error } = await supabase
-    .from("purchases")
-    .select("status, status_history");
-
-  if (error) throw error;
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("purchases").select("status, status_history").order("date", { ascending: true }) as any
+  );
 
   const statusCount = new Map<string, number>();
   const stageDurations = new Map<string, number[]>();
