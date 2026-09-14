@@ -162,26 +162,29 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
 
   const loadAllocatedMaterials = async () => {
     // Ceramicos alocados: status=Cerâmico: Aprovado e há bag_items vinculados
-    const { data: ceramicPurchases } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
-      .eq("status", "Cerâmico: Aprovado");
+    const ceramicPurchases = await fetchAllRows<any>(() =>
+      supabase
+        .from("purchases")
+        .select("id, purchase_number, supplier_id, supplier_name, status, op_status")
+        .eq("status", "Cerâmico: Aprovado") as any
+    );
 
     const purchaseIds = (ceramicPurchases || []).map(p => p.id);
     if (purchaseIds.length === 0) { setAllocatedMaterials([]); return; }
 
-    const { data: bagItems } = await supabase
-      .from("bag_items")
-      .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
-      .in("purchase_id", purchaseIds);
+    const bagItems = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+      supabase
+        .from("bag_items")
+        .select("purchase_id, purchase_item_id, bag_id, weight, paid_value, supplier_name, estimated_pt_ppm, estimated_pd_ppm, estimated_rh_ppm")
+        .in("purchase_id", chunkIds) as any
+    );
 
     if (!bagItems || bagItems.length === 0) { setAllocatedMaterials([]); return; }
 
     const itemIds = bagItems.map((b: any) => String(b.purchase_item_id).split("::")[0]);
-    const { data: items } = await supabase
-      .from("purchase_items")
-      .select("id, item_type")
-      .in("id", itemIds);
+    const items = await fetchAllByIds<any>(itemIds, (chunkIds) =>
+      supabase.from("purchase_items").select("id, item_type").in("id", chunkIds) as any
+    );
 
     const itemsMap = new Map((items || []).map((i: any) => [i.id, i]));
     const branchMap = await loadSupplierBranches((ceramicPurchases || []).map((p: any) => p.supplier_id));
