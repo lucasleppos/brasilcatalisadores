@@ -98,7 +98,11 @@ export default function PurchasesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await deletePurchase(id);
+    const err = await deletePurchase(id);
+    if (err) {
+      toast({ title: "Não foi possível excluir", description: err, variant: "destructive" });
+      return;
+    }
     reload();
   };
 
