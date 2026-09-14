@@ -89,10 +89,12 @@ export default function CompletedPage() {
     // Carregar bags alocados por compra
     const ids = completed.map(p => p.id);
     if (ids.length > 0) {
-      const { data: bagItems } = await supabase
-        .from("bag_items")
-        .select("purchase_id, bag_id, bags(bag_number, bag_label)")
-        .in("purchase_id", ids);
+      const bagItems = await fetchAllByIds<any>(ids, (chunkIds) =>
+        supabase
+          .from("bag_items")
+          .select("purchase_id, bag_id, bags(bag_number, bag_label)")
+          .in("purchase_id", chunkIds) as any
+      );
       const map: Record<string, BagAllocation[]> = {};
       (bagItems || []).forEach((bi: any) => {
         const key = bi.purchase_id;
@@ -110,10 +112,9 @@ export default function CompletedPage() {
     // Filial de cada fornecedor (conforme cadastro)
     const supplierIds = [...new Set(completed.map(p => p.supplierId).filter(Boolean))] as string[];
     if (supplierIds.length > 0) {
-      const { data: sups } = await supabase
-        .from("suppliers")
-        .select("id, branch")
-        .in("id", supplierIds);
+      const sups = await fetchAllByIds<any>(supplierIds, (chunkIds) =>
+        supabase.from("suppliers").select("id, branch").in("id", chunkIds) as any
+      );
       const bmap: Record<string, string> = {};
       (sups || []).forEach((s: any) => { bmap[s.id] = s.branch || ""; });
       setBranchBySupplier(bmap);
