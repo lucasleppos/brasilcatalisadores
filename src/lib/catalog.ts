@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows, chunk } from "@/lib/db";
 
 // ===== Types =====
 
@@ -28,12 +29,10 @@ export interface CatalogPart {
 // ===== Groups CRUD =====
 
 export async function loadGroups(): Promise<CatalogGroup[]> {
-  const { data, error } = await supabase
-    .from("catalog_groups")
-    .select("*")
-    .order("name");
+  const data = await fetchAllRows<any>(() =>
+    supabase.from("catalog_groups").select("*").order("name") as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map((r: any) => ({
     id: r.id,
     name: r.name,
