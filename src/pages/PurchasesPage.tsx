@@ -20,6 +20,7 @@ import { STAGE_ORDER, stageOfPurchase, flowLabel } from "@/lib/status-stages";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import MobilePurchaseList from "@/components/purchases/MobilePurchaseList";
 
 const fmtBrl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
