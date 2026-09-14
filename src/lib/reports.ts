@@ -49,25 +49,26 @@ export async function loadPurchasesSummary(
   supplierFilter?: string,
   locationFilter?: string
 ) {
-  let query = supabase
-    .from("purchases")
-    .select("id, date, total_brl, supplier_name, location");
+  const data = await fetchAllRows<any>(() => {
+    let query = supabase
+      .from("purchases")
+      .select("id, date, total_brl, supplier_name, location")
+      .order("date", { ascending: true });
 
-  if (dateRange?.from) {
-    query = query.gte("date", dateRange.from.toISOString());
-  }
-  if (dateRange?.to) {
-    query = query.lte("date", dateRange.to.toISOString());
-  }
-  if (supplierFilter) {
-    query = query.eq("supplier_name", supplierFilter);
-  }
-  if (locationFilter) {
-    query = query.eq("location", locationFilter);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
+    if (dateRange?.from) {
+      query = query.gte("date", dateRange.from.toISOString());
+    }
+    if (dateRange?.to) {
+      query = query.lte("date", dateRange.to.toISOString());
+    }
+    if (supplierFilter) {
+      query = query.eq("supplier_name", supplierFilter);
+    }
+    if (locationFilter) {
+      query = query.eq("location", locationFilter);
+    }
+    return query as any;
+  });
 
   // Group by month
   const monthMap = new Map<string, { total_brl: number; count: number }>();
