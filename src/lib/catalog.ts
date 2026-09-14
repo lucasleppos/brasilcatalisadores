@@ -68,12 +68,14 @@ export async function deleteGroup(id: string): Promise<boolean> {
 // ===== Parts CRUD =====
 
 export async function loadParts(): Promise<CatalogPart[]> {
-  const { data, error } = await supabase
-    .from("catalog_parts")
-    .select("*, catalog_groups(name, margin)")
-    .order("brand");
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("catalog_parts")
+      .select("*, catalog_groups(name, margin)")
+      .order("brand")
+      .order("code") as any
+  ).catch(() => [] as any[]);
 
-  if (error || !data) return [];
   return data.map((r: any) => ({
     id: r.id,
     code: r.code,
@@ -97,7 +99,7 @@ export async function searchParts(query: string): Promise<CatalogPart[]> {
     .from("catalog_parts")
     .select("*, catalog_groups(name, margin)")
     .or(`code.ilike.${q},reference.ilike.${q},brand.ilike.${q},vehicle.ilike.${q}`)
-    .limit(20);
+    .limit(50);
 
   if (error || !data) return [];
   return data.map((r: any) => ({
