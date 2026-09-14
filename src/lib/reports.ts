@@ -189,16 +189,15 @@ export async function loadPipelineData() {
 // ─── Dashboard KPIs ───
 
 export async function loadDashboardKPIs(): Promise<DashboardKPIs> {
-  const [purchasesRes, bagsRes, settingsRes] = await Promise.all([
-    supabase.from("purchases").select("date, total_brl"),
-    supabase.from("bags").select("refiner_total_value, total_paid_brl"),
+  const [purchases, bags, settingsRes] = await Promise.all([
+    fetchAllRows<any>(() =>
+      supabase.from("purchases").select("date, total_brl").order("date", { ascending: true }) as any
+    ),
+    fetchAllRows<any>(() =>
+      supabase.from("bags").select("refiner_total_value, total_paid_brl").order("bag_number") as any
+    ),
     supabase.from("settings").select("usd_to_brl").limit(1).single(),
   ]);
-
-  if (purchasesRes.error) throw purchasesRes.error;
-
-  const purchases = purchasesRes.data || [];
-  const bags = bagsRes.data || [];
   const usd_to_brl = Number(settingsRes.data?.usd_to_brl) || 5;
 
   const total_invested = purchases.reduce((s, p) => s + (Number(p.total_brl) || 0), 0);
