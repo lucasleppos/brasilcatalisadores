@@ -291,12 +291,13 @@ export async function removePurchaseFromTransfer(purchaseId: string): Promise<bo
 // ===== Ledger =====
 
 export async function loadLedgerEntries(branchId: string): Promise<BranchLedgerEntry[]> {
-  const { data, error } = await supabase
-    .from("branch_ledger_entries")
-    .select("*")
-    .eq("branch_id", branchId)
-    .order("created_at", { ascending: false });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("branch_ledger_entries")
+      .select("*")
+      .eq("branch_id", branchId)
+      .order("created_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapLedger);
 }
 
@@ -345,12 +346,13 @@ export async function loadBranchBalance(branchId: string): Promise<{ balanceBrl:
 }
 
 export async function loadSettlements(branchId: string): Promise<BranchSettlement[]> {
-  const { data, error } = await supabase
-    .from("branch_settlements")
-    .select("*")
-    .eq("branch_id", branchId)
-    .order("closed_at", { ascending: false });
-  if (error || !data) return [];
+  const data = await fetchAllRows<any>(() =>
+    supabase
+      .from("branch_settlements")
+      .select("*")
+      .eq("branch_id", branchId)
+      .order("closed_at", { ascending: false }) as any
+  ).catch(() => [] as any[]);
   return data.map(mapSettlement);
 }
 
