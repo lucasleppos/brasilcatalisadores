@@ -439,6 +439,29 @@ function calcTotal(items: PurchaseQuoteItem[]): number {
 
 // ===== CRUD =====
 
+/** PostgREST limita cada resposta a 1000 linhas — busca em blocos até trazer tudo */
+const PAGE_SIZE = 1000;
+async function fetchAllIn<T = any>(
+  table: "purchase_items" | "catalog_parts",
+  columns: string,
+  column: string,
+  values: string[]
+): Promise<T[]> {
+  if (values.length === 0) return [];
+  const out: T[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await (supabase.from(table) as any)
+      .select(columns)
+      .in(column, values)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = (data || []) as T[];
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
 export async function loadPurchases(): Promise<Purchase[]> {
   const { data: rows, error } = await supabase
     .from("purchases")
@@ -449,21 +472,15 @@ export async function loadPurchases(): Promise<Purchase[]> {
   if (!rows) return [];
 
   const ids = rows.map((r: any) => r.id);
-  const { data: itemRows } = await supabase
-    .from("purchase_items")
-    .select("*")
-    .in("purchase_id", ids.length > 0 ? ids : ["__none__"]);
+  const itemRows = await fetchAllIn<any>("purchase_items", "*", "purchase_id", ids);
 
   // Fetch catalog parts for items that have catalog_part_id
   const allCatalogPartIds = [...new Set(
     (itemRows || []).filter((i: any) => i.catalog_part_id).map((i: any) => i.catalog_part_id)
-  )];
+  )] as string[];
   let catalogPartsMap: Record<string, { code: string; reference: string }> = {};
   if (allCatalogPartIds.length > 0) {
-    const { data: catalogParts } = await supabase
-      .from("catalog_parts")
-      .select("id, code, reference")
-      .in("id", allCatalogPartIds);
+    const catalogParts = await fetchAllIn<any>("catalog_parts", "id, code, reference", "id", allCatalogPartIds);
     (catalogParts || []).forEach((cp: any) => {
       catalogPartsMap[cp.id] = { code: cp.code, reference: cp.reference };
     });
