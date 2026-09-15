@@ -16,7 +16,7 @@ Alterar o peso real após moagem (Flex) da compra **030926-13** (EDUARDO APARECI
 ## Passos
 1. Aplicar o UPDATE acima no banco.
 2. Conferir no banco os dois valores resultantes.
-3. Você valida na tela (o card da compra deve mostrar 45,6 → 45,5 real após recarregar).
+3. Você valida na tela (o card da compra deve passar a mostrar 45,5 real após recarregar).
 
 ## Fora de escopo
 - Nenhuma alteração de código; apenas este dado desta compra.
