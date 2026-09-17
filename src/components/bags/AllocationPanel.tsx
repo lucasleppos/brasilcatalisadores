@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Package, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
+import { Package, ArrowRight, Clock, CheckCircle2, Search } from "lucide-react";
 import { syncCeramicoAllocation, getRealWeightFractionsByPurchase } from "@/lib/purchases";
 import { fmtNum, fmtKg, fmtBrl } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -136,6 +136,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   // Filter state
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Allocate dialog state
   const [allocatingMaterials, setAllocatingMaterials] = useState<AvailableMaterial[]>([]);
@@ -552,7 +553,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
   // Reset selection when filters change to avoid allocating hidden items
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [supplierFilter, branchFilter]);
+  }, [supplierFilter, branchFilter, searchQuery]);
 
   // Unique filter options from all loaded materials
   const allSuppliers = [...new Set([
@@ -567,9 +568,11 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
     ...inProcessMaterials.map(m => m.supplierBranch || "—"),
   ])].sort((a, b) => a.localeCompare(b));
 
-  const matchesFilters = (m: { supplierName: string; supplierBranch?: string }) => {
+  const matchesFilters = (m: { supplierName: string; supplierBranch?: string; purchaseNumber: string }) => {
     if (supplierFilter !== "all" && m.supplierName !== supplierFilter) return false;
     if (branchFilter !== "all" && (m.supplierBranch || "—") !== branchFilter) return false;
+    const term = searchQuery.trim().toLowerCase();
+    if (term && !m.purchaseNumber.toLowerCase().includes(term)) return false;
     return true;
   };
 
@@ -646,8 +649,17 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
             {allBranches.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
-        {(supplierFilter !== "all" || branchFilter !== "all") && (
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setSupplierFilter("all"); setBranchFilter("all"); }}>
+        <div className="relative w-full sm:w-56">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar nº da compra..."
+            className="h-9 pl-9 text-sm"
+          />
+        </div>
+        {(supplierFilter !== "all" || branchFilter !== "all" || searchQuery.trim() !== "") && (
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setSupplierFilter("all"); setBranchFilter("all"); setSearchQuery(""); }}>
             Limpar filtros
           </Button>
         )}
