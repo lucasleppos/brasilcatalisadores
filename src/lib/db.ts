@@ -10,16 +10,40 @@ export const IN_CHUNK = 300;
 
 type QueryBuilder = {
   range: (from: number, to: number) => Promise<{ data: any; error: any }>;
+  order?: (column: string, opts?: any) => any;
 };
 
-/** Executa a consulta em blocos de 1000 linhas até trazer tudo. */
+/**
+ * Executa a consulta em blocos de 1000 linhas até trazer tudo.
+ *
+ * A paginação por `range` só é estável com uma ordenação fixa: sem ela o banco
+ * pode devolver a mesma linha em dois blocos (itens duplicados) e omitir outras.
+ * Por isso aplicamos `order("id")` quando possível e ainda descartamos
+ * repetições por `id` ao juntar os blocos.
+ */
 export async function fetchAllRows<T = any>(build: () => QueryBuilder): Promise<T[]> {
   const out: T[] = [];
+  const seen = new Set<string>();
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await build().range(offset, offset + PAGE_SIZE - 1);
+    let q: any = build();
+    if (typeof q.order === "function") {
+      try {
+        q = q.order("id", { ascending: true });
+      } catch {
+        /* tabela sem coluna id: mantém a consulta original */
+      }
+    }
+    const { data, error } = await q.range(offset, offset + PAGE_SIZE - 1);
     if (error) throw error;
     const batch = (data || []) as T[];
-    out.push(...batch);
+    for (const row of batch) {
+      const id = (row as any)?.id;
+      if (typeof id === "string") {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
+      out.push(row);
+    }
     if (batch.length < PAGE_SIZE) break;
   }
   return out;
