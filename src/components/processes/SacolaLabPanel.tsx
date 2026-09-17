@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 import { analysisCheck, marginColor, ANALYSIS_MARGIN_PCT } from "@/lib/sacola-validation";
 
+type MaterialKind = "flex" | "carbono";
+
 interface LabPiece {
   itemId: string;
   seq: number;
@@ -28,6 +30,7 @@ interface LabPiece {
   ptPpm: string;
   pdPpm: string;
   rhPpm: string;
+  materialKind: MaterialKind | null;
   saved: boolean;
 }
 
@@ -54,7 +57,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, catalog_part_id, category, seq, created_at")
+        .select("id, weight, catalog_part_id, category, seq, material_kind, created_at")
         .order("created_at", { ascending: true })
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
@@ -120,7 +123,12 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
           ptPpm: lr ? String(lr.pt) : "",
           pdPpm: lr ? String(lr.pd) : "",
           rhPpm: lr ? String(lr.rh) : "",
-          saved: !!lr,
+          materialKind: ((item as { material_kind?: string | null }).material_kind === "carbono"
+            ? "carbono"
+            : (item as { material_kind?: string | null }).material_kind === "flex"
+              ? "flex"
+              : null) as MaterialKind | null,
+          saved: !!lr && !!(item as { material_kind?: string | null }).material_kind,
         };
       }));
     } finally {
@@ -131,6 +139,11 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
   const updateField = (index: number, field: "ptPpm" | "pdPpm" | "rhPpm", value: string) => {
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, [field]: value, saved: false } : p));
   };
+
+  const setMaterialKind = (index: number, kind: MaterialKind) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, materialKind: kind, saved: false } : p));
+  };
+
 
   const handleSavePiece = async (index: number) => {
     const piece = pieces[index];
@@ -143,9 +156,21 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
       return;
     }
 
+    if (!piece.materialKind) {
+      toast.error("Selecione o material: Flex ou Carbono");
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const { error: kindErr } = await supabase
+        .from("purchase_items")
+        .update({ material_kind: piece.materialKind })
+        .eq("id", piece.itemId);
+      if (kindErr) throw kindErr;
+
 
       if (piece.labResultId) {
         // Update existing
@@ -306,6 +331,27 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                     </div>
                   </div>
 
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Material</Label>
+                    <div className="flex gap-2">
+                      {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                        <Button
+                          key={k}
+                          type="button"
+                          size="sm"
+                          variant={p.materialKind === k ? "default" : "outline"}
+                          className="h-8 flex-1 text-xs"
+                          onClick={() => setMaterialKind(i, k)}
+                        >
+                          {k === "flex" ? "Flex" : "Carbono"}
+                        </Button>
+                      ))}
+                    </div>
+                    {!p.materialKind && (
+                      <p className="text-[10px] text-amber-600">Escolha Flex ou Carbono para salvar a análise.</p>
+                    )}
+                  </div>
+
                   {check.hasBase && (
                     <div className="rounded-md border bg-muted/20 p-2 space-y-1">
                       <div className="grid grid-cols-4 gap-1 text-[11px]">
@@ -347,7 +393,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                       size="sm"
                       variant="secondary"
                       className="w-full"
-                      disabled={saving || !p.ptPpm || !p.pdPpm || !p.rhPpm}
+                      disabled={saving || !p.ptPpm || !p.pdPpm || !p.rhPpm || !p.materialKind}
                       onClick={() => handleSavePiece(i)}
                     >
                       {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
