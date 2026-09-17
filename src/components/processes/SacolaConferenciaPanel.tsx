@@ -417,13 +417,12 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>
-              {excludedQty > 0 || returnedQty > 0
+              {excludedQty > 0
                 ? [
                     `${baseDeclaredQty} declaradas`,
-                    excludedQty > 0 ? `${excludedQty} separadas` : null,
-                    returnedQty > 0 ? `${returnedQty} devolvidas` : null,
+                    `${excludedQty} separadas`,
                     `${declaredQty} no fluxo`,
-                  ].filter(Boolean).join(" · ")
+                  ].join(" · ")
                 : `${declaredQty} peças declaradas`}
             </span>
             <span>{fmtNum(totalWeight, 3)} kg conferidos</span>
@@ -504,6 +503,16 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                           </Button>
                         </div>
                       )}
+                      {!isSacola && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] border-amber-400 text-amber-700 hover:bg-amber-500/10"
+                          onClick={() => setExcluded(i, true)}
+                        >
+                          <ArrowDownToLine className="h-3 w-3 mr-1" /> Intercorrência
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemove(i)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -520,7 +529,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           <div className="space-y-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-3">
             <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
               <PackageX className="h-3.5 w-3.5" />
-              Não seguem o fluxo de sacola ({excludedQty} peça(s) · {fmtNum(excludedWeight, 3)} kg)
+              {isSacola
+                ? `Não seguem o fluxo de sacola (${excludedQty} peça(s) · ${fmtNum(excludedWeight, 3)} kg)`
+                : `Peças com intercorrência — não seguem o fluxo (${excludedQty} peça(s))`}
             </p>
             <p className="text-[11px] text-muted-foreground">
               Registradas nesta compra para histórico. Devem ser incluídas em uma nova compra no fluxo de cerâmico.
@@ -543,10 +554,16 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
                   <div className="text-xs space-y-0.5">
                     <p className="font-semibold text-muted-foreground">#{p.seq}</p>
                     <p><span className="text-muted-foreground">Código: </span><span className="font-mono font-medium">{p.code}</span></p>
-                    <p className="text-muted-foreground">
-                      Pesado: {fmtNum(p.unitWeight, 3)} kg · Catálogo: {fmtNum(p.catalogWeight, 3)} kg ·{" "}
-                      <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
-                    </p>
+                    {isSacola ? (
+                      <p className="text-muted-foreground">
+                        Pesado: {fmtNum(p.unitWeight, 3)} kg · Catálogo: {fmtNum(p.catalogWeight, 3)} kg ·{" "}
+                        <span className={`font-semibold ${marginColor(check)}`}>Δ {check.label}</span>
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Ref.: <span className="font-mono">{p.reference || "—"}</span> · {p.quantity} un
+                      </p>
+                    )}
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setExcluded(i, false)}>
                     <Undo2 className="h-3 w-3 mr-1" /> Retornar
@@ -610,6 +627,15 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
             </div>
           )}
 
+          {!isSacola && (
+            <label className="flex items-center gap-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-2 cursor-pointer">
+              <Checkbox checked={newIssue} onCheckedChange={v => setNewIssue(v === true)} />
+              <span className="text-xs font-medium text-amber-700 flex items-center gap-1">
+                <PackageX className="h-3 w-3" /> Peça com intercorrência (não segue o fluxo)
+              </span>
+            </label>
+          )}
+
           <Button
             size="sm"
             variant="secondary"
@@ -626,44 +652,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           </p>
         </div>
 
-        {/* Peças devolvidas (somente fluxo de Peças) */}
-        {showReturns && (
-          <div className="space-y-2 rounded-md border p-3">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <PackageX className="h-3 w-3" /> Peças devolvidas
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Qtd. (un)</Label>
-                <Input
-                  inputMode="numeric"
-                  value={returnedQtyStr}
-                  onChange={e => setReturnedQtyStr(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="0"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Motivo{returnedQty > 0 ? " *" : ""}</Label>
-                <Input
-                  value={returnedReason}
-                  onChange={e => setReturnedReason(e.target.value)}
-                  placeholder="Ex.: peças deformadas"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-            {returnsError ? (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> {returnsError}
-              </p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                Peças reprovadas na entrada são descontadas do total declarado.
-              </p>
-            )}
-          </div>
-        )}
 
 
 
