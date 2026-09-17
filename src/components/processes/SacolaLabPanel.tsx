@@ -331,6 +331,27 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                     </div>
                   </div>
 
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Material</Label>
+                    <div className="flex gap-2">
+                      {(["flex", "carbono"] as MaterialKind[]).map(k => (
+                        <Button
+                          key={k}
+                          type="button"
+                          size="sm"
+                          variant={p.materialKind === k ? "default" : "outline"}
+                          className="h-8 flex-1 text-xs"
+                          onClick={() => setMaterialKind(i, k)}
+                        >
+                          {k === "flex" ? "Flex" : "Carbono"}
+                        </Button>
+                      ))}
+                    </div>
+                    {!p.materialKind && (
+                      <p className="text-[10px] text-amber-600">Escolha Flex ou Carbono para salvar a análise.</p>
+                    )}
+                  </div>
+
                   {check.hasBase && (
                     <div className="rounded-md border bg-muted/20 p-2 space-y-1">
                       <div className="grid grid-cols-4 gap-1 text-[11px]">
@@ -372,7 +393,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
                       size="sm"
                       variant="secondary"
                       className="w-full"
-                      disabled={saving || !p.ptPpm || !p.pdPpm || !p.rhPpm}
+                      disabled={saving || !p.ptPpm || !p.pdPpm || !p.rhPpm || !p.materialKind}
                       onClick={() => handleSavePiece(i)}
                     >
                       {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
