@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { fmtNum, parseNum } from "@/lib/utils";
 import { analysisCheck, marginColor, ANALYSIS_MARGIN_PCT } from "@/lib/sacola-validation";
 
+type MaterialKind = "flex" | "carbono";
+
 interface LabPiece {
   itemId: string;
   seq: number;
@@ -28,6 +30,7 @@ interface LabPiece {
   ptPpm: string;
   pdPpm: string;
   rhPpm: string;
+  materialKind: MaterialKind | null;
   saved: boolean;
 }
 
@@ -54,7 +57,7 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
       // Load conferencia items
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("id, weight, catalog_part_id, category, seq, created_at")
+        .select("id, weight, catalog_part_id, category, seq, material_kind, created_at")
         .order("created_at", { ascending: true })
         .eq("purchase_id", purchase.id)
         .eq("item_type", "peca_sacola")
