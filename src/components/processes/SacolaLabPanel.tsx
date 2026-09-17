@@ -123,7 +123,12 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
           ptPpm: lr ? String(lr.pt) : "",
           pdPpm: lr ? String(lr.pd) : "",
           rhPpm: lr ? String(lr.rh) : "",
-          saved: !!lr,
+          materialKind: ((item as { material_kind?: string | null }).material_kind === "carbono"
+            ? "carbono"
+            : (item as { material_kind?: string | null }).material_kind === "flex"
+              ? "flex"
+              : null) as MaterialKind | null,
+          saved: !!lr && !!(item as { material_kind?: string | null }).material_kind,
         };
       }));
     } finally {
