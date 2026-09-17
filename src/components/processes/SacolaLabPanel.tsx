@@ -140,6 +140,11 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
     setPieces(prev => prev.map((p, i) => i === index ? { ...p, [field]: value, saved: false } : p));
   };
 
+  const setMaterialKind = (index: number, kind: MaterialKind) => {
+    setPieces(prev => prev.map((p, i) => i === index ? { ...p, materialKind: kind, saved: false } : p));
+  };
+
+
   const handleSavePiece = async (index: number) => {
     const piece = pieces[index];
     const pt = parseFloat(piece.ptPpm.replace(",", "."));
@@ -151,9 +156,21 @@ export default function SacolaLabPanel({ purchase, open, onOpenChange, onComplet
       return;
     }
 
+    if (!piece.materialKind) {
+      toast.error("Selecione o material: Flex ou Carbono");
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const { error: kindErr } = await supabase
+        .from("purchase_items")
+        .update({ material_kind: piece.materialKind })
+        .eq("id", piece.itemId);
+      if (kindErr) throw kindErr;
+
 
       if (piece.labResultId) {
         // Update existing
