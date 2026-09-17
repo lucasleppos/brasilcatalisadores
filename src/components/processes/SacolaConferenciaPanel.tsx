@@ -62,55 +62,17 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
-  const [returnedQtyStr, setReturnedQtyStr] = useState("0");
-  const [returnedReason, setReturnedReason] = useState("");
-  
+  const [newIssue, setNewIssue] = useState(false);
 
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
   const itemType: "peca" | "peca_sacola" = isSacola ? "peca_sacola" : "peca";
-  const showReturns = !isSacola && purchase.materialFlow !== "ceramico";
-  const returnedQty = showReturns ? Math.max(0, Math.floor(parseNum(returnedQtyStr) || 0)) : 0;
 
   useEffect(() => {
     if (!open) return;
     loadExistingPieces();
-    loadReturns();
   }, [open, purchase.id]);
 
-  const loadReturns = async () => {
-    const { data } = await supabase
-      .from("stage_evidence")
-      .select("task_key, value_numeric, value_text")
-      .eq("purchase_id", purchase.id)
-      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
-    const q = (data || []).find(d => d.task_key === "qtd_devolvida");
-    const r = (data || []).find(d => d.task_key === "motivo_devolucao");
-    setReturnedQtyStr(q?.value_numeric != null ? String(Number(q.value_numeric)) : "0");
-    setReturnedReason(r?.value_text || "");
-  };
-
-  const persistReturns = async () => {
-    const { error: delErr } = await supabase
-      .from("stage_evidence")
-      .delete()
-      .eq("purchase_id", purchase.id)
-      .in("task_key", ["qtd_devolvida", "motivo_devolucao"]);
-    if (delErr) throw new Error(`Não foi possível atualizar as devoluções: ${delErr.message}`);
-    if (returnedQty > 0) {
-      const { error: insErr } = await supabase.from("stage_evidence").insert([
-        {
-          purchase_id: purchase.id, stage: "conferencia", task_key: "qtd_devolvida",
-          data_type: "number", value_numeric: returnedQty,
-        },
-        {
-          purchase_id: purchase.id, stage: "conferencia", task_key: "motivo_devolucao",
-          data_type: "text", value_text: returnedReason.trim(),
-        },
-      ]);
-      if (insErr) throw new Error(`Não foi possível salvar as devoluções: ${insErr.message}`);
-    }
-  };
 
 
   const loadExistingPieces = async () => {
@@ -193,7 +155,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     if (isNaN(q) || q < 1) { toast.error("Informe a quantidade"); return; }
 
     setPieces(prev => {
-      const idx = prev.findIndex(p => p.catalogPartId === selectedPart.id);
+      const idx = prev.findIndex(p => p.catalogPartId === selectedPart.id && !!p.excluded === newIssue);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: next[idx].quantity + q };
@@ -207,11 +169,13 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         unitWeight: catalogWeight,
         catalogWeight,
         quantity: q,
+        excluded: newIssue,
       }];
     });
 
     setSelectedPart(null);
     setQty("1");
+    setNewIssue(false);
   };
 
   const changeQty = (index: number, delta: number) => {
@@ -278,11 +242,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
 
   const handleSave = async () => {
     if (pieces.length === 0) { toast.error("Adicione pelo menos uma peça"); return; }
-    if (returnsInvalid) { toast.error(returnsError!); return; }
     setSaving(true);
     try {
       await persistPieces();
-      await persistReturns();
       toast.success("Conferência salva");
       onOpenChange(false);
     } catch (e) {
@@ -304,15 +266,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     : purchase.items
         .filter(i => i.itemType === "peca" || i.itemType === "peca_sacola")
         .reduce((s, i) => s + (i.quantity || 1), 0);
-  // Peças separadas e devolvidas saem da meta do fluxo
-  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty - returnedQty);
-
-  const returnsError = returnedQty > baseDeclaredQty - excludedQty
-    ? "Quantidade devolvida maior que o total declarado"
-    : returnedQty > 0 && !returnedReason.trim()
-      ? "Informe o motivo da devolução"
-      : null;
-  const returnsInvalid = !!returnsError;
+  // Peças separadas (intercorrência) saem da meta do fluxo
+  const declaredQty = Math.max(0, baseDeclaredQty - excludedQty);
 
   const totalQty = activePieces.reduce((s, p) => s + p.quantity, 0);
   const totalWeight = activePieces.reduce((s, p) => s + p.unitWeight * p.quantity, 0);
@@ -325,7 +280,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       }).length
     : 0;
   const isComplete = declaredQty > 0 && totalQty === declaredQty
-    && !returnsInvalid
     && (!isSacola || activePieces.every(p => p.unitWeight > 0));
 
   const handlePrintLabels = async () => {
@@ -333,7 +287,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setSaving(true);
     try {
       await persistPieces();
-      await persistReturns();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de imprimir");
       setSaving(false);
@@ -353,7 +306,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       group: "",
       typeLabel: isSacola ? "Peças em Sacola" : "Peças",
       qtyApproved: totalQty,
-      qtyRejected: excludedQty + returnedQty,
+      qtyRejected: excludedQty,
     };
     try {
       await printLabelSheet(Array.from({ length: LABEL_COPIES }, () => ({ ...base })));
@@ -368,7 +321,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setSaving(true);
     try {
       await persistPieces();
-      await persistReturns();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar antes de gerar o PDF");
       setSaving(false);
@@ -412,7 +364,6 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       toast.error("Informe o peso de todas as peças");
       return;
     }
-    if (returnsInvalid) { toast.error(returnsError!); return; }
     if (!isComplete) {
       toast.error(`Faltam peças: ${totalQty}/${declaredQty} conferidas`);
       return;
@@ -420,7 +371,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     setSaving(true);
     try {
       await persistPieces();
-      await persistReturns();
+
 
       // Confere no banco antes de avançar: nunca avançar sem os itens gravados
       const { data: saved, error: checkErr } = await supabase
