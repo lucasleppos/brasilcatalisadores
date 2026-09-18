@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
-import { STAGES, stageOfStatus } from "@/lib/status-stages";
+import { STAGES, STAGE_ORDER, stageOfStatus } from "@/lib/status-stages";
 import * as XLSX from "xlsx";
 
 // ─── Relatório diário de compras (Dashboard) ───
