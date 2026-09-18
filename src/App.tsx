@@ -14,6 +14,7 @@ import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
 import CompletedPage from "@/pages/CompletedPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import DashboardPage from "@/pages/DashboardPage";
 import ReportsPage from "@/pages/ReportsPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
