@@ -270,7 +270,7 @@ export default function DashboardPage() {
         <div className="h-64 flex items-center justify-center text-muted-foreground">Carregando...</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <KpiCard
               title="Compras incluídas"
               value={String(totalsFor("included").count)}
@@ -294,11 +294,6 @@ export default function DashboardPage() {
             <KpiCard
               title="Valor concluído no mês"
               value={fmt(totalsFor("completed").value)}
-              icon={DollarSign}
-            />
-            <KpiCard
-              title="Valor incluído no mês"
-              value={fmt(totalsFor("included").value)}
               icon={DollarSign}
             />
           </div>
