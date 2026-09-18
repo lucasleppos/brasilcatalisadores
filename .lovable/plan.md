@@ -21,7 +21,7 @@ As colunas **Unidades** e **R$/un** saem da tabela. O rodapé soma Compras, Peso
 - **Peças e Peça em Sacola**: soma peça por peça.
   - Peça já cadastrada no catálogo: usa o peso do catálogo × quantidade.
   - Peça sem catálogo (ou sem peso cadastrado): considera **0,7 kg por unidade**.
-  - Peças com intercorrência (fora do fluxo) não entram na soma.
+  - Peças com intercorrência (fora do fluxo) entram na soma com 0,7 kg por unidade.
 
 A mesma regra vale para o peso das compras concluídas usado no cálculo do R$/kg Médio, para que a média e a previsão fiquem na mesma base.
 
