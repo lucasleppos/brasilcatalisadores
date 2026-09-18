@@ -1,6 +1,176 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/db";
+import { fetchAllRows, fetchAllByIds } from "@/lib/db";
+import { STAGES, stageOfStatus } from "@/lib/status-stages";
 import * as XLSX from "xlsx";
+
+// ─── Relatório diário de compras (Dashboard) ───
+
+export type FlowKey = "ceramico" | "pecas" | "sacola";
+
+export const FLOW_KEYS: FlowKey[] = ["ceramico", "pecas", "sacola"];
+
+export const FLOW_TITLES: Record<FlowKey, string> = {
+  ceramico: "Cerâmico",
+  pecas: "Peças",
+  sacola: "Peça em Sacola",
+};
+
+export interface DailyRow {
+  day: number;
+  date: string;
+  count: number;
+  value: number;
+  byFlow: Record<FlowKey, { count: number; value: number }>;
+}
+
+export interface DailyPurchaseReport {
+  included: DailyRow[];
+  completed: DailyRow[];
+  chart: {
+    day: number;
+    included_value: number;
+    completed_value: number;
+    included_cum: number;
+    completed_cum: number;
+  }[];
+  totals: {
+    included: { count: number; value: number; byFlow: Record<FlowKey, { count: number; value: number }> };
+    completed: { count: number; value: number; byFlow: Record<FlowKey, { count: number; value: number }> };
+  };
+}
+
+function emptyByFlow(): Record<FlowKey, { count: number; value: number }> {
+  return {
+    ceramico: { count: 0, value: 0 },
+    pecas: { count: 0, value: 0 },
+    sacola: { count: 0, value: 0 },
+  };
+}
+
+function localDayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Data em que a compra entrou na etapa Concluído (ou null se não concluída). */
+function completionDate(p: any): string | null {
+  const history = Array.isArray(p.status_history)
+    ? (p.status_history as Array<{ status: string; date: string }>)
+    : [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h?.status && h?.date && stageOfStatus(h.status) === STAGES.concluido) return h.date;
+  }
+  const isCompleted = stageOfStatus(p.status, p.op_status) === STAGES.concluido;
+  if (!isCompleted) return null;
+  const last = history[history.length - 1];
+  return last?.date || p.date || null;
+}
+
+export async function loadDailyPurchaseReport(monthStart: Date, monthEnd: Date): Promise<DailyPurchaseReport> {
+  // Busca margem maior: compras criadas antes do mês podem ter sido concluídas no mês.
+  const searchFrom = new Date(monthStart);
+  searchFrom.setFullYear(searchFrom.getFullYear() - 2);
+
+  const purchases = await fetchAllRows<any>(() =>
+    supabase
+      .from("purchases")
+      .select("id, purchase_number, date, total_brl, status, op_status, material_flow, status_history")
+      .gte("date", searchFrom.toISOString())
+      .lte("date", monthEnd.toISOString()) as any
+  );
+
+  // Classifica compras antigas sem material_flow pelos itens.
+  const unknown = purchases.filter((p) => !p.material_flow);
+  const sacolaIds = new Set<string>();
+  if (unknown.length > 0) {
+    const items = await fetchAllByIds<any>(
+      unknown.map((p) => p.id),
+      (chunk) => supabase.from("purchase_items").select("purchase_id, item_type").in("purchase_id", chunk) as any
+    );
+    for (const it of items) if (it.item_type === "peca_sacola") sacolaIds.add(it.purchase_id);
+  }
+
+  const flowOf = (p: any): FlowKey => {
+    if (p.material_flow === "ceramico") return "ceramico";
+    if (p.material_flow === "sacola") return "sacola";
+    if (p.material_flow === "pecas") return "pecas";
+    return sacolaIds.has(p.id) ? "sacola" : "pecas";
+  };
+
+  const daysInMonth = monthEnd.getDate();
+  const makeRows = (): DailyRow[] =>
+    Array.from({ length: daysInMonth }, (_, i) => {
+      const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), i + 1);
+      return {
+        day: i + 1,
+        date: localDayKey(d.toISOString()),
+        count: 0,
+        value: 0,
+        byFlow: emptyByFlow(),
+      };
+    });
+
+  const included = makeRows();
+  const completed = makeRows();
+  const monthKeyPrefix = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
+
+  const add = (rows: DailyRow[], iso: string, flow: FlowKey, value: number) => {
+    const key = localDayKey(iso);
+    if (!key.startsWith(monthKeyPrefix)) return;
+    const day = Number(key.slice(8));
+    const row = rows[day - 1];
+    if (!row) return;
+    row.count += 1;
+    row.value += value;
+    row.byFlow[flow].count += 1;
+    row.byFlow[flow].value += value;
+  };
+
+  for (const p of purchases) {
+    const flow = flowOf(p);
+    const value = Number(p.total_brl) || 0;
+    if (p.date) add(included, p.date, flow, value);
+    const done = completionDate(p);
+    if (done) add(completed, done, flow, value);
+  }
+
+  let incCum = 0;
+  let compCum = 0;
+  const chart = included.map((row, i) => {
+    incCum += row.value;
+    compCum += completed[i].value;
+    return {
+      day: row.day,
+      included_value: row.value,
+      completed_value: completed[i].value,
+      included_cum: incCum,
+      completed_cum: compCum,
+    };
+  });
+
+  const sum = (rows: DailyRow[]) => {
+    const byFlow = emptyByFlow();
+    let count = 0;
+    let value = 0;
+    for (const r of rows) {
+      count += r.count;
+      value += r.value;
+      for (const k of FLOW_KEYS) {
+        byFlow[k].count += r.byFlow[k].count;
+        byFlow[k].value += r.byFlow[k].value;
+      }
+    }
+    return { count, value, byFlow };
+  };
+
+  return {
+    included,
+    completed,
+    chart,
+    totals: { included: sum(included), completed: sum(completed) },
+  };
+}
 
 export interface DateRange {
   from?: Date;

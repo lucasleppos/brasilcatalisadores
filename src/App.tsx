@@ -14,6 +14,7 @@ import ProcessesPage from "@/pages/ProcessesPage";
 import BagsPage from "@/pages/BagsPage";
 import CompletedPage from "@/pages/CompletedPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import DashboardPage from "@/pages/DashboardPage";
 import ReportsPage from "@/pages/ReportsPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
@@ -39,7 +40,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected routes */}
-            <Route path="/" element={<ProtectedRoute><AppLayout><PlaceholderPage title="Dashboard" /></AppLayout></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
             <Route path="/compras" element={<ProtectedRoute module="compras"><AppLayout><PurchasesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/fornecedores" element={<ProtectedRoute module="fornecedores"><AppLayout><SuppliersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/processos" element={<ProtectedRoute module="processos"><AppLayout><ProcessesPage /></AppLayout></ProtectedRoute>} />
