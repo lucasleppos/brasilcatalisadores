@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { STAGES, STAGE_ORDER, stageOfStatus } from "@/lib/status-stages";
+import { getFlowStatuses } from "@/lib/purchases";
 import * as XLSX from "xlsx";
 
 // ─── Relatório diário de compras (Dashboard) ───
@@ -161,7 +162,7 @@ export async function loadDailyPurchaseReport(monthStart: Date, monthEnd: Date):
     const flow = flowOf(p);
     const value = Number(p.total_brl) || 0;
     if (p.date) add(included, p.date, flow, value);
-    const done = completionDate(p);
+    const done = completionDate(p, flow);
     if (done) add(completed, done, flow, value);
   }
 
@@ -257,7 +258,7 @@ export async function loadPipelineForecast(): Promise<PipelineForecast> {
   for (const p of purchases) {
     const flow = flowOf(p);
     const value = Number(p.total_brl) || 0;
-    const done = passedApproval(stageOfStatus(p.status, p.op_status));
+    const done = isCompletedForFlow(p.status, p.op_status, flow);
     if (done) {
       const d = p.date ? new Date(p.date) : null;
       if (value > 0 && d && d >= from12) {
