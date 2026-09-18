@@ -33,7 +33,7 @@ O gráfico de pizza ao lado continua mostrando a quantidade de compras na fila p
 
 `src/lib/reports.ts` — `loadPipelineForecast`:
 - a busca de `purchase_items` passa a trazer `catalog_part_id` (além de `quantity`, `weight`, `category`, `item_type`); carregar os pesos de `catalog_parts` pelos ids referenciados (via `fetchAllByIds`).
-- nova agregação por compra: `pieceWeight = Σ (peso do catálogo ?? peso do item ?? 0,7) × quantidade`, ignorando `category = 'conferencia_excluida'`.
+- nova agregação por compra: `pieceWeight = Σ (peso do catálogo ?? peso do item ?? 0,7) × quantidade`, incluindo os itens com `category = 'conferencia_excluida'` (peso 0,7 por unidade).
 - `weightOf(p, flow)`: para `pecas`/`sacola` retorna `pieceWeight`; para `ceramico` mantém real → granel → declarado.
 - `PipelineFlowStat` reduz para `{ pendingCount, pendingWeight, avgPerKg, forecast }`; `pendingUnits`/`avgPerUnit` e o fallback por unidade são removidos. `forecast = pendingWeight × avgPerKg` (0 quando `avgPerKg` é nulo).
 
