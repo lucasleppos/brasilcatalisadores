@@ -184,6 +184,89 @@ export async function loadDailyPurchaseReport(monthStart: Date, monthEnd: Date):
   };
 }
 
+// ─── Previsão da fila (compras que ainda não passaram da Aprovação) ───
+
+export interface PipelineFlowStat {
+  pendingCount: number;
+  pendingWithValue: number;
+  withoutValueCount: number;
+  avgValue: number | null;
+  forecast: number;
+}
+
+export type PipelineForecast = Record<FlowKey, PipelineFlowStat>;
+
+export async function loadPipelineForecast(): Promise<PipelineForecast> {
+  const now = new Date();
+  const from24 = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+  const from12 = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+
+  const purchases = await fetchAllRows<any>(() =>
+    supabase
+      .from("purchases")
+      .select("id, date, total_brl, status, op_status, material_flow, status_history")
+      .gte("date", from24.toISOString()) as any
+  );
+
+  const unknown = purchases.filter((p) => !p.material_flow);
+  const sacolaIds = new Set<string>();
+  if (unknown.length > 0) {
+    const items = await fetchAllByIds<any>(
+      unknown.map((p) => p.id),
+      (chunk) => supabase.from("purchase_items").select("purchase_id, item_type").in("purchase_id", chunk) as any
+    );
+    for (const it of items) if (it.item_type === "peca_sacola") sacolaIds.add(it.purchase_id);
+  }
+
+  const flowOf = (p: any): FlowKey => {
+    if (p.material_flow === "ceramico") return "ceramico";
+    if (p.material_flow === "sacola") return "sacola";
+    if (p.material_flow === "pecas") return "pecas";
+    return sacolaIds.has(p.id) ? "sacola" : "pecas";
+  };
+
+  const pending: Record<FlowKey, { count: number; withValue: number; withoutValue: number }> = {
+    ceramico: { count: 0, withValue: 0, withoutValue: 0 },
+    pecas: { count: 0, withValue: 0, withoutValue: 0 },
+    sacola: { count: 0, withValue: 0, withoutValue: 0 },
+  };
+  const hist: Record<FlowKey, { sum: number; count: number }> = {
+    ceramico: { sum: 0, count: 0 },
+    pecas: { sum: 0, count: 0 },
+    sacola: { sum: 0, count: 0 },
+  };
+
+  for (const p of purchases) {
+    const flow = flowOf(p);
+    const value = Number(p.total_brl) || 0;
+    const done = passedApproval(stageOfStatus(p.status, p.op_status));
+    if (done) {
+      const d = p.date ? new Date(p.date) : null;
+      if (value > 0 && d && d >= from12) {
+        hist[flow].sum += value;
+        hist[flow].count += 1;
+      }
+      continue;
+    }
+    pending[flow].count += 1;
+    if (value > 0) pending[flow].withValue += value;
+    else pending[flow].withoutValue += 1;
+  }
+
+  const out = {} as PipelineForecast;
+  for (const k of FLOW_KEYS) {
+    const avg = hist[k].count > 0 ? hist[k].sum / hist[k].count : null;
+    out[k] = {
+      pendingCount: pending[k].count,
+      pendingWithValue: pending[k].withValue,
+      withoutValueCount: pending[k].withoutValue,
+      avgValue: avg,
+      forecast: pending[k].withValue + (avg ?? 0) * pending[k].withoutValue,
+    };
+  }
+  return out;
+}
+
 export interface DateRange {
   from?: Date;
   to?: Date;
