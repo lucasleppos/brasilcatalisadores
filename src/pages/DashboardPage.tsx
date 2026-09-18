@@ -172,18 +172,13 @@ export default function DashboardPage() {
 
   const chartData = useMemo(() => {
     if (!data) return [];
-    let incCum = 0;
     let compCum = 0;
     return data.included.map((row, i) => {
-      const included_value = flows.reduce((s, k) => s + row.byFlow[k].value, 0);
       const completed_value = flows.reduce((s, k) => s + data.completed[i].byFlow[k].value, 0);
-      incCum += included_value;
       compCum += completed_value;
       return {
         day: row.day,
-        included_value,
         completed_value,
-        included_cum: incCum,
         completed_cum: compCum,
       };
     });
