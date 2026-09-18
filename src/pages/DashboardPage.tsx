@@ -182,7 +182,6 @@ function PipelineCard({
 
   const totalCount = flows.reduce((s, k) => s + forecast[k].pendingCount, 0);
   const totalWeight = flows.reduce((s, k) => s + forecast[k].pendingWeight, 0);
-  const totalUnits = flows.reduce((s, k) => s + forecast[k].pendingUnits, 0);
   const totalForecast = flows.reduce((s, k) => s + forecast[k].forecast, 0);
 
   const chartConfig = Object.fromEntries(
