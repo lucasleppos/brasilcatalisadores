@@ -182,7 +182,6 @@ function PipelineCard({
 
   const totalCount = flows.reduce((s, k) => s + forecast[k].pendingCount, 0);
   const totalWeight = flows.reduce((s, k) => s + forecast[k].pendingWeight, 0);
-  const totalUnits = flows.reduce((s, k) => s + forecast[k].pendingUnits, 0);
   const totalForecast = flows.reduce((s, k) => s + forecast[k].forecast, 0);
 
   const chartConfig = Object.fromEntries(
@@ -225,25 +224,23 @@ function PipelineCard({
 
           <div className="min-w-0 space-y-3">
             <div className="text-sm text-muted-foreground">
-              Compras que ainda não passaram da Aprovação. Previsão pela média por kg (ou por
-              unidade) das compras concluídas no mês corrente.
+              Compras que ainda não passaram da Aprovação. Previsão pela média por kg das compras
+              concluídas no mês corrente.
             </div>
             <Table className="table-fixed text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[18%] px-2">Tipo</TableHead>
-                  <TableHead className="w-[12%] px-2 text-right">Compras</TableHead>
-                  <TableHead className="w-[14%] px-2 text-right">Peso (kg)</TableHead>
-                  <TableHead className="w-[12%] px-2 text-right">Unidades</TableHead>
-                  <TableHead className="w-[14%] px-2 text-right">R$/kg</TableHead>
-                  <TableHead className="w-[14%] px-2 text-right">R$/un</TableHead>
-                  <TableHead className="w-[16%] px-2 text-right">Previsão</TableHead>
+                  <TableHead className="w-[24%] px-2">Tipo</TableHead>
+                  <TableHead className="w-[14%] px-2 text-right">Compras</TableHead>
+                  <TableHead className="w-[18%] px-2 text-right">Peso (kg)</TableHead>
+                  <TableHead className="w-[20%] px-2 text-right">R$/kg Médio</TableHead>
+                  <TableHead className="w-[24%] px-2 text-right">Previsão Pgto</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {flows.map((k) => {
                   const f = forecast[k];
-                  const noHist = f.avgPerKg === null && f.avgPerUnit === null;
+                  const noHist = f.avgPerKg === null;
                   return (
                     <TableRow key={k}>
                       <TableCell className="px-2 font-medium">
@@ -257,12 +254,8 @@ function PipelineCard({
                       </TableCell>
                       <TableCell className="px-2 text-right">{f.pendingCount}</TableCell>
                       <TableCell className="px-2 text-right">{fmtKg(f.pendingWeight)}</TableCell>
-                      <TableCell className="px-2 text-right">{f.pendingUnits}</TableCell>
                       <TableCell className="px-2 text-right">
-                        {f.avgPerKg === null ? "—" : fmt(f.avgPerKg)}
-                      </TableCell>
-                      <TableCell className="px-2 text-right">
-                        {f.avgPerUnit === null ? "—" : fmt(f.avgPerUnit)}
+                        {noHist ? "—" : fmt(f.avgPerKg!)}
                       </TableCell>
                       <TableCell className="px-2 text-right font-medium">
                         {noHist ? (
@@ -280,8 +273,6 @@ function PipelineCard({
                   <TableCell className="px-2 font-semibold">Total</TableCell>
                   <TableCell className="px-2 text-right font-semibold">{totalCount}</TableCell>
                   <TableCell className="px-2 text-right font-semibold">{fmtKg(totalWeight)}</TableCell>
-                  <TableCell className="px-2 text-right font-semibold">{totalUnits}</TableCell>
-                  <TableCell className="px-2" />
                   <TableCell className="px-2" />
                   <TableCell className="px-2 text-right font-semibold">{fmt(totalForecast)}</TableCell>
                 </TableRow>
