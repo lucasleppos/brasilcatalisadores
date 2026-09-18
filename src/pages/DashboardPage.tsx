@@ -160,6 +160,116 @@ function DailyTable({
   );
 }
 
+const PIE_COLORS: Record<FlowKey, string> = {
+  ceramico: "hsl(var(--primary))",
+  pecas: "hsl(var(--accent))",
+  sacola: "hsl(var(--muted-foreground))",
+};
+
+function PipelineCard({
+  forecast,
+  flows,
+}: {
+  forecast: PipelineForecast;
+  flows: FlowKey[];
+}) {
+  const pieData = flows
+    .map((k) => ({ key: k, name: FLOW_TITLES[k], value: forecast[k].pendingCount }))
+    .filter((d) => d.value > 0);
+
+  const totalCount = flows.reduce((s, k) => s + forecast[k].pendingCount, 0);
+  const totalForecast = flows.reduce((s, k) => s + forecast[k].forecast, 0);
+
+  const chartConfig = Object.fromEntries(
+    flows.map((k) => [k, { label: FLOW_TITLES[k], color: PIE_COLORS[k] }])
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Compras na fila (ainda não passaram da Aprovação)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-6 md:grid-cols-2 items-center">
+          {pieData.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">
+              Nenhuma compra na fila.
+            </p>
+          ) : (
+            <ChartContainer config={chartConfig} className="h-[260px] w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={2}
+                  label={(e: any) => `${e.name}: ${e.value}`}
+                >
+                  {pieData.map((d) => (
+                    <Cell key={d.key} fill={PIE_COLORS[d.key]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          )}
+
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Previsão de valores pela média das compras concluídas nos últimos 12 meses
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Qtd.</TableHead>
+                  <TableHead className="text-right">Média</TableHead>
+                  <TableHead className="text-right">Previsão</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {flows.map((k) => {
+                  const f = forecast[k];
+                  return (
+                    <TableRow key={k}>
+                      <TableCell className="font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ background: PIE_COLORS[k] }}
+                          />
+                          {FLOW_TITLES[k]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">{f.pendingCount}</TableCell>
+                      <TableCell className="text-right">
+                        {f.avgValue === null ? "sem histórico" : fmt(f.avgValue)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {fmt(f.forecast)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-muted/50">
+                  <TableCell className="font-semibold">Total</TableCell>
+                  <TableCell className="text-right font-semibold">{totalCount}</TableCell>
+                  <TableCell />
+                  <TableCell className="text-right font-semibold">{fmt(totalForecast)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const now = new Date();
   const [month, setMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
