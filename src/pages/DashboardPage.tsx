@@ -305,7 +305,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Valores diários e acumulado do mês</CardTitle>
+              <CardTitle className="text-base">Valores diários das compras concluídas e acumulado do mês</CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[340px] w-full">
@@ -318,17 +318,7 @@ export default function DashboardPage() {
                   <Legend
                     formatter={(v) => chartConfig[v as keyof typeof chartConfig]?.label || String(v)}
                   />
-                  <Bar yAxisId="left" dataKey="included_value" fill="var(--color-included_value)" radius={[3, 3, 0, 0]} />
                   <Bar yAxisId="left" dataKey="completed_value" fill="var(--color-completed_value)" radius={[3, 3, 0, 0]} />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="included_cum"
-                    stroke="var(--color-included_cum)"
-                    strokeDasharray="4 4"
-                    dot={false}
-                    strokeWidth={2}
-                  />
                   <Line
                     yAxisId="right"
                     type="monotone"
