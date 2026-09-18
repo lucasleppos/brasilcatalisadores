@@ -207,34 +207,48 @@ export async function loadDailyPurchaseReport(monthStart: Date, monthEnd: Date):
 
 export interface PipelineFlowStat {
   pendingCount: number;
-  pendingWithValue: number;
-  withoutValueCount: number;
-  avgValue: number | null;
+  pendingWeight: number;
+  pendingUnits: number;
+  avgPerKg: number | null;
+  avgPerUnit: number | null;
   forecast: number;
 }
 
 export type PipelineForecast = Record<FlowKey, PipelineFlowStat>;
 
-export async function loadPipelineForecast(): Promise<PipelineForecast> {
-  const now = new Date();
-  const from24 = new Date(now.getFullYear() - 2, now.getMonth(), 1);
-  const from12 = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+const EXCLUDED_ITEM_CATEGORY = "conferencia_excluida";
+
+export async function loadPipelineForecast(monthStart: Date, monthEnd: Date): Promise<PipelineForecast> {
+  const from24 = new Date(monthStart.getFullYear() - 2, monthStart.getMonth(), 1);
 
   const purchases = await fetchAllRows<any>(() =>
     supabase
       .from("purchases")
-      .select("id, date, total_brl, status, op_status, material_flow, status_history")
+      .select(
+        "id, date, total_brl, status, op_status, material_flow, status_history, weight_real, weight_declared, bulk_weight"
+      )
       .gte("date", from24.toISOString()) as any
   );
 
-  const unknown = purchases.filter((p) => !p.material_flow);
+  const items = await fetchAllByIds<any>(
+    purchases.map((p) => p.id),
+    (chunk) =>
+      supabase
+        .from("purchase_items")
+        .select("purchase_id, item_type, quantity, weight, category")
+        .in("purchase_id", chunk) as any
+  );
+
   const sacolaIds = new Set<string>();
-  if (unknown.length > 0) {
-    const items = await fetchAllByIds<any>(
-      unknown.map((p) => p.id),
-      (chunk) => supabase.from("purchase_items").select("purchase_id, item_type").in("purchase_id", chunk) as any
-    );
-    for (const it of items) if (it.item_type === "peca_sacola") sacolaIds.add(it.purchase_id);
+  const agg = new Map<string, { weight: number; units: number }>();
+  for (const it of items) {
+    if (it.item_type === "peca_sacola") sacolaIds.add(it.purchase_id);
+    if (it.category === EXCLUDED_ITEM_CATEGORY) continue;
+    const cur = agg.get(it.purchase_id) || { weight: 0, units: 0 };
+    const qty = Number(it.quantity) || 0;
+    cur.weight += (Number(it.weight) || 0) * (qty || 1);
+    cur.units += qty;
+    agg.set(it.purchase_id, cur);
   }
 
   const flowOf = (p: any): FlowKey => {
@@ -244,47 +258,67 @@ export async function loadPipelineForecast(): Promise<PipelineForecast> {
     return sacolaIds.has(p.id) ? "sacola" : "pecas";
   };
 
-  const pending: Record<FlowKey, { count: number; withValue: number; withoutValue: number }> = {
-    ceramico: { count: 0, withValue: 0, withoutValue: 0 },
-    pecas: { count: 0, withValue: 0, withoutValue: 0 },
-    sacola: { count: 0, withValue: 0, withoutValue: 0 },
+  const weightOf = (p: any): number => {
+    const real = Number(p.weight_real) || 0;
+    if (real > 0) return real;
+    const bulk = Number(p.bulk_weight) || 0;
+    if (bulk > 0) return bulk;
+    const declared = Number(p.weight_declared) || 0;
+    if (declared > 0) return declared;
+    return agg.get(p.id)?.weight || 0;
   };
-  const hist: Record<FlowKey, { sum: number; count: number }> = {
-    ceramico: { sum: 0, count: 0 },
-    pecas: { sum: 0, count: 0 },
-    sacola: { sum: 0, count: 0 },
+  const unitsOf = (p: any): number => agg.get(p.id)?.units || 0;
+
+  const pending: Record<FlowKey, { count: number; weight: number; units: number }> = {
+    ceramico: { count: 0, weight: 0, units: 0 },
+    pecas: { count: 0, weight: 0, units: 0 },
+    sacola: { count: 0, weight: 0, units: 0 },
+  };
+  const hist: Record<FlowKey, { value: number; weight: number; units: number }> = {
+    ceramico: { value: 0, weight: 0, units: 0 },
+    pecas: { value: 0, weight: 0, units: 0 },
+    sacola: { value: 0, weight: 0, units: 0 },
   };
 
   for (const p of purchases) {
     const flow = flowOf(p);
     const value = Number(p.total_brl) || 0;
-    const done = isCompletedForFlow(p.status, p.op_status, flow);
-    if (done) {
-      const d = p.date ? new Date(p.date) : null;
-      if (value > 0 && d && d >= from12) {
-        hist[flow].sum += value;
-        hist[flow].count += 1;
+    if (isCompletedForFlow(p.status, p.op_status, flow)) {
+      const done = completionDate(p, flow);
+      const d = done ? new Date(done) : null;
+      if (value > 0 && d && d >= monthStart && d <= monthEnd) {
+        hist[flow].value += value;
+        hist[flow].weight += weightOf(p);
+        hist[flow].units += unitsOf(p);
       }
       continue;
     }
     pending[flow].count += 1;
-    if (value > 0) pending[flow].withValue += value;
-    else pending[flow].withoutValue += 1;
+    pending[flow].weight += weightOf(p);
+    pending[flow].units += unitsOf(p);
   }
 
   const out = {} as PipelineForecast;
   for (const k of FLOW_KEYS) {
-    const avg = hist[k].count > 0 ? hist[k].sum / hist[k].count : null;
+    const h = hist[k];
+    const avgPerKg = h.value > 0 && h.weight > 0 ? h.value / h.weight : null;
+    const avgPerUnit = h.value > 0 && h.units > 0 ? h.value / h.units : null;
+    const p = pending[k];
+    let forecast = 0;
+    if (p.weight > 0 && avgPerKg !== null) forecast = p.weight * avgPerKg;
+    else if (avgPerUnit !== null) forecast = p.units * avgPerUnit;
     out[k] = {
-      pendingCount: pending[k].count,
-      pendingWithValue: pending[k].withValue,
-      withoutValueCount: pending[k].withoutValue,
-      avgValue: avg,
-      forecast: pending[k].withValue + (avg ?? 0) * pending[k].withoutValue,
+      pendingCount: p.count,
+      pendingWeight: p.weight,
+      pendingUnits: p.units,
+      avgPerKg,
+      avgPerUnit,
+      forecast,
     };
   }
   return out;
 }
+
 
 export interface DateRange {
   from?: Date;
