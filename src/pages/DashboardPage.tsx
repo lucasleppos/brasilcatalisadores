@@ -217,9 +217,7 @@ export default function DashboardPage() {
       });
 
   const chartConfig = {
-    included_value: { label: "Incluídas (dia)", color: "hsl(var(--muted-foreground))" },
     completed_value: { label: "Concluídas (dia)", color: "hsl(var(--primary))" },
-    included_cum: { label: "Incluídas (acum.)", color: "hsl(var(--muted-foreground))" },
     completed_cum: { label: "Concluídas (acum.)", color: "hsl(var(--primary))" },
   };
 
