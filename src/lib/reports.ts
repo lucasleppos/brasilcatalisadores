@@ -52,17 +52,29 @@ function localDayKey(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Data em que a compra entrou na etapa Concluído (ou null se não concluída). */
+/** Índice da etapa no fluxo (-1 se desconhecida). */
+function stageIndex(stage: string): number {
+  return STAGE_ORDER.indexOf(stage);
+}
+
+const APROVACAO_INDEX = STAGE_ORDER.indexOf(STAGES.aprovacao);
+
+/** Compra considerada concluída: já passou pela etapa Aprovação. */
+function passedApproval(stage: string): boolean {
+  const idx = stageIndex(stage);
+  return idx > APROVACAO_INDEX;
+}
+
+/** Data em que a compra passou da etapa Aprovação (ou null se ainda não passou). */
 function completionDate(p: any): string | null {
   const history = Array.isArray(p.status_history)
     ? (p.status_history as Array<{ status: string; date: string }>)
     : [];
-  for (let i = history.length - 1; i >= 0; i--) {
+  if (!passedApproval(stageOfStatus(p.status, p.op_status))) return null;
+  for (let i = 0; i < history.length; i++) {
     const h = history[i];
-    if (h?.status && h?.date && stageOfStatus(h.status) === STAGES.concluido) return h.date;
+    if (h?.status && h?.date && passedApproval(stageOfStatus(h.status))) return h.date;
   }
-  const isCompleted = stageOfStatus(p.status, p.op_status) === STAGES.concluido;
-  if (!isCompleted) return null;
   const last = history[history.length - 1];
   return last?.date || p.date || null;
 }
