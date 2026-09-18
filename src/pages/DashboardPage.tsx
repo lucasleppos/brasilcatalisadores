@@ -283,6 +283,11 @@ export default function DashboardPage() {
     queryFn: () => loadDailyPurchaseReport(monthStart, monthEnd),
   });
 
+  const { data: pipeline } = useQuery({
+    queryKey: ["pipeline-forecast"],
+    queryFn: () => loadPipelineForecast(),
+  });
+
   const flows: FlowKey[] = flowFilter === "all" ? FLOW_KEYS : [flowFilter];
 
   const chartData = useMemo(() => {
