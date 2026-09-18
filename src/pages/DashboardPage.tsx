@@ -172,18 +172,13 @@ export default function DashboardPage() {
 
   const chartData = useMemo(() => {
     if (!data) return [];
-    let incCum = 0;
     let compCum = 0;
     return data.included.map((row, i) => {
-      const included_value = flows.reduce((s, k) => s + row.byFlow[k].value, 0);
       const completed_value = flows.reduce((s, k) => s + data.completed[i].byFlow[k].value, 0);
-      incCum += included_value;
       compCum += completed_value;
       return {
         day: row.day,
-        included_value,
         completed_value,
-        included_cum: incCum,
         completed_cum: compCum,
       };
     });
@@ -222,9 +217,7 @@ export default function DashboardPage() {
       });
 
   const chartConfig = {
-    included_value: { label: "Incluídas (dia)", color: "hsl(var(--muted-foreground))" },
     completed_value: { label: "Concluídas (dia)", color: "hsl(var(--primary))" },
-    included_cum: { label: "Incluídas (acum.)", color: "hsl(var(--muted-foreground))" },
     completed_cum: { label: "Concluídas (acum.)", color: "hsl(var(--primary))" },
   };
 
@@ -312,7 +305,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Valores diários e acumulado do mês</CardTitle>
+              <CardTitle className="text-base">Valores diários das compras concluídas e acumulado do mês</CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[340px] w-full">
@@ -325,17 +318,7 @@ export default function DashboardPage() {
                   <Legend
                     formatter={(v) => chartConfig[v as keyof typeof chartConfig]?.label || String(v)}
                   />
-                  <Bar yAxisId="left" dataKey="included_value" fill="var(--color-included_value)" radius={[3, 3, 0, 0]} />
                   <Bar yAxisId="left" dataKey="completed_value" fill="var(--color-completed_value)" radius={[3, 3, 0, 0]} />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="included_cum"
-                    stroke="var(--color-included_cum)"
-                    strokeDasharray="4 4"
-                    dot={false}
-                    strokeWidth={2}
-                  />
                   <Line
                     yAxisId="right"
                     type="monotone"
