@@ -197,7 +197,7 @@ function PipelineCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-2 items-center">
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] items-center">
           {pieData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-10 text-center">
               Nenhuma compra na fila.
@@ -223,21 +223,21 @@ function PipelineCard({
             </ChartContainer>
           )}
 
-          <div className="space-y-3 overflow-x-auto">
+          <div className="min-w-0 space-y-3">
             <div className="text-sm text-muted-foreground">
               Compras que ainda não passaram da Aprovação. Previsão pela média por kg (ou por
               unidade) das compras concluídas no mês corrente.
             </div>
-            <Table>
+            <Table className="table-fixed text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Compras</TableHead>
-                  <TableHead className="text-right">Peso (kg)</TableHead>
-                  <TableHead className="text-right">Unidades</TableHead>
-                  <TableHead className="text-right">R$/kg</TableHead>
-                  <TableHead className="text-right">R$/un</TableHead>
-                  <TableHead className="text-right">Previsão</TableHead>
+                  <TableHead className="w-[18%] px-2">Tipo</TableHead>
+                  <TableHead className="w-[12%] px-2 text-right">Compras</TableHead>
+                  <TableHead className="w-[14%] px-2 text-right">Peso (kg)</TableHead>
+                  <TableHead className="w-[12%] px-2 text-right">Unidades</TableHead>
+                  <TableHead className="w-[14%] px-2 text-right">R$/kg</TableHead>
+                  <TableHead className="w-[14%] px-2 text-right">R$/un</TableHead>
+                  <TableHead className="w-[16%] px-2 text-right">Previsão</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,8 +246,8 @@ function PipelineCard({
                   const noHist = f.avgPerKg === null && f.avgPerUnit === null;
                   return (
                     <TableRow key={k}>
-                      <TableCell className="font-medium">
-                        <span className="inline-flex items-center gap-2">
+                      <TableCell className="px-2 font-medium">
+                        <span className="inline-flex items-center gap-1.5">
                           <span
                             className="h-2.5 w-2.5 rounded-full"
                             style={{ background: PIE_COLORS[k] }}
@@ -255,16 +255,16 @@ function PipelineCard({
                           {FLOW_TITLES[k]}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">{f.pendingCount}</TableCell>
-                      <TableCell className="text-right">{fmtKg(f.pendingWeight)}</TableCell>
-                      <TableCell className="text-right">{f.pendingUnits}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-2 text-right">{f.pendingCount}</TableCell>
+                      <TableCell className="px-2 text-right">{fmtKg(f.pendingWeight)}</TableCell>
+                      <TableCell className="px-2 text-right">{f.pendingUnits}</TableCell>
+                      <TableCell className="px-2 text-right">
                         {f.avgPerKg === null ? "—" : fmt(f.avgPerKg)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-2 text-right">
                         {f.avgPerUnit === null ? "—" : fmt(f.avgPerUnit)}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="px-2 text-right font-medium">
                         {noHist ? (
                           <span className="text-xs text-muted-foreground">
                             sem histórico no mês
@@ -277,13 +277,13 @@ function PipelineCard({
                   );
                 })}
                 <TableRow className="bg-muted/50">
-                  <TableCell className="font-semibold">Total</TableCell>
-                  <TableCell className="text-right font-semibold">{totalCount}</TableCell>
-                  <TableCell className="text-right font-semibold">{fmtKg(totalWeight)}</TableCell>
-                  <TableCell className="text-right font-semibold">{totalUnits}</TableCell>
-                  <TableCell />
-                  <TableCell />
-                  <TableCell className="text-right font-semibold">{fmt(totalForecast)}</TableCell>
+                  <TableCell className="px-2 font-semibold">Total</TableCell>
+                  <TableCell className="px-2 text-right font-semibold">{totalCount}</TableCell>
+                  <TableCell className="px-2 text-right font-semibold">{fmtKg(totalWeight)}</TableCell>
+                  <TableCell className="px-2 text-right font-semibold">{totalUnits}</TableCell>
+                  <TableCell className="px-2" />
+                  <TableCell className="px-2" />
+                  <TableCell className="px-2 text-right font-semibold">{fmt(totalForecast)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
