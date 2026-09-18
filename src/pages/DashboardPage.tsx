@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import {
   loadDailyPurchaseReport,
+  loadPipelineForecast,
   exportToExcel,
   FLOW_KEYS,
   FLOW_TITLES,
   type DailyRow,
   type FlowKey,
+  type PipelineForecast,
 } from "@/lib/reports";
 import {
   ComposedChart,
@@ -23,6 +25,9 @@ import {
   YAxis,
   CartesianGrid,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 type FlowFilter = FlowKey | "all";
