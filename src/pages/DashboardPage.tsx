@@ -308,10 +308,14 @@ export default function DashboardPage() {
     queryFn: () => loadDailyPurchaseReport(monthStart, monthEnd),
   });
 
+  const curStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
   const { data: pipeline } = useQuery({
-    queryKey: ["pipeline-forecast"],
-    queryFn: () => loadPipelineForecast(),
+    queryKey: ["pipeline-forecast", curStart.toISOString()],
+    queryFn: () => loadPipelineForecast(curStart, curEnd),
   });
+
 
   const flows: FlowKey[] = flowFilter === "all" ? FLOW_KEYS : [flowFilter];
 
