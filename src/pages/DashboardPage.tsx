@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,6 +13,7 @@ import {
   FLOW_KEYS,
   FLOW_TITLES,
   type DailyRow,
+  type FlowKey,
 } from "@/lib/reports";
 import {
   ComposedChart,
@@ -23,6 +24,8 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+
+type FlowFilter = FlowKey | "all";
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtShort = (v: number) =>
@@ -56,19 +59,24 @@ function KpiCard({
 function DailyTable({
   title,
   rows,
+  flows,
   showValue,
   onExport,
 }: {
   title: string;
   rows: DailyRow[];
+  flows: FlowKey[];
   showValue: boolean;
   onExport: () => void;
 }) {
-  const visible = rows.filter((r) => r.count > 0);
+  const flowCount = (r: DailyRow) => flows.reduce((s, k) => s + r.byFlow[k].count, 0);
+  const flowValue = (r: DailyRow) => flows.reduce((s, k) => s + r.byFlow[k].value, 0);
+
+  const visible = rows.filter((r) => flowCount(r) > 0);
   const total = visible.reduce(
     (acc, r) => {
-      acc.count += r.count;
-      acc.value += r.value;
+      acc.count += flowCount(r);
+      acc.value += flowValue(r);
       return acc;
     },
     { count: 0, value: 0 }
@@ -91,20 +99,22 @@ function DailyTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Dia</TableHead>
-                  {FLOW_KEYS.map((k) => (
+                  {flows.map((k) => (
                     <TableHead key={k} className="text-right">
                       {FLOW_TITLES[k]}
                     </TableHead>
                   ))}
-                  <TableHead className="text-right">Qtd. Total</TableHead>
-                  {showValue && <TableHead className="text-right">Valor Total</TableHead>}
+                  {flows.length > 1 && <TableHead className="text-right">Qtd. Total</TableHead>}
+                  {showValue && flows.length > 1 && (
+                    <TableHead className="text-right">Valor Total</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visible.map((r) => (
                   <TableRow key={r.day}>
                     <TableCell className="font-medium">{String(r.day).padStart(2, "0")}</TableCell>
-                    {FLOW_KEYS.map((k) => (
+                    {flows.map((k) => (
                       <TableCell key={k} className="text-right">
                         {r.byFlow[k].count || "—"}
                         {showValue && r.byFlow[k].count > 0 && (
@@ -114,19 +124,27 @@ function DailyTable({
                         )}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right font-medium">{r.count}</TableCell>
-                    {showValue && <TableCell className="text-right font-medium">{fmt(r.value)}</TableCell>}
+                    {flows.length > 1 && (
+                      <TableCell className="text-right font-medium">{flowCount(r)}</TableCell>
+                    )}
+                    {showValue && flows.length > 1 && (
+                      <TableCell className="text-right font-medium">{fmt(flowValue(r))}</TableCell>
+                    )}
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/50">
                   <TableCell className="font-semibold">Total</TableCell>
-                  {FLOW_KEYS.map((k) => (
+                  {flows.map((k) => (
                     <TableCell key={k} className="text-right font-semibold">
                       {visible.reduce((s, r) => s + r.byFlow[k].count, 0)}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right font-semibold">{total.count}</TableCell>
-                  {showValue && <TableCell className="text-right font-semibold">{fmt(total.value)}</TableCell>}
+                  {flows.length > 1 && (
+                    <TableCell className="text-right font-semibold">{total.count}</TableCell>
+                  )}
+                  {showValue && flows.length > 1 && (
+                    <TableCell className="text-right font-semibold">{fmt(total.value)}</TableCell>
+                  )}
                 </TableRow>
               </TableBody>
             </Table>
@@ -140,6 +158,7 @@ function DailyTable({
 export default function DashboardPage() {
   const now = new Date();
   const [month, setMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+  const [flowFilter, setFlowFilter] = useState<FlowFilter>("all");
 
   const monthStart = new Date(month.getFullYear(), month.getMonth(), 1, 0, 0, 0, 0);
   const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -149,6 +168,28 @@ export default function DashboardPage() {
     queryFn: () => loadDailyPurchaseReport(monthStart, monthEnd),
   });
 
+  const flows: FlowKey[] = flowFilter === "all" ? FLOW_KEYS : [flowFilter];
+
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    let incCum = 0;
+    let compCum = 0;
+    return data.included.map((row, i) => {
+      const included_value = flows.reduce((s, k) => s + row.byFlow[k].value, 0);
+      const completed_value = flows.reduce((s, k) => s + data.completed[i].byFlow[k].value, 0);
+      incCum += included_value;
+      compCum += completed_value;
+      return {
+        day: row.day,
+        included_value,
+        completed_value,
+        included_cum: incCum,
+        completed_cum: compCum,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, flowFilter]);
+
   const monthLabel = format(month, "MMMM 'de' yyyy", { locale: ptBR });
   const isCurrentMonth =
     month.getFullYear() === now.getFullYear() && month.getMonth() === now.getMonth();
@@ -156,17 +197,27 @@ export default function DashboardPage() {
   const shiftMonth = (delta: number) =>
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
+  const totalsFor = (side: "included" | "completed") => {
+    const t = data?.totals[side];
+    if (!t) return { count: 0, value: 0 };
+    return {
+      count: flows.reduce((s, k) => s + t.byFlow[k].count, 0),
+      value: flows.reduce((s, k) => s + t.byFlow[k].value, 0),
+    };
+  };
+
   const exportRows = (rows: DailyRow[], withValue: boolean) =>
     rows
-      .filter((r) => r.count > 0)
+      .filter((r) => flows.reduce((s, k) => s + r.byFlow[k].count, 0) > 0)
       .map((r) => {
         const out: Record<string, unknown> = { Dia: r.date };
-        for (const k of FLOW_KEYS) {
+        for (const k of flows) {
           out[`${FLOW_TITLES[k]} (qtd)`] = r.byFlow[k].count;
           if (withValue) out[`${FLOW_TITLES[k]} (R$)`] = r.byFlow[k].value;
         }
-        out["Qtd. Total"] = r.count;
-        if (withValue) out["Valor Total (R$)"] = r.value;
+        if (flows.length > 1) out["Qtd. Total"] = flows.reduce((s, k) => s + r.byFlow[k].count, 0);
+        if (withValue && flows.length > 1)
+          out["Valor Total (R$)"] = flows.reduce((s, k) => s + r.byFlow[k].value, 0);
         return out;
       });
 
@@ -177,6 +228,11 @@ export default function DashboardPage() {
     completed_cum: { label: "Concluídas (acum.)", color: "hsl(var(--primary))" },
   };
 
+  const filterButtons: { key: FlowFilter; label: string }[] = [
+    { key: "all", label: "Todos" },
+    ...FLOW_KEYS.map((k) => ({ key: k as FlowFilter, label: FLOW_TITLES[k] })),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -184,7 +240,20 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-display">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Compras incluídas e concluídas por dia</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 border rounded-md p-1">
+            {filterButtons.map((b) => (
+              <Button
+                key={b.key}
+                variant={flowFilter === b.key ? "default" : "ghost"}
+                size="sm"
+                className="h-8"
+                onClick={() => setFlowFilter(b.key)}
+              >
+                {b.label}
+              </Button>
+            ))}
+          </div>
           <Button variant="outline" size="icon" onClick={() => shiftMonth(-1)} title="Mês anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -211,18 +280,34 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
               title="Compras incluídas"
-              value={String(data.totals.included.count)}
-              sub={FLOW_KEYS.map((k) => `${FLOW_TITLES[k]}: ${data.totals.included.byFlow[k].count}`).join(" · ")}
+              value={String(totalsFor("included").count)}
+              sub={
+                flows.length > 1
+                  ? FLOW_KEYS.map((k) => `${FLOW_TITLES[k]}: ${data.totals.included.byFlow[k].count}`).join(" · ")
+                  : undefined
+              }
               icon={Package}
             />
             <KpiCard
               title="Compras concluídas"
-              value={String(data.totals.completed.count)}
-              sub={FLOW_KEYS.map((k) => `${FLOW_TITLES[k]}: ${data.totals.completed.byFlow[k].count}`).join(" · ")}
+              value={String(totalsFor("completed").count)}
+              sub={
+                flows.length > 1
+                  ? FLOW_KEYS.map((k) => `${FLOW_TITLES[k]}: ${data.totals.completed.byFlow[k].count}`).join(" · ")
+                  : undefined
+              }
               icon={CheckCircle2}
             />
-            <KpiCard title="Valor concluído no mês" value={fmt(data.totals.completed.value)} icon={DollarSign} />
-            <KpiCard title="Valor incluído no mês" value={fmt(data.totals.included.value)} icon={DollarSign} />
+            <KpiCard
+              title="Valor concluído no mês"
+              value={fmt(totalsFor("completed").value)}
+              icon={DollarSign}
+            />
+            <KpiCard
+              title="Valor incluído no mês"
+              value={fmt(totalsFor("included").value)}
+              icon={DollarSign}
+            />
           </div>
 
           <Card>
@@ -231,7 +316,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[340px] w-full">
-                <ComposedChart data={data.chart}>
+                <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="day" className="text-xs" />
                   <YAxis yAxisId="left" className="text-xs" tickFormatter={fmtShort} />
@@ -267,6 +352,7 @@ export default function DashboardPage() {
           <DailyTable
             title="Compras concluídas por dia"
             rows={data.completed}
+            flows={flows}
             showValue
             onExport={() =>
               exportToExcel(exportRows(data.completed, true), `concluidas-${format(month, "yyyy-MM")}`)
@@ -276,6 +362,7 @@ export default function DashboardPage() {
           <DailyTable
             title="Compras incluídas por dia"
             rows={data.included}
+            flows={flows}
             showValue={false}
             onExport={() =>
               exportToExcel(exportRows(data.included, false), `incluidas-${format(month, "yyyy-MM")}`)
