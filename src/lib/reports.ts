@@ -52,32 +52,50 @@ function localDayKey(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Índice da etapa no fluxo (-1 se desconhecida). */
+/** Índice da etapa na ordem genérica (-1 se desconhecida). */
 function stageIndex(stage: string): number {
   return STAGE_ORDER.indexOf(stage);
 }
 
 const APROVACAO_INDEX = STAGE_ORDER.indexOf(STAGES.aprovacao);
 
-/** Compra considerada concluída: já passou pela etapa Aprovação. */
-function passedApproval(stage: string): boolean {
-  const idx = stageIndex(stage);
-  return idx > APROVACAO_INDEX;
+const FLOW_TO_MATERIAL: Record<FlowKey, "ceramico" | "pecas" | "sacola"> = {
+  ceramico: "ceramico",
+  pecas: "pecas",
+  sacola: "sacola",
+};
+
+/**
+ * Compra concluída conforme a sequência do próprio fluxo:
+ * em Peças, Corte e Trituração/Moagem vêm DEPOIS da Aprovação e contam como concluídas.
+ */
+function isCompletedForFlow(status: string, opStatus: string | null | undefined, flow: FlowKey): boolean {
+  if (opStatus === "Bag Alocado" || opStatus === "Alocando Bag") return true;
+  if (status && status.includes("Demonstrativo Contestado")) return false;
+  if (flow === "pecas" && status === "Peças: Peso Divergente") return true;
+
+  const seq = getFlowStatuses(FLOW_TO_MATERIAL[flow]);
+  const approvalIdx = seq.findIndex((s) => s.includes("Gerar Boleto de Aprovação"));
+  const idx = seq.indexOf(status);
+  if (idx >= 0 && approvalIdx >= 0) return idx > approvalIdx;
+
+  return stageIndex(stageOfStatus(status, opStatus)) > APROVACAO_INDEX;
 }
 
-/** Data em que a compra passou da etapa Aprovação (ou null se ainda não passou). */
-function completionDate(p: any): string | null {
+/** Data em que a compra passou da Aprovação no seu fluxo (ou null se ainda não passou). */
+function completionDate(p: any, flow: FlowKey): string | null {
   const history = Array.isArray(p.status_history)
     ? (p.status_history as Array<{ status: string; date: string }>)
     : [];
-  if (!passedApproval(stageOfStatus(p.status, p.op_status))) return null;
+  if (!isCompletedForFlow(p.status, p.op_status, flow)) return null;
   for (let i = 0; i < history.length; i++) {
     const h = history[i];
-    if (h?.status && h?.date && passedApproval(stageOfStatus(h.status))) return h.date;
+    if (h?.status && h?.date && isCompletedForFlow(h.status, null, flow)) return h.date;
   }
   const last = history[history.length - 1];
   return last?.date || p.date || null;
 }
+
 
 export async function loadDailyPurchaseReport(monthStart: Date, monthEnd: Date): Promise<DailyPurchaseReport> {
   // Busca margem maior: compras criadas antes do mês podem ter sido concluídas no mês.
