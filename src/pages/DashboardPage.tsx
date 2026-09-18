@@ -418,6 +418,8 @@ export default function DashboardPage() {
             />
           </div>
 
+          {pipeline && <PipelineCard forecast={pipeline} flows={flows} />}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Valores diários das compras concluídas e acumulado do mês</CardTitle>
