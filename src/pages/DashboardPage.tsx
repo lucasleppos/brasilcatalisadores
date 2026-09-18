@@ -237,7 +237,9 @@ export default function DashboardPage() {
                   <YAxis yAxisId="left" className="text-xs" tickFormatter={fmtShort} />
                   <YAxis yAxisId="right" orientation="right" className="text-xs" tickFormatter={fmtShort} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
+                  <Legend
+                    formatter={(v) => chartConfig[v as keyof typeof chartConfig]?.label || String(v)}
+                  />
                   <Bar yAxisId="left" dataKey="included_value" fill="var(--color-included_value)" radius={[3, 3, 0, 0]} />
                   <Bar yAxisId="left" dataKey="completed_value" fill="var(--color-completed_value)" radius={[3, 3, 0, 0]} />
                   <Line
