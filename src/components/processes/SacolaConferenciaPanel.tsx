@@ -195,6 +195,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const handleRemove = async (index: number) => {
     const piece = pieces[index];
     if (piece.id) {
+      const { data: allocated } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .eq("purchase_id", purchase.id);
+      if ((allocated || []).some(a => (a.purchase_item_id || "").startsWith(piece.id!))) {
+        toast.error("Esta peça já está alocada em um Bag. Retire a alocação no módulo Bags antes de removê-la.");
+        return;
+      }
       const { error } = await supabase.from("purchase_items").delete().eq("id", piece.id);
       if (error) { toast.error(`Não foi possível remover a peça: ${error.message}`); return; }
     }
