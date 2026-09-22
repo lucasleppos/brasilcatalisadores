@@ -34,7 +34,7 @@ interface ConferenciaPiece {
   seq: number;
   code: string;
   reference: string | null;
-  catalogPartId: string;
+  catalogPartId?: string;
   /** Peso unitário registrado (catálogo para peça fechada, pesado para sacola) */
   unitWeight: number;
   /** Peso cadastrado no catálogo (referência de comparação) */
@@ -64,6 +64,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [newIssue, setNewIssue] = useState(false);
+  /** ids das peças carregadas do banco, para saber o que foi removido na tela */
+  const [loadedIds, setLoadedIds] = useState<string[]>([]);
 
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
@@ -79,19 +81,20 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at")
+      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at, part_code, part_reference")
       .order("created_at", { ascending: true })
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
       .in("category", ["conferencia", EXCLUDED_CATEGORY]);
 
-    const rows = (data || []).filter(d => d.catalog_part_id);
+    const rows = data || [];
     if (rows.length === 0) {
       setPieces([]);
+      setLoadedIds([]);
       return;
     }
 
-    const catalogIds = rows.map(d => d.catalog_part_id!);
+    const catalogIds = rows.map(d => d.catalog_part_id).filter((v): v is string => !!v);
     const catalogMap: Record<string, { code: string; reference: string; weight: number }> = {};
     const { data: parts } = await supabase
       .from("catalog_parts")
@@ -102,14 +105,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     let fallbackSeq = 0;
     setPieces(rows.map(d => {
       const q = Math.max(1, Number(d.quantity) || 1);
-      const info = catalogMap[d.catalog_part_id!];
+      const info = d.catalog_part_id ? catalogMap[d.catalog_part_id] : undefined;
       fallbackSeq += 1;
       return {
         id: d.id,
         seq: Number((d as { seq?: number | null }).seq) || fallbackSeq,
-        code: info?.code || "",
-        reference: info?.reference || null,
-        catalogPartId: d.catalog_part_id!,
+        code: info?.code || d.part_code || "sem código",
+        reference: info?.reference || d.part_reference || null,
+        catalogPartId: d.catalog_part_id || undefined,
         unitWeight: (Number(d.weight) || 0) / q,
         catalogWeight: info?.weight || 0,
         quantity: q,
@@ -117,7 +120,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         materialKind: ((d as { material_kind?: string | null }).material_kind === "carbono" ? "carbono" : (d as { material_kind?: string | null }).material_kind === "flex" ? "flex" : undefined) as MaterialKind | undefined,
       };
     }));
+    setLoadedIds(rows.map(d => d.id));
   };
+
 
 
   const nextSeq = (list: ConferenciaPiece[]) =>
@@ -190,6 +195,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const handleRemove = async (index: number) => {
     const piece = pieces[index];
     if (piece.id) {
+      const { data: allocated } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .eq("purchase_id", purchase.id);
+      if ((allocated || []).some(a => (a.purchase_item_id || "").startsWith(piece.id!))) {
+        toast.error("Esta peça já está alocada em um Bag. Retire a alocação no módulo Bags antes de removê-la.");
+        return;
+      }
       const { error } = await supabase.from("purchase_items").delete().eq("id", piece.id);
       if (error) { toast.error(`Não foi possível remover a peça: ${error.message}`); return; }
     }
@@ -210,35 +223,74 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }));
   };
 
-  /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
+  /**
+   * Reconcilia as peças da conferência:
+   * - peças já existentes são atualizadas (preserva valor lançado e precificação);
+   * - peças novas são inseridas;
+   * - peças retiradas da tela são excluídas, desde que não estejam alocadas em Bag;
+   * - o item marcador criado na compra (sem categoria) é removido.
+   */
   const persistPieces = async () => {
-    const { error: delErr } = await supabase
-      .from("purchase_items")
-      .delete()
-      .eq("purchase_id", purchase.id)
-      .in("item_type", ["peca", "peca_sacola"]);
-    if (delErr) throw new Error(`Não foi possível limpar os itens anteriores: ${delErr.message}`);
-
-    const rows = pieces.map(p => ({
+    const payload = (p: ConferenciaPiece) => ({
       purchase_id: purchase.id,
       item_type: itemType,
       category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
       quantity: p.quantity,
       weight: p.unitWeight * p.quantity,
-      catalog_part_id: p.catalogPartId,
+      catalog_part_id: p.catalogPartId ?? null,
       seq: p.seq,
       // A marcação Flex/Carbono é feita no Laboratório; aqui apenas preserva o que já existir
       material_kind: isSacola ? (p.materialKind ?? null) : null,
-    }));
+    });
 
-    const { data: inserted, error: insErr } = await supabase
+    // 1) remove o item marcador da compra (sem categoria de conferência)
+    const { error: markerErr } = await supabase
       .from("purchase_items")
-      .insert(rows)
-      .select("id");
-    if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
-    if ((inserted?.length ?? 0) !== rows.length) {
-      throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+      .delete()
+      .eq("purchase_id", purchase.id)
+      .in("item_type", ["peca", "peca_sacola"])
+      .is("category", null);
+    if (markerErr) throw new Error(`Não foi possível limpar os itens anteriores: ${markerErr.message}`);
+
+    // 2) exclui as peças retiradas na tela (bloqueando as já alocadas em Bag)
+    const keptIds = new Set(pieces.map(p => p.id).filter((v): v is string => !!v));
+    const removedIds = loadedIds.filter(id => !keptIds.has(id));
+    if (removedIds.length > 0) {
+      const { data: allocated } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .eq("purchase_id", purchase.id);
+      // o id pode vir com sufixo (ex.: "<id>::flex")
+      const blocked = (allocated || []).filter(a =>
+        removedIds.some(id => (a.purchase_item_id || "").startsWith(id))
+      );
+      if (blocked.length > 0) {
+        throw new Error("Há peças removidas que já estão alocadas em um Bag. Retire a alocação no módulo Bags antes de salvar.");
+      }
+      const { error: delErr } = await supabase.from("purchase_items").delete().in("id", removedIds);
+      if (delErr) throw new Error(`Não foi possível remover as peças excluídas: ${delErr.message}`);
     }
+
+    // 3) atualiza as peças existentes (mantendo valor e precificação)
+    for (const p of pieces.filter(x => x.id)) {
+      const { error } = await supabase.from("purchase_items").update(payload(p)).eq("id", p.id!);
+      if (error) throw new Error(`Não foi possível atualizar a peça ${p.code}: ${error.message}`);
+    }
+
+    // 4) insere as peças novas
+    const newPieces = pieces.filter(p => !p.id);
+    if (newPieces.length > 0) {
+      const { data: inserted, error: insErr } = await supabase
+        .from("purchase_items")
+        .insert(newPieces.map(payload))
+        .select("id");
+      if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
+      if ((inserted?.length ?? 0) !== newPieces.length) {
+        throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+      }
+    }
+
+    await loadExistingPieces();
   };
 
   const handleSave = async () => {

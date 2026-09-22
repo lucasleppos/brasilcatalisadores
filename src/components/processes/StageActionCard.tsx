@@ -253,9 +253,23 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
     }
   };
 
+  /** true quando a compra já tem peças alocadas em Bag (impede voltar etapas) */
+  const hasBagAllocation = async () => {
+    const { data } = await supabase
+      .from("bag_items")
+      .select("id")
+      .eq("purchase_id", purchase.id)
+      .limit(1);
+    return (data || []).length > 0;
+  };
+
   const handleContestDestination = async (dest: "analise" | "conferencia") => {
     setLoading(true);
     try {
+      if (await hasBagAllocation()) {
+        toast.error("Esta compra já tem peças alocadas em Bag; retire a alocação no módulo Bags antes de voltar a etapa.");
+        return;
+      }
       let newStatus = "Em Conferência";
       if (dest === "analise") {
         if (purchase.materialFlow === "ceramico") {
@@ -320,6 +334,14 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
     if (!adminTargetStatus) return;
     setLoading(true);
     try {
+      const flowStatuses = getFlowStatuses(purchase.materialFlow as any);
+      const from = flowStatuses.indexOf(purchase.status);
+      const to = flowStatuses.indexOf(adminTargetStatus);
+      if (to >= 0 && from >= 0 && to < from && (await hasBagAllocation())) {
+        toast.error("Esta compra já tem peças alocadas em Bag; retire a alocação no módulo Bags antes de voltar a etapa.");
+        return;
+      }
+
       const { data: current } = await supabase.from("purchases").select("status_history").eq("id", purchase.id).single();
       const history = [...((current?.status_history as any[]) || []), {
         status: adminTargetStatus,
