@@ -34,7 +34,7 @@ interface ConferenciaPiece {
   seq: number;
   code: string;
   reference: string | null;
-  catalogPartId: string;
+  catalogPartId?: string;
   /** Peso unitário registrado (catálogo para peça fechada, pesado para sacola) */
   unitWeight: number;
   /** Peso cadastrado no catálogo (referência de comparação) */
@@ -79,19 +79,20 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const loadExistingPieces = async () => {
     const { data } = await supabase
       .from("purchase_items")
-      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at")
+      .select("id, item_type, weight, quantity, catalog_part_id, category, seq, material_kind, created_at, part_code, part_reference")
       .order("created_at", { ascending: true })
       .eq("purchase_id", purchase.id)
       .eq("item_type", itemType)
       .in("category", ["conferencia", EXCLUDED_CATEGORY]);
 
-    const rows = (data || []).filter(d => d.catalog_part_id);
+    const rows = data || [];
     if (rows.length === 0) {
       setPieces([]);
+      setLoadedIds([]);
       return;
     }
 
-    const catalogIds = rows.map(d => d.catalog_part_id!);
+    const catalogIds = rows.map(d => d.catalog_part_id).filter((v): v is string => !!v);
     const catalogMap: Record<string, { code: string; reference: string; weight: number }> = {};
     const { data: parts } = await supabase
       .from("catalog_parts")
