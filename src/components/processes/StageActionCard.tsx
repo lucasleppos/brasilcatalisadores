@@ -253,9 +253,23 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
     }
   };
 
+  /** true quando a compra já tem peças alocadas em Bag (impede voltar etapas) */
+  const hasBagAllocation = async () => {
+    const { data } = await supabase
+      .from("bag_items")
+      .select("id")
+      .eq("purchase_id", purchase.id)
+      .limit(1);
+    return (data || []).length > 0;
+  };
+
   const handleContestDestination = async (dest: "analise" | "conferencia") => {
     setLoading(true);
     try {
+      if (await hasBagAllocation()) {
+        toast.error("Esta compra já tem peças alocadas em Bag; retire a alocação no módulo Bags antes de voltar a etapa.");
+        return;
+      }
       let newStatus = "Em Conferência";
       if (dest === "analise") {
         if (purchase.materialFlow === "ceramico") {
