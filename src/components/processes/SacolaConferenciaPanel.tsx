@@ -64,6 +64,8 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
   const [saving, setSaving] = useState(false);
   const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [newIssue, setNewIssue] = useState(false);
+  /** ids das peças carregadas do banco, para saber o que foi removido na tela */
+  const [loadedIds, setLoadedIds] = useState<string[]>([]);
 
 
   const isSacola = purchase.items.some(i => i.itemType === "peca_sacola") || purchase.materialFlow === "sacola";
@@ -103,14 +105,14 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     let fallbackSeq = 0;
     setPieces(rows.map(d => {
       const q = Math.max(1, Number(d.quantity) || 1);
-      const info = catalogMap[d.catalog_part_id!];
+      const info = d.catalog_part_id ? catalogMap[d.catalog_part_id] : undefined;
       fallbackSeq += 1;
       return {
         id: d.id,
         seq: Number((d as { seq?: number | null }).seq) || fallbackSeq,
-        code: info?.code || "",
-        reference: info?.reference || null,
-        catalogPartId: d.catalog_part_id!,
+        code: info?.code || d.part_code || "sem código",
+        reference: info?.reference || d.part_reference || null,
+        catalogPartId: d.catalog_part_id || undefined,
         unitWeight: (Number(d.weight) || 0) / q,
         catalogWeight: info?.weight || 0,
         quantity: q,
@@ -118,7 +120,9 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
         materialKind: ((d as { material_kind?: string | null }).material_kind === "carbono" ? "carbono" : (d as { material_kind?: string | null }).material_kind === "flex" ? "flex" : undefined) as MaterialKind | undefined,
       };
     }));
+    setLoadedIds(rows.map(d => d.id));
   };
+
 
 
   const nextSeq = (list: ConferenciaPiece[]) =>
