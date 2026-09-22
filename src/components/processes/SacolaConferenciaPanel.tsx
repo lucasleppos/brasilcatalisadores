@@ -251,9 +251,12 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
       const { data: allocated } = await supabase
         .from("bag_items")
         .select("purchase_item_id")
-        .in("purchase_item_id", removedIds);
-      const blocked = new Set((allocated || []).map(a => a.purchase_item_id));
-      if (blocked.size > 0) {
+        .eq("purchase_id", purchase.id);
+      // o id pode vir com sufixo (ex.: "<id>::flex")
+      const blocked = (allocated || []).filter(a =>
+        removedIds.some(id => (a.purchase_item_id || "").startsWith(id))
+      );
+      if (blocked.length > 0) {
         throw new Error("Há peças removidas que já estão alocadas em um Bag. Retire a alocação no módulo Bags antes de salvar.");
       }
       const { error: delErr } = await supabase.from("purchase_items").delete().in("id", removedIds);
