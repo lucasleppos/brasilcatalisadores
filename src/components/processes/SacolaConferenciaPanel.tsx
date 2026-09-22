@@ -215,35 +215,71 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
     }));
   };
 
-  /** Remove todos os itens do fluxo (inclusive o item marcador criado na compra) e grava os conferidos */
+  /**
+   * Reconcilia as peças da conferência:
+   * - peças já existentes são atualizadas (preserva valor lançado e precificação);
+   * - peças novas são inseridas;
+   * - peças retiradas da tela são excluídas, desde que não estejam alocadas em Bag;
+   * - o item marcador criado na compra (sem categoria) é removido.
+   */
   const persistPieces = async () => {
-    const { error: delErr } = await supabase
-      .from("purchase_items")
-      .delete()
-      .eq("purchase_id", purchase.id)
-      .in("item_type", ["peca", "peca_sacola"]);
-    if (delErr) throw new Error(`Não foi possível limpar os itens anteriores: ${delErr.message}`);
-
-    const rows = pieces.map(p => ({
+    const payload = (p: ConferenciaPiece) => ({
       purchase_id: purchase.id,
       item_type: itemType,
       category: p.excluded ? EXCLUDED_CATEGORY : "conferencia",
       quantity: p.quantity,
       weight: p.unitWeight * p.quantity,
-      catalog_part_id: p.catalogPartId,
+      catalog_part_id: p.catalogPartId ?? null,
       seq: p.seq,
       // A marcação Flex/Carbono é feita no Laboratório; aqui apenas preserva o que já existir
       material_kind: isSacola ? (p.materialKind ?? null) : null,
-    }));
+    });
 
-    const { data: inserted, error: insErr } = await supabase
+    // 1) remove o item marcador da compra (sem categoria de conferência)
+    const { error: markerErr } = await supabase
       .from("purchase_items")
-      .insert(rows)
-      .select("id");
-    if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
-    if ((inserted?.length ?? 0) !== rows.length) {
-      throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+      .delete()
+      .eq("purchase_id", purchase.id)
+      .in("item_type", ["peca", "peca_sacola"])
+      .is("category", null);
+    if (markerErr) throw new Error(`Não foi possível limpar os itens anteriores: ${markerErr.message}`);
+
+    // 2) exclui as peças retiradas na tela (bloqueando as já alocadas em Bag)
+    const keptIds = new Set(pieces.map(p => p.id).filter((v): v is string => !!v));
+    const removedIds = loadedIds.filter(id => !keptIds.has(id));
+    if (removedIds.length > 0) {
+      const { data: allocated } = await supabase
+        .from("bag_items")
+        .select("purchase_item_id")
+        .in("purchase_item_id", removedIds);
+      const blocked = new Set((allocated || []).map(a => a.purchase_item_id));
+      if (blocked.size > 0) {
+        throw new Error("Há peças removidas que já estão alocadas em um Bag. Retire a alocação no módulo Bags antes de salvar.");
+      }
+      const { error: delErr } = await supabase.from("purchase_items").delete().in("id", removedIds);
+      if (delErr) throw new Error(`Não foi possível remover as peças excluídas: ${delErr.message}`);
     }
+
+    // 3) atualiza as peças existentes (mantendo valor e precificação)
+    for (const p of pieces.filter(x => x.id)) {
+      const { error } = await supabase.from("purchase_items").update(payload(p)).eq("id", p.id!);
+      if (error) throw new Error(`Não foi possível atualizar a peça ${p.code}: ${error.message}`);
+    }
+
+    // 4) insere as peças novas
+    const newPieces = pieces.filter(p => !p.id);
+    if (newPieces.length > 0) {
+      const { data: inserted, error: insErr } = await supabase
+        .from("purchase_items")
+        .insert(newPieces.map(payload))
+        .select("id");
+      if (insErr) throw new Error(`Não foi possível salvar as peças conferidas: ${insErr.message}`);
+      if ((inserted?.length ?? 0) !== newPieces.length) {
+        throw new Error("As peças conferidas não foram gravadas. Verifique suas permissões e tente novamente.");
+      }
+    }
+
+    await loadExistingPieces();
   };
 
   const handleSave = async () => {
