@@ -1,3 +1,4 @@
+import { loadSettingsWithActiveHedge } from "@/lib/hedges";
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,7 @@ export default function CalculatorPage() {
   useEffect(() => {
     loadHistory().then(setHistory);
     loadSuppliers().then(setSuppliers);
-    loadSettings().then(setSettings);
+    loadSettingsWithActiveHedge().then(setSettings);
   }, []);
 
   // Build CalculatorInput from string states

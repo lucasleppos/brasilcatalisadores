@@ -1,3 +1,4 @@
+import { loadSettingsForPurchase } from "@/lib/hedges";
 /**
  * Valor unitário das peças separadas do fluxo, calculado com os dados do
  * catálogo (peso e Pt/Pd/Rh) e a margem de peças do fornecedor — mesmo
@@ -31,13 +32,14 @@ export function groupForValue(v: number | null | undefined): 1 | 2 | 3 {
 export async function computeSeparatedPieceValues(
   supplierId: string,
   pieces: SeparatedValueInput[],
+  purchaseId?: string | null,
 ): Promise<SeparatedValueOutput[]> {
   const partIds = Array.from(
     new Set(pieces.map(p => p.catalogPartId).filter(Boolean)),
   ) as string[];
 
   const [settings, supplierRes, partsRes] = await Promise.all([
-    loadSettings(),
+    loadSettingsForPurchase(purchaseId),
     supabase.from("suppliers").select("margin, margin_pecas").eq("id", supplierId).maybeSingle(),
     partIds.length
       ? supabase.from("catalog_parts").select("id, weight, pt_ppm, pd_ppm, rh_ppm").in("id", partIds)

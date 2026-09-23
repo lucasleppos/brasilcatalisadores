@@ -1,3 +1,4 @@
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
     try {
       const partIds = Array.from(new Set(items.map(i => i.catalogPartId).filter(Boolean))) as string[];
       const [settingsData, supplierRes, partsRes] = await Promise.all([
-        loadSettings(),
+        loadSettingsForPurchase(purchase.id),
         supabase.from("suppliers").select("margin, margin_pecas").eq("id", purchase.supplierId).maybeSingle(),
         partIds.length
           ? supabase.from("catalog_parts").select("id, weight, pt_ppm, pd_ppm, rh_ppm").in("id", partIds)

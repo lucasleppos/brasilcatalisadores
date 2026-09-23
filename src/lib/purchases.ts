@@ -1,3 +1,4 @@
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { cachedLoad } from "@/lib/purchases-cache";
@@ -915,7 +916,7 @@ export async function registerAnalysis(
   userId?: string
 ): Promise<boolean> {
   const [settings, { data: items }] = await Promise.all([
-    loadSettings(),
+    loadSettingsForPurchase(purchaseId),
     supabase.from("purchase_items").select("*").eq("purchase_id", purchaseId),
   ]);
 

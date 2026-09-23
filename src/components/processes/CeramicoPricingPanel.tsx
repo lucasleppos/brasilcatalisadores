@@ -1,3 +1,4 @@
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
     setLoading(true);
     try {
       const [settingsData, { data: items }, { data: labResults }, { data: supplier }, { data: catEv }] = await Promise.all([
-        loadSettings(),
+        loadSettingsForPurchase(purchase.id),
         supabase
           .from("purchase_items")
           .select("id, weight, weight_loss, category, total_value, calc_input, calc_result")
