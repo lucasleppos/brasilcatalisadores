@@ -25,14 +25,15 @@ Hoje as cotações (Pt, Pd, Rh e câmbio) ficam em um único registro nas Config
    - Exige escolher outro hedge da lista (não digitar cotação livre) e escrever uma justificativa obrigatória.
    - Cada troca fica gravada em histórico (quem, quando, de qual para qual, motivo) e aparece no detalhe da compra.
 
-5. **Compras já existentes**
-   - Crio um hedge "Anterior" com as cotações atuais (Pt 1750, Pd 1265, Rh 8950, câmbio 5,15) com início em 02/09/2026 e fim hoje, e vinculo todas as compras atuais a ele.
-   - Você cadastra o novo hedge com início amanhã; as compras de amanhã em diante já entram nele.
-   - Se quiser, depois você pode dividir o "Anterior" em hedges históricos com as datas reais e eu revinculo as compras por data.
+5. **Histórico inicial e compras já existentes**
+   - Hedge 1: de 02/09/2026 a 11/09/2026 — Pt 1750, Pd 1265, Rh 8950, câmbio 5,15.
+   - Hedge 2: a partir de 12/09/2026 (vigente) — Pt 1777, Pd 1297, Rh 9300, câmbio 5,11.
+   - Esses dois ficam só como registro no histórico: nenhuma compra já feita ou em processo é alterada ou recalculada.
+   - A regra do hedge pela data de entrada vale apenas para compras criadas daqui em diante. O passado não muda.
 
 ## Detalhes técnicos
 - Tabela `hedges` (name, start_date, end_date, pt/pd/rh_price, usd_to_brl, pt/pd/rh_oz_contracted, notes, created_by) com trigger de validação contra sobreposição de datas; GRANT + RLS usando `user_can_do(..., 'configuracoes')` para escrita e leitura para autenticados.
-- `purchases.hedge_id` (FK) preenchido por trigger no INSERT pela data da compra; backfill para as compras atuais.
+- `purchases.hedge_id` (FK) preenchido por trigger no INSERT pela data da compra; sem backfill. Compras antigas (hedge_id nulo) mantêm exatamente os valores e cotações que usam hoje.
 - Tabela `hedge_consumption` (hedge_id, purchase_id, pt/pd/rh_oz) gravada na aprovação e removida na reversão; view/consulta de saldo.
 - Tabela `hedge_change_log` (purchase_id, from/to hedge, justification, changed_by) só-inserção.
 - Nova ação de permissão `trocar_hedge` no módulo `processos`.
