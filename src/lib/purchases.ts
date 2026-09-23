@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
+import { cachedLoad } from "@/lib/purchases-cache";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";

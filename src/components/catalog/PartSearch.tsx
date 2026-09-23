@@ -16,14 +16,18 @@ export default function PartSearch({ onSelect }: PartSearchProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    const term = query.trim();
+    // Menos de 2 caracteres não consulta o banco (busca muito ampla e lenta)
+    if (term.length < 2) { setResults([]); return; }
     clearTimeout(debounceRef.current);
+    let stale = false;
     debounceRef.current = setTimeout(async () => {
-      const r = await searchParts(query.trim());
+      const r = await searchParts(term);
+      if (stale) return;
       setResults(r);
       setOpen(true);
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
+    }, 450);
+    return () => { stale = true; clearTimeout(debounceRef.current); };
   }, [query]);
 
   // Close on click outside
