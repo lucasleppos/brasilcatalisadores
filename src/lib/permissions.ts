@@ -57,6 +57,7 @@ export const MODULE_DEFINITIONS: Record<string, {
     label: "Processos",
     actions: [
       { key: "advance_stage", label: "Avançar Etapa" },
+      { key: "trocar_hedge", label: "Trocar hedge da compra" },
     ],
     fields: [],
   },
