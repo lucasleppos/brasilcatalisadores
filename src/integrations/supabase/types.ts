@@ -1179,6 +1179,8 @@ export type Database = {
         Returns: boolean
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       user_can_do: {
         Args: { _action?: string; _module: string; _user_id: string }
         Returns: boolean
