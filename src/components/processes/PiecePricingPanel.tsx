@@ -1,3 +1,4 @@
+import { HedgeSwitcher } from "./HedgeSwitcher";
 import { loadSettingsForPurchase } from "@/lib/hedges";
 import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -250,6 +251,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                 {items.length > 0 && <Badge className="text-sm px-3 py-1">{totalQty} peças</Badge>}
               </div>
             </div>
+            <HedgeSwitcher purchaseId={purchase.id} onChanged={loadData} />
           </DialogHeader>
 
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col border-t border-border">

@@ -1,3 +1,4 @@
+import { HedgeSwitcher } from "./HedgeSwitcher";
 import { loadSettingsForPurchase } from "@/lib/hedges";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -333,6 +334,7 @@ export default function CeramicoPricingPanel({ purchase, open, onOpenChange, onC
             <span>{lots.length} lotes</span>
             <span>{fmtNum(totalWeight, 3)} kg</span>
           </div>
+          <HedgeSwitcher purchaseId={purchase.id} onChanged={loadData} />
         </DialogHeader>
 
         {/* Lots list */}

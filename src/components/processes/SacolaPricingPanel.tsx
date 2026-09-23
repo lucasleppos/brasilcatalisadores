@@ -1,3 +1,4 @@
+import { HedgeSwitcher } from "./HedgeSwitcher";
 import { loadSettingsForPurchase } from "@/lib/hedges";
 import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useState, useEffect, useMemo } from "react";
@@ -325,6 +326,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
             </div>
           </div>
 
+          <HedgeSwitcher purchaseId={purchase.id} onChanged={loadData} />
         </DialogHeader>
 
         {/* Search & Filters */}
