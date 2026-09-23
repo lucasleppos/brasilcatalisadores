@@ -482,6 +482,157 @@ export type Database = {
           },
         ]
       }
+      hedge_change_log: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_hedge_id: string | null
+          id: string
+          justification: string
+          purchase_id: string
+          to_hedge_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_hedge_id?: string | null
+          id?: string
+          justification: string
+          purchase_id: string
+          to_hedge_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_hedge_id?: string | null
+          id?: string
+          justification?: string
+          purchase_id?: string
+          to_hedge_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hedge_change_log_from_hedge_id_fkey"
+            columns: ["from_hedge_id"]
+            isOneToOne: false
+            referencedRelation: "hedges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hedge_change_log_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hedge_change_log_to_hedge_id_fkey"
+            columns: ["to_hedge_id"]
+            isOneToOne: false
+            referencedRelation: "hedges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hedge_consumption: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hedge_id: string
+          id: string
+          pd_oz: number
+          pt_oz: number
+          purchase_id: string
+          rh_oz: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hedge_id: string
+          id?: string
+          pd_oz?: number
+          pt_oz?: number
+          purchase_id: string
+          rh_oz?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hedge_id?: string
+          id?: string
+          pd_oz?: number
+          pt_oz?: number
+          purchase_id?: string
+          rh_oz?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hedge_consumption_hedge_id_fkey"
+            columns: ["hedge_id"]
+            isOneToOne: false
+            referencedRelation: "hedges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hedge_consumption_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: true
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hedges: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          pd_oz_contracted: number
+          pd_price: number
+          pt_oz_contracted: number
+          pt_price: number
+          rh_oz_contracted: number
+          rh_price: number
+          start_date: string
+          usd_to_brl: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          pd_oz_contracted?: number
+          pd_price: number
+          pt_oz_contracted?: number
+          pt_price: number
+          rh_oz_contracted?: number
+          rh_price: number
+          start_date: string
+          usd_to_brl: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          pd_oz_contracted?: number
+          pd_price?: number
+          pt_oz_contracted?: number
+          pt_price?: number
+          rh_oz_contracted?: number
+          rh_price?: number
+          start_date?: string
+          usd_to_brl?: number
+        }
+        Relationships: []
+      }
       lab_analyses: {
         Row: {
           analysis_number: number
@@ -836,6 +987,7 @@ export type Database = {
           declared_value_brl: number | null
           erp_number: string | null
           fin_status: string | null
+          hedge_id: string | null
           id: string
           location: string
           material_flow: string | null
@@ -863,6 +1015,7 @@ export type Database = {
           declared_value_brl?: number | null
           erp_number?: string | null
           fin_status?: string | null
+          hedge_id?: string | null
           id?: string
           location?: string
           material_flow?: string | null
@@ -890,6 +1043,7 @@ export type Database = {
           declared_value_brl?: number | null
           erp_number?: string | null
           fin_status?: string | null
+          hedge_id?: string | null
           id?: string
           location?: string
           material_flow?: string | null
@@ -914,6 +1068,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_hedge_id_fkey"
+            columns: ["hedge_id"]
+            isOneToOne: false
+            referencedRelation: "hedges"
             referencedColumns: ["id"]
           },
           {
