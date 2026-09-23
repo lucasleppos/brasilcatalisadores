@@ -1,3 +1,4 @@
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { cachedLoad } from "@/lib/purchases-cache";
@@ -753,6 +754,19 @@ export async function updatePurchaseStatus(id: string, status: string) {
     .select()
     .single();
 
+  // Consumo de metal no hedge: registra ao passar da Aprovação, retira ao voltar
+  try {
+    const u: any = updated;
+    const flow = u?.material_flow as "ceramico" | "pecas" | "sacola" | null;
+    if (u && (flow === "ceramico" || flow === "pecas" || flow === "sacola")) {
+      const [{ isCompletedForFlow }, hedges] = await Promise.all([import("./reports"), import("./hedges")]);
+      if (isCompletedForFlow(status, u.op_status, flow)) await hedges.recordHedgeConsumption(id);
+      else await hedges.removeHedgeConsumption(id);
+    }
+  } catch (e) {
+    console.warn("hedge consumption", e);
+  }
+
   // Se a compra já estava totalmente alocada em bags, encerra automaticamente
   if (status === "Cerâmico: Aprovado") {
     await syncCeramicoAllocation(id);
@@ -915,7 +929,7 @@ export async function registerAnalysis(
   userId?: string
 ): Promise<boolean> {
   const [settings, { data: items }] = await Promise.all([
-    loadSettings(),
+    loadSettingsForPurchase(purchaseId),
     supabase.from("purchase_items").select("*").eq("purchase_id", purchaseId),
   ]);
 

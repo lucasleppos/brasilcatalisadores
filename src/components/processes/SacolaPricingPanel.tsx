@@ -1,3 +1,5 @@
+import { HedgeSwitcher } from "./HedgeSwitcher";
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -150,7 +152,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
 
       // Settings + margem de peças do fornecedor (para os valores sugeridos)
       const [settings, supplierRes] = await Promise.all([
-        loadSettings(),
+        loadSettingsForPurchase(purchase.id),
         supabase.from("suppliers").select("margin, margin_pecas").eq("id", purchase.supplierId).maybeSingle(),
       ]);
       const sup: any = supplierRes?.data ?? null;
@@ -324,6 +326,7 @@ export default function SacolaPricingPanel({ purchase, open, onOpenChange, onCom
             </div>
           </div>
 
+          <HedgeSwitcher purchaseId={purchase.id} onChanged={loadData} />
         </DialogHeader>
 
         {/* Search & Filters */}

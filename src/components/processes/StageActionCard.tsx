@@ -169,6 +169,7 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
           quantity: i.quantity,
           weight: i.weight,
         })),
+        purchase.id,
       );
       await printSeparatedPiecesReport({
         purchaseNumber: purchase.purchaseNumber,

@@ -1,3 +1,5 @@
+import { HedgeSwitcher } from "./HedgeSwitcher";
+import { loadSettingsForPurchase } from "@/lib/hedges";
 import QtyCheckBadge from "@/components/processes/QtyCheckBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -72,7 +74,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
     try {
       const partIds = Array.from(new Set(items.map(i => i.catalogPartId).filter(Boolean))) as string[];
       const [settingsData, supplierRes, partsRes] = await Promise.all([
-        loadSettings(),
+        loadSettingsForPurchase(purchase.id),
         supabase.from("suppliers").select("margin, margin_pecas").eq("id", purchase.supplierId).maybeSingle(),
         partIds.length
           ? supabase.from("catalog_parts").select("id, weight, pt_ppm, pd_ppm, rh_ppm").in("id", partIds)
@@ -249,6 +251,7 @@ export default function PiecePricingPanel({ purchase, onCompleted }: PiecePricin
                 {items.length > 0 && <Badge className="text-sm px-3 py-1">{totalQty} peças</Badge>}
               </div>
             </div>
+            <HedgeSwitcher purchaseId={purchase.id} onChanged={loadData} />
           </DialogHeader>
 
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col border-t border-border">

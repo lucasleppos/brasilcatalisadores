@@ -70,7 +70,7 @@ const FLOW_TO_MATERIAL: Record<FlowKey, "ceramico" | "pecas" | "sacola"> = {
  * Compra concluída conforme a sequência do próprio fluxo:
  * em Peças, Corte e Trituração/Moagem vêm DEPOIS da Aprovação e contam como concluídas.
  */
-function isCompletedForFlow(status: string, opStatus: string | null | undefined, flow: FlowKey): boolean {
+export function isCompletedForFlow(status: string, opStatus: string | null | undefined, flow: FlowKey): boolean {
   if (opStatus === "Bag Alocado" || opStatus === "Alocando Bag") return true;
   if (status && status.includes("Demonstrativo Contestado")) return false;
   if (flow === "pecas" && status === "Peças: Peso Divergente") return true;
