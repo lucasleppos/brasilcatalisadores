@@ -33,7 +33,7 @@ function UsageBar({ label, used, total }: { label: string; used: number; total: 
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span>{label}</span>
-        <span className={pct > 100 ? "text-destructive font-semibold" : pct >= 90 ? "text-warning font-semibold" : ""}>
+        <span className={pct > 100 ? "text-destructive font-semibold" : pct >= 90 ? "text-primary font-semibold" : ""}>
           {fmtNum(used, 4)} / {fmtNum(total, 4)} ozt · saldo {fmtNum(total - used, 4)}
         </span>
       </div>
