@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Settings, loadSettings, saveSettings, defaultSettings } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 import { Save, RotateCcw } from "lucide-react";
-import { parseNum } from "@/lib/utils";
+import { parseNum, fmtNum } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HedgeManager } from "@/components/settings/HedgeManager";
+import { Hedge, loadActiveHedge } from "@/lib/hedges";
 
 const numFilter = (v: string) => v.replace(/[^0-9.,\-]/g, "");
 
@@ -44,7 +47,9 @@ export default function SettingsPage() {
   const [s, setS] = useState<Settings>(defaultSettings);
   const { toast } = useToast();
 
-  useEffect(() => { loadSettings().then(setS); }, []);
+  const [hedge, setHedge] = useState<Hedge | null>(null);
+  const [tab, setTab] = useState("parametros");
+  useEffect(() => { loadSettings().then(setS); loadActiveHedge().then(setHedge); }, [tab]);
 
   const update = (key: keyof Settings, value: number) => setS((prev) => ({ ...prev, [key]: value }));
 
@@ -63,20 +68,33 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-display">Configurações</h1>
-        <div className="flex gap-2">
+      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="parametros">Parâmetros</TabsTrigger>
+          <TabsTrigger value="hedge">Hedge</TabsTrigger>
+        </TabsList>
+        <TabsContent value="hedge" className="mt-4"><HedgeManager /></TabsContent>
+        <TabsContent value="parametros" className="mt-4 space-y-4">
+        <div className="flex gap-2 justify-end">
           <Button variant="outline" size="sm" onClick={handleReset}><RotateCcw className="mr-1 h-3 w-3" />Restaurar</Button>
           <Button size="sm" onClick={handleSave}><Save className="mr-1 h-3 w-3" />Salvar</Button>
         </div>
-      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Cotações dos Metais</CardTitle></CardHeader>
-          <CardContent className="grid gap-3">
-            <Field label="Platina (Pt)" value={s.ptPrice} onChange={(v) => update("ptPrice", v)} suffix="USD/ozt" />
-            <Field label="Paládio (Pd)" value={s.pdPrice} onChange={(v) => update("pdPrice", v)} suffix="USD/ozt" />
-            <Field label="Ródio (Rh)" value={s.rhPrice} onChange={(v) => update("rhPrice", v)} suffix="USD/ozt" />
-            <Field label="Câmbio USD → BRL" value={s.usdToBrl} onChange={(v) => update("usdToBrl", v)} suffix="R$" />
+          <CardContent className="grid gap-2 text-sm">
+            {hedge ? (
+              <>
+                <div className="text-xs text-muted-foreground">Hedge vigente: <strong className="text-foreground">{hedge.name}</strong></div>
+                <div>Platina (Pt): <strong>{fmtNum(hedge.ptPrice, 2)}</strong> USD/ozt</div>
+                <div>Paládio (Pd): <strong>{fmtNum(hedge.pdPrice, 2)}</strong> USD/ozt</div>
+                <div>Ródio (Rh): <strong>{fmtNum(hedge.rhPrice, 2)}</strong> USD/ozt</div>
+                <div>Câmbio USD → BRL: <strong>R$ {fmtNum(hedge.usdToBrl, 4)}</strong></div>
+              </>
+            ) : <div className="text-xs text-muted-foreground">Nenhum hedge vigente hoje.</div>}
+            <Button variant="outline" size="sm" className="w-fit mt-1" onClick={() => setTab("hedge")}>Gerenciar hedges</Button>
           </CardContent>
         </Card>
 
@@ -142,6 +160,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
