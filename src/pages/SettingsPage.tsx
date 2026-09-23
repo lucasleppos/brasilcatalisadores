@@ -59,8 +59,10 @@ export default function SettingsPage() {
   };
 
   const handleReset = async () => {
-    setS({ ...defaultSettings });
-    await saveSettings(defaultSettings);
+    // Mantém as cotações gravadas (usadas pelas compras anteriores ao controle de hedge)
+    const next = { ...defaultSettings, ptPrice: s.ptPrice, pdPrice: s.pdPrice, rhPrice: s.rhPrice, usdToBrl: s.usdToBrl };
+    setS(next);
+    await saveSettings(next);
     toast({ title: "Configurações restauradas", description: "Valores padrão aplicados." });
   };
 
