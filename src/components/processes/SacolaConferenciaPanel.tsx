@@ -390,6 +390,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
           quantity: p.quantity,
           weight: p.unitWeight * (p.quantity || 1),
         })),
+        purchase.id,
       );
       await printSeparatedPiecesReport({
         purchaseNumber: purchase.purchaseNumber,

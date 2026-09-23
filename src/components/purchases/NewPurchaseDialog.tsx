@@ -15,7 +15,7 @@ import { loadSuppliers, Supplier } from "@/lib/suppliers";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { createPurchase, updatePurchase, Purchase, PurchaseQuoteItem, PurchaseItemType } from "@/lib/purchases";
 import { calculate, CalculatorInput, CalculatorResult } from "@/lib/calculator";
-import { loadSettings } from "@/lib/settings";
+import { loadSettingsWithActiveHedge } from "@/lib/hedges";
 import { useToast } from "@/hooks/use-toast";
 import { fmtNum, fmtBrl, fmtPct, parseNum } from "@/lib/utils";
 import PartSearch from "@/components/catalog/PartSearch";
@@ -165,7 +165,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
 
   const runCalcPreview = async () => {
     if (grossWeight <= 0) return;
-    const settings = await loadSettings();
+    const settings = await loadSettingsWithActiveHedge();
     const margin = selectedSupplier?.margin ?? 0;
     const tare = parseNum(tareStr);
     const input: CalculatorInput = {
@@ -203,7 +203,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
         toast({ title: "Preencha ao menos o peso bruto", variant: "destructive" });
         return;
       }
-      const settings = await loadSettings();
+      const settings = await loadSettingsWithActiveHedge();
       const margin = selectedSupplier?.margin ?? 0;
       const tare = parseNum(tareStr);
       const input: CalculatorInput = {
@@ -591,7 +591,7 @@ export default function NewPurchaseDialog({ open, onOpenChange, onCreated, editP
               <div className="space-y-1">
                 <Label className="text-[10px]">Buscar no Catálogo (opcional)</Label>
                 <PartSearch onSelect={async (part: CatalogPart) => {
-                  const settings = await loadSettings();
+                  const settings = await loadSettingsWithActiveHedge();
                   const margin = part.groupMargin ?? selectedSupplier?.margin ?? 0;
                   const input: CalculatorInput = {
                     grossWeight: part.weight,
