@@ -35,6 +35,7 @@ interface AvailableMaterial {
   carbono?: boolean;
   /** fração de peças pós-trituração (Flex/Carbono) */
   fraction?: "flex" | "carbono";
+  ceramicGroup?: string;
 }
 
 
@@ -78,6 +79,13 @@ const statusColors: Record<string, string> = {
 
 function sortByPurchaseNumber<T extends { purchaseNumber: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.purchaseNumber.localeCompare(b.purchaseNumber));
+}
+
+function compactCeramicGroup(group?: string): string | null {
+  const label = group?.trim();
+  if (!label) return null;
+  const numbered = label.match(/^grupo\s+(\d+)$/i);
+  return numbered ? `Gr. ${numbered[1].padStart(2, "0")}` : label;
 }
 
 /** Filial cadastrada no fornecedor, por supplier_id */
@@ -256,6 +264,27 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         .eq("category", "conferencia")
         .in("purchase_id", chunkIds) as any
     );
+
+    const ceramicItemIds = (items || [])
+      .filter((item: any) => item.item_type === "ceramico")
+      .map((item: any) => item.id as string);
+    const groupEvidence = ceramicItemIds.length > 0
+      ? await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
+          supabase
+            .from("stage_evidence")
+            .select("task_key, value_text")
+            .eq("stage", "conferencia_ceramico")
+            .like("task_key", "lote_cat_%")
+            .in("purchase_id", chunkIds) as any
+        )
+      : [];
+    const ceramicGroupByItemId = new Map<string, string>();
+    (groupEvidence || []).forEach((e: any) => {
+      const itemId = String(e.task_key || "").replace(/^lote_cat_/, "");
+      if (itemId && ceramicItemIds.includes(itemId) && e.value_text) {
+        ceramicGroupByItemId.set(itemId, String(e.value_text));
+      }
+    });
 
     const allocated = await fetchAllByIds<any>(purchaseIds, (chunkIds) =>
       supabase.from("bag_items").select("purchase_item_id").in("purchase_id", chunkIds) as any
@@ -441,6 +470,7 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
         isRealWeight: legacyWeight > 0,
         paidValue,
         carbono: carbonoIds.has(item.id),
+        ceramicGroup: item.item_type === "ceramico" ? ceramicGroupByItemId.get(item.id) : undefined,
       });
     });
 
@@ -725,7 +755,12 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                           aria-label="Selecionar material"
                         />
                         <div className="min-w-0">
-                          <p className="font-mono text-xs text-muted-foreground">{m.purchaseNumber}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {m.purchaseNumber}
+                            {compactCeramicGroup(m.ceramicGroup) && (
+                              <span className="ml-3 font-sans font-semibold text-foreground">{compactCeramicGroup(m.ceramicGroup)}</span>
+                            )}
+                          </p>
                           <p className="font-medium text-sm truncate" title={m.supplierName}>
                             {m.supplierName}
                           </p>
@@ -828,7 +863,12 @@ export function AllocationPanel({ bags, onAllocated }: AllocationPanelProps) {
                             aria-label="Selecionar material"
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{m.purchaseNumber}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {m.purchaseNumber}
+                          {compactCeramicGroup(m.ceramicGroup) && (
+                            <span className="ml-3 font-sans font-semibold">{compactCeramicGroup(m.ceramicGroup)}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium truncate max-w-[180px]" title={m.supplierName}>
                           {m.supplierName}
                         </TableCell>
