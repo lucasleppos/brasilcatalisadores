@@ -453,6 +453,10 @@ async function fetchAllIn<T = any>(
 }
 
 export async function loadPurchases(): Promise<Purchase[]> {
+  return cachedLoad<Purchase>(fetchPurchasesFromDb);
+}
+
+async function fetchPurchasesFromDb(): Promise<Purchase[]> {
   const rows = await fetchAllRows<any>(() =>
     supabase.from("purchases").select("*").order("date", { ascending: false }) as any
   );
