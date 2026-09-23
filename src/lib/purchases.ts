@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, fetchAllByIds } from "@/lib/db";
+import { cachedLoad } from "@/lib/purchases-cache";
 import { CalculatorInput, CalculatorResult, calculate } from "./calculator";
 import { createDemonstrativo } from "./demonstrativos";
 import { loadSettings } from "./settings";
@@ -453,6 +454,10 @@ async function fetchAllIn<T = any>(
 }
 
 export async function loadPurchases(): Promise<Purchase[]> {
+  return cachedLoad<Purchase>(fetchPurchasesFromDb);
+}
+
+async function fetchPurchasesFromDb(): Promise<Purchase[]> {
   const rows = await fetchAllRows<any>(() =>
     supabase.from("purchases").select("*").order("date", { ascending: false }) as any
   );
