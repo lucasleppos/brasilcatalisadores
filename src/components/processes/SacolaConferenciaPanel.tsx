@@ -493,7 +493,7 @@ export default function SacolaConferenciaPanel({ purchase, open, onOpenChange, o
               const check = weightCheck(p.catalogWeight, p.unitWeight);
               const outside = check.hasBase && !check.withinMargin;
               return (
-                <Card key={p.id || `${p.catalogPartId}-${i}`} className={`border-border/50 ${outside ? "border-destructive/50 bg-destructive/5" : ""}`}>
+                <Card key={p.id || `${p.catalogPartId}-${i}`} style={{ contentVisibility: "auto", containIntrinsicSize: "auto 96px" }} className={`border-border/50 shadow-none ${outside ? "border-destructive/50 bg-destructive/5" : ""}`}>
                   <CardContent className="p-3 flex items-start justify-between gap-2">
                     <div className="space-y-0.5 flex-1">
                       <p className="text-xs font-semibold text-muted-foreground">#{p.seq}</p>
