@@ -213,7 +213,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
           </header>
         )}
 
-        <main className="flex-1 overflow-y-auto overscroll-contain">{children}</main>
+        <main className="mobile-scroll flex-1 overflow-y-auto overscroll-contain">{children}</main>
 
         {!(singleModule && !stageTabsInBar) && (
           <MobileTabBar
