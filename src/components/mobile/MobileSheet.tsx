@@ -28,7 +28,7 @@ export function MobileSheet({ open, onOpenChange, title, subtitle, children, foo
             {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto overscroll-contain p-3">{children}</div>
+        <div className="mobile-scroll flex-1 overflow-y-auto overscroll-contain p-3">{children}</div>
         {footer && (
           <div className="shrink-0 border-t border-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             {footer}

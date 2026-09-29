@@ -70,3 +70,17 @@
     font-family: 'Playfair Display', serif;
   }
 }
+
+/* Android: evita fantasmas/faixas pretas ao rolar áreas longas */
+@media (max-width: 767px) {
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    contain: paint;
+    transform: translateZ(0);
+  }
+  .mobile-scroll .shadow-lg,
+  .mobile-scroll .shadow-md,
+  .mobile-scroll .shadow-xl { box-shadow: none; }
+  .mobile-scroll .backdrop-blur,
+  .mobile-scroll .backdrop-blur-sm { backdrop-filter: none; }
+}

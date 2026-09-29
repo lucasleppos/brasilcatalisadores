@@ -59,7 +59,7 @@ export default function PartSearch({ onSelect }: PartSearchProps) {
         />
       </div>
       {open && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-52 overflow-auto">
+        <div className="relative md:absolute md:z-50 w-full mt-1 bg-popover border rounded-md md:shadow-md max-h-52 overflow-auto overscroll-contain">
           {results.map(part => (
             <button
               key={part.id}
