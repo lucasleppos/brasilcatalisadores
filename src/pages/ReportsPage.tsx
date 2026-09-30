@@ -21,6 +21,7 @@ import {
   type DateRange,
 } from "@/lib/reports";
 import { supabase } from "@/integrations/supabase/client";
+import MetalsHedgeTab from "@/components/reports/MetalsHedgeTab";
 import {
   BarChart,
   Bar,
