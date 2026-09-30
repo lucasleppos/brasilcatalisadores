@@ -491,11 +491,12 @@ export default function ReportsPage() {
       <h1 className="text-3xl font-display font-bold">Relatórios</h1>
 
       <Tabs defaultValue="compras" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="compras">Compras</TabsTrigger>
           <TabsTrigger value="bags">Bags</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          <TabsTrigger value="metais">Metais & Hedge</TabsTrigger>
         </TabsList>
 
         <TabsContent value="compras">
@@ -509,6 +510,9 @@ export default function ReportsPage() {
         </TabsContent>
         <TabsContent value="financeiro">
           <FinancialTab />
+        </TabsContent>
+        <TabsContent value="metais">
+          <MetalsHedgeTab />
         </TabsContent>
       </Tabs>
     </div>
