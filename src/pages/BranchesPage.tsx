@@ -73,7 +73,7 @@ export default function BranchesPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [b, t, p] = await Promise.all([loadBranches(), loadTransfers(), loadPurchases()]);
+      const [b, t, p] = await Promise.all([loadBranches(), loadTransfers(), loadPurchases({ month: "all" })]);
       setBranches(b);
       setTransfers(t);
       setPurchases(p);
