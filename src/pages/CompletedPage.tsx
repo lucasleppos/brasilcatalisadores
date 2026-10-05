@@ -3,11 +3,12 @@ import { fetchAllRows, fetchAllByIds } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthSelect } from "@/components/purchases/MonthSelect";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, Search, Eye, ChevronRight, ChevronDown } from "lucide-react";
-import { Purchase, loadPurchases, getItemLabel, getStatusColor, syncCeramicoAllocation } from "@/lib/purchases";
+import { Purchase, loadPurchases, currentMonthKey, getItemLabel, getStatusColor, syncCeramicoAllocation } from "@/lib/purchases";
 import { isBranchPreTransfer } from "@/lib/branches";
 import { supabase } from "@/integrations/supabase/client";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
@@ -34,6 +35,7 @@ export default function CompletedPage() {
   const [bagAllocations, setBagAllocations] = useState<Record<string, BagAllocation[]>>({});
   const [branchBySupplier, setBranchBySupplier] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [month, setMonth] = useState<string>(currentMonthKey());
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -49,13 +51,13 @@ export default function CompletedPage() {
 
   useEffect(() => {
     reload();
-  }, [authLoading, session?.user?.id]);
+  }, [authLoading, session?.user?.id, month]);
 
   const reload = async () => {
     if (authLoading || !session) return;
     let all: Purchase[];
     try {
-      all = scopeByBuyer((await loadPurchases()).filter(p => !isBranchPreTransfer(p)));
+      all = scopeByBuyer((await loadPurchases({ month })).filter(p => !isBranchPreTransfer(p)));
     } catch (e) {
       console.error("Erro ao carregar concluídos:", e);
       return;
@@ -70,7 +72,7 @@ export default function CompletedPage() {
     );
     if (pending.length > 0) {
       const results = await Promise.all(pending.map(p => syncCeramicoAllocation(p.id)));
-      if (results.some(Boolean)) all = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
+      if (results.some(Boolean)) all = (await loadPurchases({ month })).filter(p => !isBranchPreTransfer(p));
     }
 
     // Concluídos: encerrados + aguardando alocação em bag
@@ -135,6 +137,7 @@ export default function CompletedPage() {
   if (isMobile) {
     return (
       <>
+        <div className="px-3 pt-2"><MonthSelect value={month} onChange={setMonth} className="h-9 w-full" /></div>
         <MobileCompletedList
           purchases={filtered}
           bagsByPurchase={bagAllocations}
@@ -157,6 +160,7 @@ export default function CompletedPage() {
       </div>
 
       <div className="flex gap-3 items-center flex-wrap">
+        <MonthSelect value={month} onChange={setMonth} className="h-8 text-sm w-44" />
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input

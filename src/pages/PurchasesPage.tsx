@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthSelect } from "@/components/purchases/MonthSelect";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Package, Search, Trash2, Eye, Plus, Pencil, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { isBranchPreTransfer } from "@/lib/branches";
-import { Purchase, loadPurchases, updatePurchaseStatus, deletePurchase, getFlowStatuses, getStatusColor, ALL_STATUSES, getItemLabel } from "@/lib/purchases";
+import { Purchase, loadPurchases, currentMonthKey, CLOSED_STATUSES, updatePurchaseStatus, deletePurchase, getFlowStatuses, getStatusColor, ALL_STATUSES, getItemLabel } from "@/lib/purchases";
 import PurchaseDetail from "@/components/purchases/PurchaseDetail";
 import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
@@ -40,6 +41,7 @@ export default function PurchasesPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
+  const [month, setMonth] = useState<string>(currentMonthKey());
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [buyerFilter, setBuyerFilter] = useState<string>("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
@@ -51,9 +53,10 @@ export default function PurchasesPage() {
     setLoadingList(true);
     setLoadError(false);
     try {
-      let data = (await loadPurchases()).filter(p => !isBranchPreTransfer(p));
+      let data = (await loadPurchases({ month })).filter(p => !isBranchPreTransfer(p));
       // Perfil comprador: só as compras dos nomes vinculados a ele
       data = scopeByBuyer(data);
+      if (month !== "all") data = data.filter(p => (p.date || "").slice(0, 7) === month || !CLOSED_STATUSES.includes(p.status));
       setPurchases(data);
     } catch (e) {
       console.error("Erro ao carregar compras:", e);
@@ -64,7 +67,7 @@ export default function PurchasesPage() {
   };
 
   // Recarrega quando a autenticação/perfil terminam de carregar
-  useEffect(() => { reload(); }, [authLoading, session?.user?.id, role, profile?.id]);
+  useEffect(() => { reload(); }, [authLoading, session?.user?.id, role, profile?.id, month]);
 
   // Revalida ao voltar para a aba/janela
   useEffect(() => {
@@ -110,6 +113,7 @@ export default function PurchasesPage() {
   if (isMobile) {
     return (
       <>
+        <div className="px-3 pt-2"><MonthSelect value={month} onChange={setMonth} className="h-9 w-full" /></div>
         <MobilePurchaseList
           purchases={sorted}
           search={search}
@@ -143,6 +147,7 @@ export default function PurchasesPage() {
       </div>
 
       <div className="flex gap-3 items-center flex-wrap">
+        <MonthSelect value={month} onChange={setMonth} className="h-8 text-sm w-44" />
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Buscar por fornecedor, nº pedido, comprador..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pl-8 text-sm" />
