@@ -454,14 +454,41 @@ async function fetchAllIn<T = any>(
   );
 }
 
-export async function loadPurchases(): Promise<Purchase[]> {
-  return cachedLoad<Purchase>(fetchPurchasesFromDb);
+/** Status finais — compras nesses status de meses anteriores ficam em stand-by */
+export const CLOSED_STATUSES = ["Cerâmico: Encerrado", "Peças: Encerrado", "Concluído", "Peças: Alocado ao Bag"];
+
+/** Mês corrente no formato YYYY-MM (horário local) */
+export function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function fetchPurchasesFromDb(): Promise<Purchase[]> {
-  const rows = await fetchAllRows<any>(() =>
-    supabase.from("purchases").select("*").order("date", { ascending: false }) as any
-  );
+/**
+ * Carrega compras.
+ * - month "YYYY-MM" (padrão: mês corrente): compras daquele mês + todas ainda em andamento.
+ * - month "all": todo o histórico.
+ */
+export async function loadPurchases(opts?: { month?: string }): Promise<Purchase[]> {
+  const month = opts?.month || currentMonthKey();
+  return cachedLoad<Purchase>(() => fetchPurchasesFromDb(month), month);
+}
+
+async function fetchPurchasesFromDb(month: string): Promise<Purchase[]> {
+  let orFilter: string | null = null;
+  if (month !== "all") {
+    const [y, m] = month.split("-").map(Number);
+    const start = `${y}-${String(m).padStart(2, "0")}-01`;
+    const ny = m === 12 ? y + 1 : y;
+    const nm = m === 12 ? 1 : m + 1;
+    const end = `${ny}-${String(nm).padStart(2, "0")}-01`;
+    const closed = CLOSED_STATUSES.map(s => `"${s}"`).join(",");
+    orFilter = `and(date.gte.${start},date.lt.${end}),status.not.in.(${closed})`;
+  }
+  const rows = await fetchAllRows<any>(() => {
+    let q: any = supabase.from("purchases").select("*");
+    if (orFilter) q = q.or(orFilter);
+    return q.order("date", { ascending: false });
+  });
 
   if (!rows.length) return [];
 

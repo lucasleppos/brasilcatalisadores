@@ -1,9 +1,5 @@
 /**
- * Cache curto e compartilhado da lista de compras.
- *
- * Várias telas (Compras, Processos, Concluídos, Filiais) carregam a mesma
- * lista completa de compras e itens. Sem cache, cada troca de tela, cada
- * componente montado e cada retorno de foco refaz toda a leitura no banco.
+ * Cache curto e compartilhado da lista de compras (por recorte de período).
  *
  * O cache é invalidado automaticamente a cada gravação no banco (qualquer
  * requisição que não seja de leitura), então nunca exibe dado velho depois de
@@ -11,29 +7,31 @@
  */
 const TTL_MS = 60_000;
 
-let cached: { at: number; data: any[] } | null = null;
-let inflight: Promise<any[]> | null = null;
+const cached = new Map<string, { at: number; data: any[] }>();
+const inflight = new Map<string, Promise<any[]>>();
 
 export function invalidatePurchasesCache() {
-  cached = null;
+  cached.clear();
 }
 
 /** Executa o loader reaproveitando o resultado recente e unindo chamadas simultâneas. */
-export async function cachedLoad<T>(loader: () => Promise<T[]>): Promise<T[]> {
-  if (cached && Date.now() - cached.at < TTL_MS) return cached.data.slice() as T[];
-  if (inflight) return (await inflight).slice() as T[];
+export async function cachedLoad<T>(loader: () => Promise<T[]>, key = "default"): Promise<T[]> {
+  const hit = cached.get(key);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data.slice() as T[];
+  const running = inflight.get(key);
+  if (running) return (await running).slice() as T[];
 
-  inflight = (async () => {
+  const p = (async () => {
     try {
       const data = await loader();
-      cached = { at: Date.now(), data: data as any[] };
+      cached.set(key, { at: Date.now(), data: data as any[] });
       return data as any[];
     } finally {
-      inflight = null;
+      inflight.delete(key);
     }
   })();
-
-  return (await inflight).slice() as T[];
+  inflight.set(key, p);
+  return (await p).slice() as T[];
 }
 
 /**
