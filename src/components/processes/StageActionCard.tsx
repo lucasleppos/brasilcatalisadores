@@ -13,7 +13,7 @@ import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, advanceStage, advanceOpStatus, registerAnalysis, handleWeightCheck, isInParallelPhase, getStatusColor, CerOpStatus, contestDemonstrativo, getItemLabel, getFlowStatuses, CER_OP_STATUSES, updatePurchaseErp, getContestInfo, isSacolaFlow, getExcludedItems } from "@/lib/purchases";
 import { getSupplierBranch } from "@/lib/suppliers";
-import { printSeparatedPiecesReport } from "@/lib/separated-pieces-report";
+import { printSeparatedPiecesForPurchase } from "@/lib/separated-pieces-print";
 import { computeSeparatedPieceValues } from "@/lib/separated-pieces-value";
 import ReanalysisBanner from "./ReanalysisBanner";
 import { loadDemonstrativos, generateDemonstrativoPdf, createDemonstrativo } from "@/lib/demonstrativos";
@@ -160,31 +160,8 @@ export default function StageActionCard({ purchase, onCompleted, readOnly = fals
   const separatedItems = getExcludedItems(purchase);
 
   const handleSeparatedReport = async () => {
-    const branch = await getSupplierBranch(purchase.supplierId);
     try {
-      const values = await computeSeparatedPieceValues(
-        purchase.supplierId,
-        separatedItems.map(i => ({
-          catalogPartId: i.catalogPartId,
-          quantity: i.quantity,
-          weight: i.weight,
-        })),
-        purchase.id,
-      );
-      await printSeparatedPiecesReport({
-        purchaseNumber: purchase.purchaseNumber,
-        date: purchase.date,
-        supplierName: purchase.supplierName,
-        branch: branch || undefined,
-        buyer: purchase.buyer,
-        erpNumber: purchase.erpNumber || undefined,
-        pieces: separatedItems.map((i, idx) => ({
-          seq: i.seq ?? idx + 1,
-          code: i.catalogPartCode || i.partCode || "—",
-          reference: i.catalogPartRef || i.partReference || null,
-          unitValue: values[idx]?.unitValue ?? null,
-        })),
-      });
+      await printSeparatedPiecesForPurchase(purchase);
     } catch {
       toast.error("Erro ao gerar o PDF das peças separadas");
     }
