@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, FlaskConical, FileText, FileDown, MessageCircle, Package, Camera, Scale, FileText as NoteIcon, Printer } from "lucide-react";
 import { printEntryLabel } from "@/components/processes/CeramicoLabelPrint";
-import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getItemLabel } from "@/lib/purchases";
+import { Purchase, PurchaseQuoteItem, getStatusColor, isInParallelPhase, getOriginalItems, getConferenciaItems, getItemLabel, getExcludedItems } from "@/lib/purchases";
+import { printSeparatedPiecesForPurchase } from "@/lib/separated-pieces-print";
 import { loadLabResults, LabResult } from "@/lib/lab-results";
 import { loadDemonstrativos, Demonstrativo, generateDemonstrativoPdf } from "@/lib/demonstrativos";
 import { loadEvidences, StageEvidence, loadLabAnalyses, LabAnalysis } from "@/lib/stage-tasks";
@@ -66,6 +67,16 @@ export default function PurchaseDetail({ purchase, onClose }: { purchase: Purcha
         >
           <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir Etiqueta de Entrada
         </Button>
+        {getExcludedItems(purchase).length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-8 text-xs"
+            onClick={() => { printSeparatedPiecesForPurchase(purchase).catch(() => toast.error("Erro ao gerar o PDF das peças separadas")); }}
+          >
+            <Printer className="h-3.5 w-3.5 mr-1" /> PDF Peças Separadas do Fluxo ({getExcludedItems(purchase).length})
+          </Button>
+        )}
 
 
         <div className="grid grid-cols-2 gap-4 text-sm">
