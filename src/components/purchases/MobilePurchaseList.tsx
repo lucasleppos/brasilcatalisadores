@@ -1,6 +1,6 @@
 import { Purchase, getItemLabel, isSacolaFlow } from "@/lib/purchases";
 import { fmtBrl } from "@/lib/utils";
-import { stageOfPurchase } from "@/lib/status-stages";
+import { displayStageOfPurchase } from "@/lib/status-stages";
 import { MobileListRow, MobileListDivider } from "@/components/mobile/MobileListRow";
 import { MobileSearchBar } from "@/components/mobile/MobileSearchBar";
 import { MobileFab } from "@/components/mobile/MobileFab";
@@ -14,6 +14,7 @@ export function purchaseFlowBadge(p: Purchase) {
 }
 
 interface Props {
+  allocatedIds?: Set<string>;
   purchases: Purchase[];
   search: string;
   onSearch: (v: string) => void;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function MobilePurchaseList({
+  allocatedIds,
   purchases, search, onSearch, loading, error, onRetry, hideTotal, canCreate, onNew, onSelect,
 }: Props) {
   return (
@@ -55,7 +57,7 @@ export default function MobilePurchaseList({
                 badge={flow.label}
                 badgeClassName={flow.className}
                 title={p.supplierName}
-                subtitle={`${p.purchaseNumber} · ${stageOfPurchase(p)}`}
+                subtitle={`${p.purchaseNumber} · ${displayStageOfPurchase(p, allocatedIds)}`}
                 detail={`${getItemLabel(p)}${
                   !hideTotal && p.totalBrl > 0 ? ` · ${fmtBrl(p.totalBrl)}` : ""
                 }${p.erpNumber ? ` · Boleto ${p.erpNumber}` : ""}`}

@@ -9,6 +9,7 @@ export const STAGES = {
   aprovacao: "Aprovação",
   corte: "Corte",
   bag: "Alocação em Bag",
+  alocado: "Alocado",
   concluido: "Concluído",
 } as const;
 
@@ -83,6 +84,16 @@ export function stageOfStatus(status: string, opStatus?: string | null): string 
 /** Etapa padronizada de uma compra. */
 export function stageOfPurchase(p: Pick<Purchase, "status" | "opStatus">): string {
   return stageOfStatus(p.status, p.opStatus);
+}
+
+/** Rótulo exibido: "Alocado" quando a compra já tem material dentro de um Bag. */
+export function displayStageOfPurchase(
+  p: Pick<Purchase, "id" | "status" | "opStatus">,
+  allocatedIds?: Set<string>,
+): string {
+  const st = stageOfPurchase(p);
+  if (st === STAGES.bag && allocatedIds?.has(p.id)) return STAGES.alocado;
+  return st;
 }
 
 const FLOW_LABELS: Record<string, string> = {

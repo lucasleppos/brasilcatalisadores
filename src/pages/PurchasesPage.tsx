@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchAllByIds } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +18,7 @@ import NewPurchaseDialog from "@/components/purchases/NewPurchaseDialog";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBuyerScope } from "@/lib/buyer-scope";
-import { STAGE_ORDER, stageOfPurchase, flowLabel } from "@/lib/status-stages";
+import { STAGE_ORDER, stageOfPurchase, displayStageOfPurchase, flowLabel } from "@/lib/status-stages";
 
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
@@ -40,6 +42,7 @@ export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState<string>(currentMonthKey());
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -58,6 +61,12 @@ export default function PurchasesPage() {
       data = scopeByBuyer(data);
       if (month !== "all") data = data.filter(p => (p.date || "").slice(0, 7) === month || !CLOSED_STATUSES.includes(p.status));
       setPurchases(data);
+      try {
+        const bagIds = data.filter(p => stageOfPurchase(p) === "Alocação em Bag").map(p => p.id);
+        const rows = await fetchAllByIds<{ purchase_id: string }>(bagIds, (c) =>
+          supabase.from("bag_items").select("purchase_id").in("purchase_id", c) as any);
+        setAllocatedIds(new Set(rows.map(r => r.purchase_id)));
+      } catch (e) { console.error("Erro ao carregar alocações:", e); }
     } catch (e) {
       console.error("Erro ao carregar compras:", e);
       setLoadError(true);
@@ -115,6 +124,7 @@ export default function PurchasesPage() {
       <>
         <div className="px-3 pt-2"><MonthSelect value={month} onChange={setMonth} className="h-9 w-full" /></div>
         <MobilePurchaseList
+          allocatedIds={allocatedIds}
           purchases={sorted}
           search={search}
           onSearch={setSearch}
@@ -248,7 +258,7 @@ export default function PurchasesPage() {
                     )}
                     <TableCell>
                       <Badge variant="outline" className={`text-xs ${getStatusColor(p.status)}`} title={p.status}>
-                        {stageOfPurchase(p)}
+                        {displayStageOfPurchase(p, allocatedIds)}
                         {flowLabel(p.materialFlow) && (
                           <span className="ml-1 opacity-60">· {flowLabel(p.materialFlow)}</span>
                         )}
