@@ -92,6 +92,7 @@ export function displayStageOfPurchase(
   allocatedIds?: Set<string>,
 ): string {
   const st = stageOfPurchase(p);
+  if (st === STAGES.concluido) return STAGES.alocado;
   if (st === STAGES.bag && allocatedIds?.has(p.id)) return STAGES.alocado;
   return st;
 }
